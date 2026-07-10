@@ -20,7 +20,7 @@ const CaseManagement: React.FC = () => {
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [newCase, setNewCase] = useState({
     vehicleId: '',
-    driverId: '',
+    driverId: 'DRV-',
     driverName: '',
     driverPhone: '',
     caseId: '',
@@ -81,7 +81,7 @@ const CaseManagement: React.FC = () => {
     
     setShowAdd(false);
     setEditingId(null);
-    setNewCase({ vehicleId: '', driverId: '', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
+    setNewCase({ vehicleId: '', driverId: 'DRV-', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
   };
 
   const startEdit = (item: any) => {
@@ -209,7 +209,7 @@ const CaseManagement: React.FC = () => {
                if (nextShow) {
                  setEditingId(null);
                  setVehicleSearch('');
-                 setNewCase({ vehicleId: '', driverId: '', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
+                 setNewCase({ vehicleId: '', driverId: 'DRV-', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
                }
              }} className="shadow-lg shadow-red-100">
                <FileWarning size={20} />

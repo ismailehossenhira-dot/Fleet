@@ -43,7 +43,7 @@ const QRScanner: React.FC = () => {
   
   // Selection/Simulation fallback
   const [selectedSimVehicleId, setSelectedSimVehicleId] = useState('');
-  const [selectedSimAction, setSelectedSimAction] = useState<'IN' | 'OUT'>('IN');
+  const [selectedSimAction, setSelectedSimAction] = useState<'IN' | 'OUT'>('OUT');
 
   // Dispatch Form State (for IN Scan when Available)
   const [dispatchForm, setDispatchForm] = useState({
@@ -220,13 +220,13 @@ const QRScanner: React.FC = () => {
     setReturnStatus('idle');
 
     // Pre-populate forms based on action
-    if (type === 'IN') {
+    if (type === 'OUT') {
       // Default dispatch form values
       setDispatchForm({
-        driverId: '',
+        driverId: 'DRV-',
         driverName: '',
         driverPhone: '',
-        helperId: '',
+        helperId: 'HLP-',
         helperName: '',
         helperPhone: '',
         location: '',
@@ -503,8 +503,8 @@ const QRScanner: React.FC = () => {
       </Card>
     );
 
-    if (scanResult.type === 'IN') {
-      // IN SCAN: Start Trip/Dispatch (requires vehicle to be Available)
+    if (scanResult.type === 'OUT') {
+      // OUT SCAN: Start Trip/Dispatch (requires vehicle to be Available)
       if (vehicle.status !== 'Available') {
         if (vehicle.status === 'Maintenance') {
           return (
@@ -800,7 +800,7 @@ const QRScanner: React.FC = () => {
         </div>
       );
     } else {
-      // OUT SCAN: Return / Complete Trip (requires active running trip)
+      // IN SCAN: Return / Complete Trip (requires active running trip)
       if (!activeTrip) {
         // Vehicle is already available, show history of last completed trip
         const lastTrip = trips.filter(t => t.vehicleId === vehicle.id && t.status === 'Completed')[0];
@@ -1108,29 +1108,29 @@ const QRScanner: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedSimAction('IN')}
+                    onClick={() => setSelectedSimAction('OUT')}
                     className={cn(
                       "py-2 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all",
-                      selectedSimAction === 'IN' 
+                      selectedSimAction === 'OUT' 
                         ? "bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-100" 
                         : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    IN QR (ছাড়পত্র)
+                    OUT QR (ছাড়পত্র)
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedSimAction('OUT')}
+                    onClick={() => setSelectedSimAction('IN')}
                     className={cn(
                       "py-2 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all",
-                      selectedSimAction === 'OUT' 
+                      selectedSimAction === 'IN' 
                         ? "bg-blue-50 border-blue-300 text-blue-800 ring-2 ring-blue-100" 
                         : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    OUT QR (ফেরত এন্ট্রি)
+                    IN QR (ফেরত এন্ট্রি)
                   </button>
                 </div>
               </div>

@@ -13,7 +13,7 @@ const Drivers: React.FC = () => {
   const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [newDriver, setNewDriver] = useState({
-    driverId: '',
+    driverId: 'DRV-',
     name: '',
     phoneNumber: '',
     role: 'Driver'
@@ -33,7 +33,7 @@ const Drivers: React.FC = () => {
       driverId: newDriver.driverId.trim().toUpperCase()
     };
     await addDriver(normalizedDriver);
-    setNewDriver({ driverId: '', name: '', phoneNumber: '', role: 'Driver' });
+    setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
     setShowAdd(false);
   };
 
@@ -183,11 +183,13 @@ const Drivers: React.FC = () => {
         <Card title="New Driver Enrollment" className="max-w-xl">
           <form onSubmit={handleAdd} className="space-y-4">
              <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Driver Employee ID</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {newDriver.role === 'Driver' ? 'Driver' : 'Helper'} Employee ID
+              </label>
               <input 
                 type="text" 
                 required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-bold"
                 placeholder="e.g. DRV-001"
                 value={newDriver.driverId}
                 onChange={e => setNewDriver({ ...newDriver, driverId: e.target.value })}
@@ -209,7 +211,28 @@ const Drivers: React.FC = () => {
               <select 
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
                 value={newDriver.role}
-                onChange={e => setNewDriver({ ...newDriver, role: e.target.value as any })}
+                onChange={e => {
+                  const role = e.target.value;
+                  let defaultId = newDriver.driverId;
+                  if (role === 'Driver') {
+                    if (!defaultId || defaultId === 'HLP-' || defaultId === 'DRV-' || defaultId.trim() === '') {
+                      defaultId = 'DRV-';
+                    } else if (defaultId.startsWith('HLP-')) {
+                      defaultId = 'DRV-' + defaultId.slice(4);
+                    } else if (!defaultId.startsWith('DRV-')) {
+                      defaultId = 'DRV-' + defaultId;
+                    }
+                  } else if (role === 'Helper') {
+                    if (!defaultId || defaultId === 'DRV-' || defaultId === 'HLP-' || defaultId.trim() === '') {
+                      defaultId = 'HLP-';
+                    } else if (defaultId.startsWith('DRV-')) {
+                      defaultId = 'HLP-' + defaultId.slice(4);
+                    } else if (!defaultId.startsWith('HLP-')) {
+                      defaultId = 'HLP-' + defaultId;
+                    }
+                  }
+                  setNewDriver({ ...newDriver, role: role as any, driverId: defaultId });
+                }}
               >
                 {STAFF_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
               </select>

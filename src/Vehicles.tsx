@@ -56,7 +56,7 @@ const Vehicles: React.FC = () => {
                   background-color: white;
                 }
                 .card {
-                  border: 3px solid ${type === 'IN' ? '#10b981' : '#6366f1'};
+                  border: 3px solid ${type === 'OUT' ? '#10b981' : '#6366f1'};
                   border-radius: 20px;
                   padding: 40px;
                   text-align: center;
@@ -78,7 +78,7 @@ const Vehicles: React.FC = () => {
                 .label {
                   font-size: 18px;
                   font-weight: 700;
-                  color: ${type === 'IN' ? '#059669' : '#4f46e5'};
+                  color: ${type === 'OUT' ? '#059669' : '#4f46e5'};
                   text-transform: uppercase;
                   letter-spacing: 0.1em;
                 }
@@ -92,11 +92,11 @@ const Vehicles: React.FC = () => {
             </head>
             <body>
               <div class="card">
-                <div class="label">${type === 'IN' ? 'IN QR - DISPATCH' : 'OUT QR - RETURN'}</div>
+                <div class="label">${type === 'OUT' ? 'OUT QR - DISPATCH' : 'IN QR - RETURN'}</div>
                 <img class="qr-image" src="${url}" />
                 <div class="plate">${vehiclePlate}</div>
                 <div class="instructions">
-                  ${type === 'IN' 
+                  ${type === 'OUT' 
                     ? 'Scan to register vehicle dispatch (Start Trip)' 
                     : 'Scan to register vehicle return (Complete Trip)'}
                 </div>
@@ -405,52 +405,16 @@ const Vehicles: React.FC = () => {
             <div className="p-6 overflow-y-auto space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* 1. IN QR Card */}
+                {/* 1. OUT QR Card */}
                 <div className="border-2 border-emerald-100 rounded-2xl p-5 bg-emerald-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      IN QR (গাড়ি ছাড়পত্র)
+                      OUT QR (গাড়ি ছাড়পত্র)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">স্টক ছাড় দিয়ে ট্রিপ শুরু করার জন্য স্ক্যান করুন।</p>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm inline-block">
-                    <QRCodeCanvas 
-                      id={`qr-in-${selectedQRVehicle.id}`}
-                      value={`fleetflow://vehicle/IN/${selectedQRVehicle.id}`}
-                      size={180}
-                      level="H"
-                      includeMargin={true}
-                    />
-                  </div>
-
-                  <div className="w-full space-y-2">
-                    <Button 
-                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
-                      variant="secondary" 
-                      className="w-full text-xs font-bold text-emerald-700 hover:bg-emerald-50 border-emerald-200"
-                    >
-                      <Download size={14} /> ডাউনলোড করুন (Download)
-                    </Button>
-                    <Button 
-                      onClick={() => printQR(`qr-in-${selectedQRVehicle.id}`, selectedQRVehicle.vehicleNumber, 'IN')}
-                      className="w-full text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 border-none"
-                    >
-                      <Printer size={14} /> প্রিন্ট করুন (Print Card)
-                    </Button>
-                  </div>
-                </div>
-
-                {/* 2. OUT QR Card */}
-                <div className="border-2 border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 text-center flex flex-col justify-between items-center space-y-4">
-                  <div>
-                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      OUT QR (গাড়ি ফেরত)
-                    </span>
-                    <p className="text-[11px] text-slate-500 mt-2">গাড়ি গ্যারেজে ফেরত ও স্টক এন্ট্রি করার জন্য স্ক্যান করুন।</p>
-                  </div>
-
-                  <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm inline-block">
                     <QRCodeCanvas 
                       id={`qr-out-${selectedQRVehicle.id}`}
                       value={`fleetflow://vehicle/OUT/${selectedQRVehicle.id}`}
@@ -464,12 +428,48 @@ const Vehicles: React.FC = () => {
                     <Button 
                       onClick={() => downloadQR(`qr-out-${selectedQRVehicle.id}`, `OUT_QR_${selectedQRVehicle.vehicleNumber}.png`)}
                       variant="secondary" 
-                      className="w-full text-xs font-bold text-indigo-700 hover:bg-indigo-50 border-indigo-200"
+                      className="w-full text-xs font-bold text-emerald-700 hover:bg-emerald-50 border-emerald-200"
                     >
                       <Download size={14} /> ডাউনলোড করুন (Download)
                     </Button>
                     <Button 
                       onClick={() => printQR(`qr-out-${selectedQRVehicle.id}`, selectedQRVehicle.vehicleNumber, 'OUT')}
+                      className="w-full text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 border-none"
+                    >
+                      <Printer size={14} /> প্রিন্ট করুন (Print Card)
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 2. IN QR Card */}
+                <div className="border-2 border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 text-center flex flex-col justify-between items-center space-y-4">
+                  <div>
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                      IN QR (গাড়ি ফেরত)
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-2">গাড়ি গ্যারেজে ফেরত ও স্টক এন্ট্রি করার জন্য স্ক্যান করুন।</p>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm inline-block">
+                    <QRCodeCanvas 
+                      id={`qr-in-${selectedQRVehicle.id}`}
+                      value={`fleetflow://vehicle/IN/${selectedQRVehicle.id}`}
+                      size={180}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+
+                  <div className="w-full space-y-2">
+                    <Button 
+                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
+                      variant="secondary" 
+                      className="w-full text-xs font-bold text-indigo-700 hover:bg-indigo-50 border-indigo-200"
+                    >
+                      <Download size={14} /> ডাউনলোড করুন (Download)
+                    </Button>
+                    <Button 
+                      onClick={() => printQR(`qr-in-${selectedQRVehicle.id}`, selectedQRVehicle.vehicleNumber, 'IN')}
                       className="w-full text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 border-none"
                     >
                       <Printer size={14} /> প্রিন্ট করুন (Print Card)
@@ -484,8 +484,8 @@ const Vehicles: React.FC = () => {
                 <strong>ব্যবহারের নির্দেশিকা (How to Use):</strong>
                 <ul className="list-disc pl-4 mt-1 space-y-1">
                   <li>উপরে থাকা কিউআর কার্ডগুলো প্রিন্ট করে গাড়ির উইন্ডশিল্ড বা উপযুক্ত স্থানে স্টিকার হিসেবে ব্যবহার করুন।</li>
-                  <li>গাড়ি গ্যারেজ থেকে ছাড়ার সময় চেকপোস্টে <strong>IN QR</strong> কোডটি স্ক্যান করে ট্রিপ চালু করবেন।</li>
-                  <li>গাড়ি আবার ট্রিপ সম্পন্ন করে ফেরত আসলে <strong>OUT QR</strong> কোডটি স্ক্যান করে সরঞ্জাম যাচাই ও রিটার্ন এন্ট্রি করবেন।</li>
+                  <li>গাড়ি গ্যারেজ থেকে ছাড়ার সময় চেকপোস্টে <strong>OUT QR</strong> কোডটি স্ক্যান করে ট্রিপ চালু করবেন।</li>
+                  <li>গাড়ি আবার ট্রিপ সম্পন্ন করে ফেরত আসলে <strong>IN QR</strong> কোডটি স্ক্যান করে সরঞ্জাম যাচাই ও রিটার্ন এন্ট্রি করবেন।</li>
                 </ul>
               </div>
             </div>
