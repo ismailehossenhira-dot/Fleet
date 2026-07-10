@@ -8,7 +8,12 @@ import {
   TrendingUp,
   Activity,
   ArrowRight,
-  Edit2
+  Edit2,
+  Search,
+  Filter,
+  Wrench,
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import { Card } from './components/Common';
 import { subscribeToCollection, updateVehicleStatus } from './db';
@@ -44,6 +49,11 @@ const Dashboard: React.FC = () => {
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  // Maintenance Overview States
+  const [maintSearch, setMaintSearch] = useState('');
+  const [maintStatusFilter, setMaintStatusFilter] = useState<'All' | 'Maintenance' | 'WithNotes'>('All');
+  const [maintTypeFilter, setMaintTypeFilter] = useState<'All' | 'Small' | 'Medium' | 'Large'>('All');
 
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
@@ -103,6 +113,61 @@ const Dashboard: React.FC = () => {
   };
 
   const isSearching = searchQuery.length > 0;
+
+  const handleResolveRepair = async (vehicleId: string) => {
+    try {
+      await updateVehicleStatus(vehicleId, 'Available', '');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleMaintenance = async (vehicleId: string, currentStatus: string) => {
+    try {
+      const nextStatus = currentStatus === 'Maintenance' ? 'Available' : 'Maintenance';
+      // Retain existing notes if putting under maintenance, or clear if moving to available
+      const existingNotes = vehicles.find(v => v.id === vehicleId)?.maintenanceNotes || '';
+      await updateVehicleStatus(vehicleId, nextStatus, nextStatus === 'Maintenance' ? existingNotes : '');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Filter vehicles for Maintenance Overview table
+  const maintOverviewVehicles = vehicles.filter(v => {
+    const hasNotesOrMaint = v.status === 'Maintenance' || (v.maintenanceNotes && v.maintenanceNotes.trim() !== '');
+    if (!hasNotesOrMaint) return false;
+
+    if (maintTypeFilter !== 'All' && v.type !== maintTypeFilter) return false;
+
+    if (maintStatusFilter === 'Maintenance' && v.status !== 'Maintenance') return false;
+    if (maintStatusFilter === 'WithNotes' && (!v.maintenanceNotes || v.maintenanceNotes.trim() === '')) return false;
+
+    if (maintSearch.trim() !== '') {
+      const q = maintSearch.toLowerCase();
+      const matchesNum = v.vehicleNumber?.toLowerCase().includes(q);
+      const matchesVin = v.vin?.toLowerCase().includes(q);
+      const matchesNotes = v.maintenanceNotes?.toLowerCase().includes(q);
+      const matchesType = v.type?.toLowerCase().includes(q);
+      if (!matchesNum && !matchesVin && !matchesNotes && !matchesType) return false;
+    }
+
+    return true;
+  });
+
+  const formatMaintDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    try {
+      if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+        const d = timestamp.toDate();
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      }
+      const d = new Date(timestamp);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+      return 'N/A';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -358,6 +423,248 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Maintenance Overview Section */}
+      <Card className="mt-6">
+        <div className="flex flex-col gap-4">
+          {/* Header & Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
+                <Wrench size={18} />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-text-main">Maintenance Overview</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">Aggregate logs of all vehicle issues & repairs</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-lg flex items-center gap-1">
+                <AlertTriangle size={12} />
+                <span>{vehicles.filter(v => v.status === 'Maintenance').length} Pending Repairs</span>
+              </span>
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg">
+                {vehicles.filter(v => v.maintenanceNotes && v.maintenanceNotes.trim() !== '').length} Total Issues Listed
+              </span>
+            </div>
+          </div>
+
+          {/* Filters Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="গাড়ি বা সমস্যা খুঁজুন (Search vehicle or note...)"
+                className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+                value={maintSearch}
+                onChange={e => setMaintSearch(e.target.value)}
+              />
+              {maintSearch && (
+                <button 
+                  onClick={() => setMaintSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-600 bg-slate-100 px-1 rounded cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Filter controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                <button
+                  onClick={() => setMaintStatusFilter('All')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    maintStatusFilter === 'All' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  সব (All)
+                </button>
+                <button
+                  onClick={() => setMaintStatusFilter('Maintenance')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    maintStatusFilter === 'Maintenance' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  মেইনটেনেন্স (Under Repair)
+                </button>
+                <button
+                  onClick={() => setMaintStatusFilter('WithNotes')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    maintStatusFilter === 'WithNotes' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  নোট সহ (With Notes)
+                </button>
+              </div>
+
+              {/* Vehicle Type Filter */}
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                {(['All', 'Small', 'Medium', 'Large'] as const).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setMaintTypeFilter(type)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                      maintTypeFilter === type ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
+                    )}
+                  >
+                    {type === 'All' ? 'সব (All)' : type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto border border-slate-150 rounded-xl bg-white">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/75 border-b border-slate-150">
+                  <th className="px-4 py-3 font-semibold text-slate-500 w-1/5">Vehicle ID</th>
+                  <th className="px-4 py-3 font-semibold text-slate-500 w-[12%]">Type</th>
+                  <th className="px-4 py-3 font-semibold text-slate-500 w-[15%]">Status</th>
+                  <th className="px-4 py-3 font-semibold text-slate-500 w-2/5">Reported Issue / Notes</th>
+                  <th className="px-4 py-3 font-semibold text-slate-500 w-[15%]">Last Updated</th>
+                  <th className="px-4 py-3 font-semibold text-slate-500 text-right w-[15%]">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {maintOverviewVehicles.map(v => {
+                  const isEditingThisRow = editingNotesId === v.id;
+                  
+                  return (
+                    <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Vehicle Link / Number */}
+                      <td className="px-4 py-3">
+                        <Link to="/vehicles" className="font-bold text-accent hover:underline flex flex-col">
+                          <span>{v.vehicleNumber}</span>
+                          <span className="text-[9px] text-slate-400 font-mono font-normal">VIN: {v.vin || 'N/A'}</span>
+                        </Link>
+                      </td>
+
+                      {/* Type */}
+                      <td className="px-4 py-3 text-text-muted">
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[10px] font-medium">
+                          {v.type}
+                        </span>
+                      </td>
+
+                      {/* Status badge */}
+                      <td className="px-4 py-3">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[9px] font-bold uppercase inline-block",
+                          v.status === 'Available' ? 'bg-emerald-100 text-emerald-700' :
+                          v.status === 'On Trip' ? 'bg-blue-100 text-blue-700' :
+                          'bg-orange-100 text-orange-700'
+                        )}>
+                          {v.status === 'Maintenance' ? '🔧 In Repair' : v.status}
+                        </span>
+                      </td>
+
+                      {/* Problem Notes */}
+                      <td className="px-4 py-3">
+                        {isEditingThisRow ? (
+                          <div className="space-y-2 max-w-md">
+                            <textarea
+                              className="w-full p-2 text-xs border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-100 bg-white"
+                              placeholder="গাড়ির সমস্যা বা মেইনটেনেন্স আপডেট লিখুন..."
+                              value={tempNotes}
+                              onChange={e => setTempNotes(e.target.value)}
+                              rows={2}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                disabled={isSavingNotes}
+                                onClick={() => handleSaveNotes(v.id)}
+                                className="px-2 py-1 bg-accent text-white rounded text-[10px] font-bold hover:bg-accent/95 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                              >
+                                {isSavingNotes ? 'সংরক্ষণ হচ্ছে...' : 'Save'}
+                              </button>
+                              <button
+                                disabled={isSavingNotes}
+                                onClick={() => setEditingNotesId(null)}
+                                className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="max-w-md">
+                            {v.maintenanceNotes ? (
+                              <p className="text-amber-800 bg-amber-50/70 border border-amber-100/50 px-2.5 py-1.5 rounded-lg whitespace-pre-wrap break-words italic font-medium text-xs">
+                                {v.maintenanceNotes}
+                              </p>
+                            ) : (
+                              <span className="text-slate-400 italic">কোনো সমস্যা বা মেইনটেনেন্স নোট লেখা নেই।</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Updated Date */}
+                      <td className="px-4 py-3 text-slate-500 text-[11px]">
+                        {formatMaintDate(v.updatedAt || v.createdAt)}
+                      </td>
+
+                      {/* Quick Actions column */}
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit Notes Trigger */}
+                          {!isEditingThisRow && (
+                            <button
+                              onClick={() => {
+                                setEditingNotesId(v.id);
+                                setTempNotes(v.maintenanceNotes || '');
+                              }}
+                              className="p-1.5 bg-white border border-slate-200 text-slate-600 hover:text-accent hover:border-accent rounded-lg shadow-3xs cursor-pointer transition-colors"
+                              title="সমস্যা বা নোট পরিবর্তন করুন"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+
+                          {/* Quick Toggle Status between Maintenance and Available */}
+                          <button
+                            onClick={() => handleToggleMaintenance(v.id, v.status)}
+                            className={cn(
+                              "p-1.5 border rounded-lg shadow-3xs cursor-pointer transition-all",
+                              v.status === 'Maintenance' 
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100" 
+                                : "bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100"
+                            )}
+                            title={v.status === 'Maintenance' ? "মেইনটেনেন্স সম্পন্ন করুন (Resolve & Make Available)" : "মেইনটেনেন্সে পাঠান (Mark as Under Repair)"}
+                          >
+                            {v.status === 'Maintenance' ? <Check size={12} /> : <Wrench size={12} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {maintOverviewVehicles.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400 italic">
+                      {maintSearch || maintStatusFilter !== 'All' || maintTypeFilter !== 'All' 
+                        ? "কোনো ম্যাচিং তথ্য পাওয়া যায়নি। (No matching vehicles found for selected filters)"
+                        : "বর্তমানে কোনো গাড়ির মেইনটেনেন্স বা সমস্যা লগ নেই। (No active maintenance or issue notes recorded)"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
       </motion.div>
         )}
       </AnimatePresence>
