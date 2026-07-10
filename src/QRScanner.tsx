@@ -11,7 +11,8 @@ import {
   createTrip, 
   completeTrip, 
   createMissingReport,
-  updateVehicleStatus
+  updateVehicleStatus,
+  startPendingTrip
 } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -70,6 +71,7 @@ const QRScanner: React.FC = () => {
   });
   const [returnStatus, setReturnStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
+  const [userStoppedScanner, setUserStoppedScanner] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   // Constants
@@ -94,8 +96,16 @@ const QRScanner: React.FC = () => {
     };
   }, []);
 
+  // Auto-start camera when no result is scanned and scanner isn't explicitly stopped by user
+  useEffect(() => {
+    if (!scanResult && !scannerActive && !userStoppedScanner) {
+      startCameraScanner();
+    }
+  }, [scanResult, scannerActive, userStoppedScanner]);
+
   // Initialize html5-qrcode scanner
   const startCameraScanner = () => {
+    setUserStoppedScanner(false);
     setScannerError(null);
     setScannerActive(true);
     
@@ -143,6 +153,7 @@ const QRScanner: React.FC = () => {
   };
 
   const stopCameraScanner = () => {
+    setUserStoppedScanner(true);
     if (scannerRef.current) {
       scannerRef.current.stop()
         .then(() => {
@@ -311,33 +322,27 @@ const QRScanner: React.FC = () => {
     }));
   };
 
-  // Save Trip (IN QR action)
+  // Save Trip (OUT QR action to start a pending trip)
   const handleDispatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanResult) return;
     const vehicle = vehicles.find(v => v.id === scanResult.vehicleId);
-    if (!vehicle || !dispatchForm.driverId || !dispatchForm.location) {
-      alert("Please fill in Driver ID and Location.");
+    if (!vehicle) return;
+
+    const pendingTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Pending');
+    if (!pendingTrip) {
+      alert("No pending trip found for this vehicle!");
       return;
     }
 
     try {
-      const payload = {
-        vehicleId: vehicle.id,
-        vehiclePlate: vehicle.vehicleNumber,
-        driverId: dispatchForm.driverId,
-        driverName: dispatchForm.driverName || 'Unknown Driver',
-        driverPhone: dispatchForm.driverPhone || '',
-        helperId: dispatchForm.helperId,
-        helperName: dispatchForm.helperName || '',
-        helperPhone: dispatchForm.helperPhone || '',
-        location: dispatchForm.location,
-        tollAmount: Number(dispatchForm.tollAmount) || 0,
+      const updates = {
         documentsGiven: dispatchForm.documentsGiven,
         toolsGiven: dispatchForm.toolsGiven,
+        tollAmount: Number(dispatchForm.tollAmount) || 0,
       };
 
-      await createTrip(payload);
+      await startPendingTrip(pendingTrip.id, vehicle.id, updates);
       setDispatchStatus('success');
       setTimeout(() => setScanResult(null), 2500);
     } catch (err) {
@@ -621,182 +626,179 @@ const QRScanner: React.FC = () => {
       }
 
       // AVAILABLE -> Show Dispatch / Trip Release Form
+      const pendingTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Pending');
+
       return (
         <div className="space-y-6">
           {vehicleSummaryHeader}
           {quickActionsCard}
-          <Card title={`গাড়ি রিলিজ ও ট্রিপ তৈরি করুন: ${vehicle.vehicleNumber}`}>
-          {dispatchStatus === 'success' ? (
-            <div className="text-center py-8 space-y-3">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
-                <CheckCircle size={36} />
+          
+          {!pendingTrip ? (
+            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
+              <div className="p-3 bg-amber-100 text-amber-600 rounded-full">
+                <AlertTriangle size={24} />
               </div>
-              <h3 className="text-lg font-bold text-emerald-800">গাড়িটি সফলভাবে স্টক থেকে ছাড় দেওয়া হয়েছে!</h3>
-              <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                গাড়ির ট্রিপটি শুরু হয়েছে এবং স্ট্যাটাস সফলভাবে 'On Trip' এ আপডেট করা হয়েছে।
+              <h4 className="font-bold text-amber-800 text-sm">কোনো পেন্ডিং ট্রিপ খুঁজে পাওয়া যায়নি (No Pending Trip)</h4>
+              <p className="text-xs text-slate-500 max-w-md">
+                এই গাড়িটি বর্তমানে স্টকে Available রয়েছে, কিন্তু ম্যানেজার প্যানেল থেকে কোনো পেন্ডিং ট্রিপ এন্ট্রি করা হয়নি। দয়া করে প্রথমে <strong>Trips (ট্রিপস)</strong> স্ক্রিন থেকে গাড়িটির জন্য ড্রাইভার, হেলপার ও গন্তব্য সেট করে একটি নতুন ট্রিপ এন্ট্রি করুন।
               </p>
-            </div>
-          ) : dispatchStatus === 'error' ? (
-            <div className="text-center py-8 space-y-3">
-              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
-                <XCircle size={36} />
-              </div>
-              <h3 className="text-lg font-bold text-red-800">সাবমিট করতে ত্রুটি হয়েছে</h3>
-              <p className="text-sm text-slate-500">আবার চেষ্টা করুন বা ডেটাবেস কানেকশন চেক করুন।</p>
-              <Button onClick={() => setDispatchStatus('idle')}>আবার চেষ্টা করুন</Button>
+              <Button variant="secondary" onClick={() => setScanResult(null)} className="w-48 text-xs">
+                পুনরায় স্ক্যান করুন
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleDispatchSubmit} className="space-y-6">
-              {/* Alert */}
-              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
-                <span><strong>স্টক ছাড়ের অনুমতি:</strong> গাড়িটি প্রস্তুত এবং স্টকে রয়েছে। ট্রিপ শুরু করার জন্য নিচের তথ্যগুলো পূরণ করুন।</span>
-              </div>
-
-              {/* Grid 1: Drivers & Helper */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Driver */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">ড্রাইভার আইডি (Type Driver ID)</label>
-                  <div className="relative">
-                    <input 
-                      type="text"
-                      required
-                      placeholder="যেমন: D010"
-                      className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 font-bold uppercase"
-                      value={dispatchForm.driverId}
-                      onChange={e => handleDriverSearch(e.target.value)}
-                    />
-                    {isSearchingDriver && (
-                      <span className="absolute right-3 top-2.5 text-[10px] text-slate-400 animate-pulse">খোঁজা হচ্ছে...</span>
-                    )}
+            <Card title={`গাড়ি রিলিজ ও ছাড়পত্র: ${vehicle.vehicleNumber}`}>
+              {dispatchStatus === 'success' ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
+                    <CheckCircle size={36} />
                   </div>
-                  {dispatchForm.driverName && (
-                    <div className="bg-slate-50 p-2 rounded-lg border text-xs mt-1">
-                      <p className="font-bold text-slate-800">👨‍✈️ {dispatchForm.driverName}</p>
-                      <p className="text-slate-500 text-[10px]">মোবাইল: {dispatchForm.driverPhone || 'নেই'}</p>
-                    </div>
-                  )}
+                  <h3 className="text-lg font-bold text-emerald-800">গাড়িটি সফলভাবে স্টক থেকে ছাড় দেওয়া হয়েছে!</h3>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                    গাড়ির ট্রিপটি শুরু হয়েছে এবং স্ট্যাটাস সফলভাবে 'On Trip' এ আপডেট করা হয়েছে।
+                  </p>
                 </div>
-
-                {/* Helper */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">হেলপার আইডি (Optional)</label>
-                  <div className="relative">
-                    <input 
-                      type="text"
-                      placeholder="যেমন: H005"
-                      className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 font-bold uppercase"
-                      value={dispatchForm.helperId}
-                      onChange={e => handleHelperSearch(e.target.value)}
-                    />
-                    {isSearchingHelper && (
-                      <span className="absolute right-3 top-2.5 text-[10px] text-slate-400 animate-pulse">খোঁজা হচ্ছে...</span>
-                    )}
+              ) : dispatchStatus === 'error' ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                    <XCircle size={36} />
                   </div>
-                  {dispatchForm.helperName && (
-                    <div className="bg-slate-50 p-2 rounded-lg border text-xs mt-1">
-                      <p className="font-bold text-slate-800">🧑 {dispatchForm.helperName}</p>
-                      <p className="text-slate-500 text-[10px]">মোবাইল: {dispatchForm.helperPhone || 'নেই'}</p>
-                    </div>
-                  )}
+                  <h3 className="text-lg font-bold text-red-800">সাবমিট করতে ত্রুটি হয়েছে</h3>
+                  <p className="text-sm text-slate-500">আবার চেষ্টা করুন বা ডেটাবেস কানেকশন চেক করুন।</p>
+                  <Button onClick={() => setDispatchStatus('idle')}>আবার চেষ্টা করুন</Button>
                 </div>
-              </div>
+              ) : (
+                <form onSubmit={handleDispatchSubmit} className="space-y-6">
+                  {/* Alert */}
+                  <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                    <span><strong>স্টক ছাড় ও কাগজ-টুলস যাচাই:</strong> গাড়ি ছাড়ার জন্য পেন্ডিং ট্রিপ পাওয়া গেছে। নিচে ডকুমেন্টস ও সরঞ্জামাদি চেক করে নিশ্চিত করুন।</span>
+                  </div>
 
-              {/* Grid 2: Destination & Toll */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">গন্তব্যস্থান (Destination Location)</label>
-                  <input 
-                    type="text"
-                    required
-                    placeholder="যেমন: চট্টগ্রাম পোর্ট, ঢাকা"
-                    className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500"
-                    value={dispatchForm.location}
-                    onChange={e => setDispatchForm({ ...dispatchForm, location: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">টোল বাজেট (Estimated Toll Amount)</label>
-                  <input 
-                    type="number"
-                    placeholder="যেমন: ১৫০০"
-                    className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 font-mono"
-                    value={dispatchForm.tollAmount || ''}
-                    onChange={e => setDispatchForm({ ...dispatchForm, tollAmount: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              {/* Documents Handed Over */}
-              <div className="space-y-2 border-t pt-4">
-                <label className="text-xs font-bold text-slate-700 block">
-                  ড্রাইভারকে দেওয়া কাগজপত্রসমূহ (Documents Handed Over)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {DOCUMENT_TYPES.map((docCode) => {
-                    const isSelected = dispatchForm.documentsGiven.includes(docCode);
-                    return (
-                      <button
-                        key={docCode}
-                        type="button"
-                        onClick={() => handleToggleDoc(docCode)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg border text-xs font-bold transition-all",
-                          isSelected 
-                            ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                            : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-                        )}
-                      >
-                        {docCode} {isSelected ? '✓' : '+'}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Tools Handed Over */}
-              <div className="space-y-2 border-t pt-4">
-                <label className="text-xs font-bold text-slate-700 block">
-                  গাড়ির সাথে থাকা টুলস ও যন্ত্রপাতি (Tools Handed Over Checklist)
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {TOOL_LIST.map((tool) => {
-                    const isSelected = dispatchForm.toolsGiven.includes(tool);
-                    return (
-                      <button
-                        key={tool}
-                        type="button"
-                        onClick={() => handleToggleTool(tool)}
-                        className={cn(
-                          "px-3 py-2 rounded-lg border text-left text-[11px] font-semibold transition-all flex items-center justify-between",
-                          isSelected 
-                            ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                            : "bg-slate-50 border-slate-200 text-slate-400 line-through"
-                        )}
-                      >
-                        <span>🔧 {tool}</span>
-                        <span className="text-[9px] font-bold uppercase">
-                          {isSelected ? 'রয়েছে' : 'নেই'}
+                  {/* Trip details */}
+                  <div className="bg-slate-50 border p-4 rounded-xl space-y-3 text-xs">
+                    <h5 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5">
+                      <ClipboardCheck size={14} className="text-slate-500" />
+                      এন্ট্রি করা ট্রিপের বিবরণ (Registered Trip Details)
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-slate-500">👨‍✈️ ড্রাইভার:</span>
+                        <span className="font-bold text-slate-800">{pendingTrip.driverName} ({pendingTrip.driverId})</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-slate-500">📞 ড্রাইভার ফোন:</span>
+                        <span className="font-bold text-slate-800">{pendingTrip.driverPhone || 'নেই'}</span>
+                      </div>
+                      {pendingTrip.helperId && (
+                        <>
+                          <div className="flex justify-between border-b pb-1">
+                            <span className="text-slate-500">🧑 হেলপার:</span>
+                            <span className="font-bold text-slate-800">{pendingTrip.helperName} ({pendingTrip.helperId})</span>
+                          </div>
+                          <div className="flex justify-between border-b pb-1">
+                            <span className="text-slate-500">📞 হেলপার ফোন:</span>
+                            <span className="font-bold text-slate-800">{pendingTrip.helperPhone || 'নেই'}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-slate-500">📍 গন্তব্যস্থান:</span>
+                        <span className="font-bold text-slate-800">{pendingTrip.location}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-slate-500">⏰ এন্ট্রি সময়:</span>
+                        <span className="font-bold text-slate-800">
+                          {pendingTrip.createdAt?.seconds 
+                            ? new Date(pendingTrip.createdAt.seconds * 1000).toLocaleString('bn-BD')
+                            : 'N/A'}
                         </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Form Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
-                <Button type="submit" className="flex-1 py-3 text-sm">
-                  🚚 ট্রিপ শুরু ও স্টক রিলিজ করুন
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setScanResult(null)}>
-                  বাতিল করুন
-                </Button>
-              </div>
-            </form>
+                  {/* Estimated Toll */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">টোল বাজেট (Estimated Toll Amount)</label>
+                    <input 
+                      type="number"
+                      placeholder="যেমন: ১৫০০"
+                      className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 font-mono"
+                      value={dispatchForm.tollAmount || ''}
+                      onChange={e => setDispatchForm({ ...dispatchForm, tollAmount: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  {/* Documents Handed Over */}
+                  <div className="space-y-2 border-t pt-4">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      ১. কাগজপত্র চেক করুন (Verify & Issue Documents)
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {DOCUMENT_TYPES.map((docCode) => {
+                        const isSelected = dispatchForm.documentsGiven.includes(docCode);
+                        return (
+                          <button
+                            key={docCode}
+                            type="button"
+                            onClick={() => handleToggleDoc(docCode)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg border text-xs font-bold transition-all",
+                              isSelected 
+                                ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                            )}
+                          >
+                            {docCode} {isSelected ? '✓' : '+'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tools Handed Over */}
+                  <div className="space-y-2 border-t pt-4">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      ২. সরঞ্জাম ও টুলস চেক করুন (Verify & Issue Tools Checklist)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {TOOL_LIST.map((tool) => {
+                        const isSelected = dispatchForm.toolsGiven.includes(tool);
+                        return (
+                          <button
+                            key={tool}
+                            type="button"
+                            onClick={() => handleToggleTool(tool)}
+                            className={cn(
+                              "px-3 py-2 rounded-lg border text-left text-[11px] font-semibold transition-all flex items-center justify-between",
+                              isSelected 
+                                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                : "bg-slate-50 border-slate-200 text-slate-400 line-through"
+                            )}
+                          >
+                            <span>🔧 {tool}</span>
+                            <span className="text-[9px] font-bold uppercase">
+                              {isSelected ? 'রয়েছে' : 'নেই'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Form Buttons */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button type="submit" className="flex-1 py-3 text-sm">
+                      🚚 ট্রিপ শুরু ও গাড়ি রিলিজ করুন
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => setScanResult(null)}>
+                      বাতিল করুন
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </Card>
           )}
-        </Card>
         </div>
       );
     } else {
@@ -1117,7 +1119,7 @@ const QRScanner: React.FC = () => {
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    OUT QR (ছাড়পত্র)
+                    IN QR (ছাড়পত্র)
                   </button>
                   <button
                     type="button"
@@ -1130,7 +1132,7 @@ const QRScanner: React.FC = () => {
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    IN QR (ফেরত এন্ট্রি)
+                    OUT QR (ফেরত এন্ট্রি)
                   </button>
                 </div>
               </div>

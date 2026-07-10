@@ -132,10 +132,27 @@ export const deleteDriver = async (id: string) => {
 
 export const findStaffById = async (staffId: string) => {
   try {
-    const id = staffId.trim();
+    const id = staffId.trim().toUpperCase();
+    if (!id) return null;
+
+    // Build a unique array of search keys to query
+    const searchKeysSet = new Set<string>([id, id.toLowerCase(), staffId.trim()]);
+    
+    if (!id.startsWith('DRV-') && !id.startsWith('HLP-')) {
+      searchKeysSet.add('DRV-' + id);
+      searchKeysSet.add('HLP-' + id);
+    } else {
+      const stripped = id.replace('DRV-', '').replace('HLP-', '');
+      if (stripped) {
+        searchKeysSet.add(stripped);
+        searchKeysSet.add(stripped.toLowerCase());
+      }
+    }
+
+    const searchKeys = Array.from(searchKeysSet);
     const q = query(
       collection(db, 'drivers'), 
-      where('driverId', 'in', [id.toUpperCase(), id.toLowerCase(), id]), 
+      where('driverId', 'in', searchKeys), 
       limit(1)
     );
     const snapshot = await getDocs(q);
@@ -151,17 +168,33 @@ export const createTrip = async (trip: any) => {
     // 1. Create trip record
     const tripRef = await addDoc(collection(db, 'trips'), {
       ...trip,
-      status: 'Running',
-      startTime: serverTimestamp(),
+      status: 'Pending',
       createdAt: serverTimestamp(),
     });
     
-    // 2. Update vehicle status
-    await updateVehicleStatus(trip.vehicleId, 'On Trip');
+    // 2. We DO NOT update vehicle status to 'On Trip' here anymore!
+    // The vehicle status remains 'Available' until OUT QR is scanned.
     
     return tripRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, 'trips');
+  }
+};
+
+export const startPendingTrip = async (tripId: string, vehicleId: string, updates: any) => {
+  try {
+    const tripRef = doc(db, 'trips', tripId);
+    await updateDoc(tripRef, {
+      ...updates,
+      status: 'Running',
+      startTime: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    // Update vehicle status to 'On Trip' now that OUT QR is scanned
+    await updateVehicleStatus(vehicleId, 'On Trip');
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `trips/${tripId}`);
   }
 };
 

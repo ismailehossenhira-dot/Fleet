@@ -92,7 +92,7 @@ const Vehicles: React.FC = () => {
             </head>
             <body>
               <div class="card">
-                <div class="label">${type === 'OUT' ? 'OUT QR - DISPATCH' : 'IN QR - RETURN'}</div>
+                <div class="label">${type === 'OUT' ? 'IN QR - DISPATCH' : 'OUT QR - RETURN'}</div>
                 <img class="qr-image" src="${url}" />
                 <div class="plate">${vehiclePlate}</div>
                 <div class="instructions">
@@ -405,11 +405,11 @@ const Vehicles: React.FC = () => {
             <div className="p-6 overflow-y-auto space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* 1. OUT QR Card */}
+                {/* 1. OUT QR Card (actually named IN QR for user workflow) */}
                 <div className="border-2 border-emerald-100 rounded-2xl p-5 bg-emerald-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      OUT QR (গাড়ি ছাড়পত্র)
+                      IN QR (গাড়ি ছাড়পত্র)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">স্টক ছাড় দিয়ে ট্রিপ শুরু করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -426,7 +426,7 @@ const Vehicles: React.FC = () => {
 
                   <div className="w-full space-y-2">
                     <Button 
-                      onClick={() => downloadQR(`qr-out-${selectedQRVehicle.id}`, `OUT_QR_${selectedQRVehicle.vehicleNumber}.png`)}
+                      onClick={() => downloadQR(`qr-out-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
                       variant="secondary" 
                       className="w-full text-xs font-bold text-emerald-700 hover:bg-emerald-50 border-emerald-200"
                     >
@@ -441,11 +441,11 @@ const Vehicles: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. IN QR Card */}
+                {/* 2. IN QR Card (actually named OUT QR for user workflow) */}
                 <div className="border-2 border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      IN QR (গাড়ি ফেরত)
+                      OUT QR (গাড়ি ফেরত)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">গাড়ি গ্যারেজে ফেরত ও স্টক এন্ট্রি করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -462,7 +462,7 @@ const Vehicles: React.FC = () => {
 
                   <div className="w-full space-y-2">
                     <Button 
-                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
+                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `OUT_QR_${selectedQRVehicle.vehicleNumber}.png`)}
                       variant="secondary" 
                       className="w-full text-xs font-bold text-indigo-700 hover:bg-indigo-50 border-indigo-200"
                     >

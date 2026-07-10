@@ -40,7 +40,7 @@ const Trips: React.FC = () => {
   const [viewingTripMap, setViewingTripMap] = useState<any | null>(null);
   
   // Trip log & grouping state
-  const [activeTab, setActiveTab] = useState<'active' | 'log'>('active');
+  const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'log'>('pending');
   const [logSearch, setLogSearch] = useState('');
   const [selectedDateFilter, setSelectedDateFilter] = useState('');
   const [expandedDates, setExpandedDates] = useState<{ [key: string]: boolean }>({});
@@ -230,6 +230,7 @@ const Trips: React.FC = () => {
     await createTrip(formData);
     setShowAdd(false);
     setVehicleSearch('');
+    setActiveTab('pending'); // Automatically switch to pending tab to show created trip!
     setFormData({
       vehicleId: '',
       vehiclePlate: '',
@@ -436,55 +437,12 @@ const Trips: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-3">Documents Issued</label>
-                   <div className="flex flex-wrap gap-2">
-                     {availableDocs.map(doc => (
-                       <button
-                         key={doc}
-                         type="button"
-                         onClick={() => handleToggleDoc(doc)}
-                         className={cn(
-                           "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
-                           formData.documentsGiven.includes(doc)
-                            ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                         )}
-                       >
-                         {doc}
-                       </button>
-                     ))}
-                   </div>
-                   {seizedForCurrent.length > 0 && (
-                     <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                        <p className="text-xs text-red-700 font-medium">Under Case Seizure (Hidden): {seizedForCurrent.join(', ')}</p>
-                     </div>
-                   )}
-                </div>
 
-                 <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-3">Tools Issued</label>
-                   <div className="flex flex-wrap gap-2">
-                     {TOOL_LIST.map(tool => (
-                       <button
-                         key={tool}
-                         type="button"
-                         onClick={() => handleToggleTool(tool)}
-                         className={cn(
-                           "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
-                           formData.toolsGiven.includes(tool)
-                            ? "bg-purple-600 border-purple-600 text-white shadow-sm"
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                         )}
-                       >
-                         {tool}
-                       </button>
-                     ))}
-                   </div>
-                </div>
 
-                <div className="flex gap-4">
-                  <Button type="submit" className="flex-1">Confirm Trip Dispatch</Button>
+       
+
+                <div className="flex gap-4 pt-4 border-t border-slate-100">
+                  <Button type="submit" className="flex-1">Create Pending Trip (ট্রিপ এন্ট্রি করুন)</Button>
                   <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
                 </div>
               </form>
@@ -503,7 +461,7 @@ const Trips: React.FC = () => {
                 </li>
                 <li className="flex gap-3">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
-                  <span>System automatically updates vehicle status to 'On Trip' upon dispatch.</span>
+                  <span>Registered trip will remain pending until OUT QR code is scanned to start the trip.</span>
                 </li>
               </ul>
             </Card>
@@ -512,7 +470,19 @@ const Trips: React.FC = () => {
       )}
 
       {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 mt-2 bg-white rounded-t-2xl px-2 pt-2">
+      <div className="flex border-b border-slate-200 mt-2 bg-white rounded-t-2xl px-2 pt-2 flex-wrap gap-y-2">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            "px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer",
+            activeTab === 'pending'
+              ? "border-amber-500 text-amber-600"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          )}
+        >
+          <AlertCircle size={16} />
+          <span>Pending Dispatch (ছাড়পত্র অপেক্ষায় - {trips.filter(t => t.status === 'Pending').length})</span>
+        </button>
         <button
           onClick={() => setActiveTab('active')}
           className={cn(
@@ -539,7 +509,61 @@ const Trips: React.FC = () => {
         </button>
       </div>
 
-      {activeTab === 'active' ? (
+      {activeTab === 'pending' && (
+        <div className="grid grid-cols-1 gap-6">
+          <Card title="Pending Dispatch (ছাড়পত্র অপেক্ষায় - গেটে Out QR স্ক্যানের পর চালু হবে)">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="bg-[#f8fafc] border-b border-border">
+                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
+                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
+                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
+                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {trips.filter(t => t.status === 'Pending').map(trip => (
+                    <tr key={trip.id} className="hover:bg-slate-50">
+                      <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
+                      <td className="px-5 py-3 text-text-muted">
+                        <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
+                        <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
+                        {trip.helperName && (
+                          <div className="mt-1 pt-1 border-t border-border border-dashed">
+                             <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
+                             <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1">
+                          <MapPin size={10} className="text-accent" />
+                          <span>{trip.location}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-50 border border-amber-200 text-amber-700">
+                           Pending Out Scan
+                         </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {trips.filter(t => t.status === 'Pending').length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-10 text-center text-text-muted italic">
+                        No pending transports waiting for Out QR Scan.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'active' && (
         <div className="grid grid-cols-1 gap-6">
           <Card title="Active Transports">
             <div className="overflow-x-auto">
@@ -623,7 +647,9 @@ const Trips: React.FC = () => {
             </div>
           </Card>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'log' && (
         /* Daily Trip Log tab with Date Grouping and Full Details */
         <div className="space-y-6">
           {/* Filters Area */}
