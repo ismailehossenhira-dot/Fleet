@@ -482,6 +482,12 @@ const QRScanner: React.FC = () => {
             </span>
           </div>
         </div>
+        {vehicle.maintenanceNotes && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs">
+            <span className="font-bold text-amber-800 block mb-1">🔧 গাড়ির বর্তমান সমস্যা / মেইনটেনেন্স নোট:</span>
+            <p className="text-amber-700 whitespace-pre-wrap break-words italic font-medium">{vehicle.maintenanceNotes}</p>
+          </div>
+        )}
       </Card>
     );
 

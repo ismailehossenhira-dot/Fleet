@@ -129,10 +129,17 @@ const Dashboard: React.FC = () => {
                         <span className="font-bold text-sm">{v.vehicleNumber}</span>
                         <span className={cn(
                           "px-2 py-0.5 rounded text-[9px] font-bold uppercase",
-                          v.status === 'Available' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                          v.status === 'Available' ? 'bg-emerald-100 text-emerald-700' :
+                          v.status === 'On Trip' ? 'bg-blue-100 text-blue-700' :
+                          'bg-orange-100 text-orange-700'
                         )}>{v.status}</span>
                       </div>
                       <p className="text-[10px] text-text-muted mt-1">{v.type} • VIN: {v.vin}</p>
+                      {v.status === 'Maintenance' && v.maintenanceNotes && (
+                        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded mt-1.5 whitespace-pre-wrap break-words italic">
+                          সমস্যা: {v.maintenanceNotes}
+                        </p>
+                      )}
                     </Link>
                   ))}
                   {filteredSearch.vehicles.length === 0 && <p className="text-xs text-text-muted italic py-4">No vehicles found.</p>}

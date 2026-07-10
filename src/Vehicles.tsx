@@ -352,7 +352,7 @@ const Vehicles: React.FC = () => {
                         {vehicle.status}
                       </span>
                       {vehicle.status === 'Maintenance' && vehicle.maintenanceNotes && (
-                        <span className="text-[10px] text-amber-600 font-medium italic block max-w-xs truncate" title={vehicle.maintenanceNotes}>
+                        <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded font-medium italic block max-w-xs whitespace-pre-wrap break-words mt-1" title={vehicle.maintenanceNotes}>
                           সমস্যা: {vehicle.maintenanceNotes}
                         </span>
                       )}
