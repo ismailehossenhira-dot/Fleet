@@ -66,13 +66,22 @@ export const addVehicle = async (vehicle: any) => {
   }
 };
 
-export const updateVehicleStatus = async (vehicleId: string, status: string) => {
+export const updateVehicleStatus = async (vehicleId: string, status: string, maintenanceNotes?: string) => {
   try {
     const docRef = doc(db, 'vehicles', vehicleId);
-    await updateDoc(docRef, { 
+    const updates: any = { 
       status, 
       updatedAt: serverTimestamp() 
-    });
+    };
+    if (status === 'Maintenance') {
+      if (maintenanceNotes !== undefined) {
+        updates.maintenanceNotes = maintenanceNotes;
+      }
+    } else {
+      // Clear notes if not in maintenance
+      updates.maintenanceNotes = '';
+    }
+    await updateDoc(docRef, updates);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `vehicles/${vehicleId}`);
   }

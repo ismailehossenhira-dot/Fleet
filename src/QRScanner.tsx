@@ -26,9 +26,9 @@ const QRScanner: React.FC = () => {
   const [scanResult, setScanResult] = useState<{ type: 'IN' | 'OUT'; vehicleId: string } | null>(null);
   const [instantUpdateStatus, setInstantUpdateStatus] = useState<'idle' | 'success_available' | 'success_maintenance' | 'error'>('idle');
 
-  const handleInstantStatusUpdate = async (vehicleId: string, status: 'Available' | 'Maintenance') => {
+  const handleInstantStatusUpdate = async (vehicleId: string, status: 'Available' | 'Maintenance', notes?: string) => {
     try {
-      await updateVehicleStatus(vehicleId, status);
+      await updateVehicleStatus(vehicleId, status, notes);
       setInstantUpdateStatus(status === 'Available' ? 'success_available' : 'success_maintenance');
       setTimeout(() => {
         setInstantUpdateStatus('idle');
@@ -70,9 +70,11 @@ const QRScanner: React.FC = () => {
     notes: ''
   });
   const [returnStatus, setReturnStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [quickMaintenanceNotes, setQuickMaintenanceNotes] = useState('');
 
   const [userStoppedScanner, setUserStoppedScanner] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isStartingRef = useRef(false);
 
   // Constants
   const TOOL_LIST = ['Jack', 'Spare Wheel', 'Fire Extinguisher', 'First Aid Kit', 'Triangle', 'Tool Box'];
@@ -88,7 +90,12 @@ const QRScanner: React.FC = () => {
       unsubCases();
       if (scannerRef.current) {
         try {
-          scannerRef.current.stop().catch(err => console.error("Error stopping scanner on unmount:", err));
+          scannerRef.current.stop()
+            .then(() => {
+              const container = document.getElementById("qr-reader-container");
+              if (container) container.innerHTML = "";
+            })
+            .catch(err => console.error("Error stopping scanner on unmount:", err));
         } catch (e) {
           console.error("Scanner stop error on unmount:", e);
         }
@@ -105,12 +112,22 @@ const QRScanner: React.FC = () => {
 
   // Initialize html5-qrcode scanner
   const startCameraScanner = () => {
+    if (isStartingRef.current || scannerRef.current) {
+      console.log("Scanner already starting or active, ignoring duplicate start request.");
+      return;
+    }
+    isStartingRef.current = true;
     setUserStoppedScanner(false);
     setScannerError(null);
     setScannerActive(true);
     
     // Defer initialization to let the div mount in the DOM
     setTimeout(() => {
+      const container = document.getElementById("qr-reader-container");
+      if (container) {
+        container.innerHTML = ""; // Clear any duplicate or corrupted leftover elements!
+      }
+
       try {
         const scanner = new Html5Qrcode("qr-reader-container");
         
@@ -122,15 +139,18 @@ const QRScanner: React.FC = () => {
           },
           (decodedText) => {
             handleDecodedText(decodedText);
+            isStartingRef.current = false;
             scanner.stop()
               .then(() => {
                 setScannerActive(false);
                 scannerRef.current = null;
+                if (container) container.innerHTML = "";
               })
               .catch(err => {
                 console.error("Error stopping scanner on decode:", err);
                 setScannerActive(false);
                 scannerRef.current = null;
+                if (container) container.innerHTML = "";
               });
           },
           (error) => {
@@ -138,34 +158,53 @@ const QRScanner: React.FC = () => {
           }
         ).then(() => {
           scannerRef.current = scanner;
+          isStartingRef.current = false;
         }).catch((err: any) => {
           console.error("Scanner startup error inside start promise:", err);
           setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
           setScannerActive(false);
+          isStartingRef.current = false;
+          if (container) container.innerHTML = "";
         });
         
       } catch (err: any) {
         console.error("Scanner startup error:", err);
         setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
         setScannerActive(false);
+        isStartingRef.current = false;
+        if (container) container.innerHTML = "";
       }
-    }, 100);
+    }, 150);
   };
 
   const stopCameraScanner = () => {
     setUserStoppedScanner(true);
+    isStartingRef.current = false;
     if (scannerRef.current) {
-      scannerRef.current.stop()
+      const currentScanner = scannerRef.current;
+      scannerRef.current = null;
+      currentScanner.stop()
         .then(() => {
           setScannerActive(false);
-          scannerRef.current = null;
+          const container = document.getElementById("qr-reader-container");
+          if (container) {
+            container.innerHTML = "";
+          }
         })
         .catch(err => {
           console.error("Error stopping scanner:", err);
           setScannerActive(false);
+          const container = document.getElementById("qr-reader-container");
+          if (container) {
+            container.innerHTML = "";
+          }
         });
     } else {
       setScannerActive(false);
+      const container = document.getElementById("qr-reader-container");
+      if (container) {
+        container.innerHTML = "";
+      }
     }
   };
 
@@ -473,6 +512,19 @@ const QRScanner: React.FC = () => {
             </div>
           )}
 
+          {vehicle.status !== 'Maintenance' && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 block">গাড়ির সমস্যা/মেইনটেনেন্স নোট (ঐচ্ছিক - Maintenance Note):</label>
+              <input 
+                type="text"
+                placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-amber-400"
+                value={quickMaintenanceNotes}
+                onChange={e => setQuickMaintenanceNotes(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -492,7 +544,10 @@ const QRScanner: React.FC = () => {
             <button
               type="button"
               disabled={vehicle.status === 'Maintenance' || instantUpdateStatus !== 'idle'}
-              onClick={() => handleInstantStatusUpdate(vehicle.id, 'Maintenance')}
+              onClick={() => {
+                handleInstantStatusUpdate(vehicle.id, 'Maintenance', quickMaintenanceNotes);
+                setQuickMaintenanceNotes('');
+              }}
               className={cn(
                 "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
                 vehicle.status === 'Maintenance'
@@ -1119,7 +1174,7 @@ const QRScanner: React.FC = () => {
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    IN QR (ছাড়পত্র)
+                    OUT QR (ছাড়পত্র)
                   </button>
                   <button
                     type="button"
@@ -1132,7 +1187,7 @@ const QRScanner: React.FC = () => {
                     )}
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    OUT QR (ফেরত এন্ট্রি)
+                    IN QR (ফেরত এন্ট্রি)
                   </button>
                 </div>
               </div>

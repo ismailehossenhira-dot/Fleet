@@ -7,10 +7,11 @@ import {
   AlertCircle,
   TrendingUp,
   Activity,
-  ArrowRight
+  ArrowRight,
+  Edit2
 } from 'lucide-react';
 import { Card } from './components/Common';
-import { subscribeToCollection } from './db';
+import { subscribeToCollection, updateVehicleStatus } from './db';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useSearch } from './SearchContext';
@@ -40,6 +41,10 @@ const Dashboard: React.FC = () => {
   const [drivers, setDrivers] = useState<any[]>([]);
   const { searchQuery } = useSearch();
 
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [tempNotes, setTempNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
     const unsubTrips = subscribeToCollection('trips', setTrips);
@@ -50,6 +55,18 @@ const Dashboard: React.FC = () => {
       unsubDrivers();
     };
   }, []);
+
+  const handleSaveNotes = async (vehicleId: string) => {
+    setIsSavingNotes(true);
+    try {
+      await updateVehicleStatus(vehicleId, 'Maintenance', tempNotes.trim());
+      setEditingNotesId(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
 
   const stats = {
     totalVehicles: vehicles.length,
@@ -233,12 +250,65 @@ const Dashboard: React.FC = () => {
           <Card title="Maintenance Alerts">
             <div className="space-y-3">
               {vehicles.filter(v => v.status === 'Maintenance').map(v => (
-                <div key={v.id} className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-3">
-                  <AlertCircle size={16} className="text-danger" />
-                  <div className="text-xs">
-                    <p className="font-bold text-danger">{v.vehicleNumber}</p>
-                    <p className="text-red-700">Under maintenance check.</p>
+                <div key={v.id} className="p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
+                  <div className="flex items-start gap-3 justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={16} className="text-danger flex-shrink-0" />
+                      <div className="text-xs">
+                        <p className="font-bold text-danger">{v.vehicleNumber}</p>
+                      </div>
+                    </div>
+                    {editingNotesId !== v.id && (
+                      <button 
+                        onClick={() => { setEditingNotesId(v.id); setTempNotes(v.maintenanceNotes || ''); }}
+                        className="text-[10px] text-accent hover:underline flex items-center gap-1 bg-white border px-1.5 py-0.5 rounded shadow-2xs font-semibold cursor-pointer"
+                        title="সমস্যা বা নোট পরিবর্তন করুন"
+                      >
+                        <Edit2 size={10} />
+                        <span>নোট লিখুন</span>
+                      </button>
+                    )}
                   </div>
+
+                  {editingNotesId === v.id ? (
+                    <div className="space-y-1.5 pl-6">
+                      <textarea
+                        className="w-full p-2 text-xs border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-100 bg-white"
+                        placeholder="গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                        value={tempNotes}
+                        onChange={e => setTempNotes(e.target.value)}
+                        rows={2}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          disabled={isSavingNotes}
+                          onClick={() => handleSaveNotes(v.id)}
+                          className="px-2.5 py-1 bg-accent text-white rounded text-[10px] font-bold hover:bg-accent/95 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isSavingNotes ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                        </button>
+                        <button
+                          disabled={isSavingNotes}
+                          onClick={() => setEditingNotesId(null)}
+                          className="px-2.5 py-1 bg-slate-200 text-slate-700 rounded text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
+                        >
+                          বাতিল
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pl-6 text-xs">
+                      <p className="text-slate-600 font-medium">
+                        {v.maintenanceNotes ? (
+                          <span className="text-amber-700 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded block whitespace-pre-wrap">
+                            {v.maintenanceNotes}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">গাড়ির কোনো নির্দিষ্ট সমস্যা বা নোট লেখা নেই।</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
               {vehicles.filter(v => v.status === 'Maintenance').length === 0 && (

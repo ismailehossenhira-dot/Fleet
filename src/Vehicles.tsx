@@ -16,7 +16,8 @@ const Vehicles: React.FC = () => {
   const [newVehicle, setNewVehicle] = useState({
     vehicleNumber: '',
     type: 'Medium',
-    status: 'Available'
+    status: 'Available',
+    maintenanceNotes: ''
   });
 
   const [selectedQRVehicle, setSelectedQRVehicle] = useState<any | null>(null);
@@ -92,7 +93,7 @@ const Vehicles: React.FC = () => {
             </head>
             <body>
               <div class="card">
-                <div class="label">${type === 'OUT' ? 'IN QR - DISPATCH' : 'OUT QR - RETURN'}</div>
+                <div class="label">${type === 'OUT' ? 'OUT QR - DISPATCH' : 'IN QR - RETURN'}</div>
                 <img class="qr-image" src="${url}" />
                 <div class="plate">${vehiclePlate}</div>
                 <div class="instructions">
@@ -130,8 +131,11 @@ const Vehicles: React.FC = () => {
       ...newVehicle,
       vehicleNumber: newVehicle.vehicleNumber.trim().toUpperCase()
     };
+    if (normalizedVehicle.status !== 'Maintenance') {
+      normalizedVehicle.maintenanceNotes = '';
+    }
     await addVehicle(normalizedVehicle);
-    setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available' });
+    setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
     setShowAdd(false);
   };
 
@@ -142,6 +146,9 @@ const Vehicles: React.FC = () => {
       ...editingVehicle,
       vehicleNumber: editingVehicle.vehicleNumber.trim().toUpperCase()
     };
+    if (normalized.status !== 'Maintenance') {
+      normalized.maintenanceNotes = '';
+    }
     // Exclude id from the object sent to updateVehicle
     const { id, createdAt, updatedAt, ...updateData } = normalized;
     await updateVehicle(id, updateData);
@@ -222,6 +229,18 @@ const Vehicles: React.FC = () => {
                 </select>
               </div>
             </div>
+            {newVehicle.status === 'Maintenance' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট (Maintenance Notes / Problems)</label>
+                <textarea 
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-xs"
+                  placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                  value={newVehicle.maintenanceNotes || ''}
+                  onChange={e => setNewVehicle({ ...newVehicle, maintenanceNotes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1">Save Vehicle</Button>
               <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
@@ -265,6 +284,18 @@ const Vehicles: React.FC = () => {
                 </select>
               </div>
             </div>
+            {editingVehicle.status === 'Maintenance' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট (Maintenance Notes / Problems)</label>
+                <textarea 
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-xs"
+                  placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                  value={editingVehicle.maintenanceNotes || ''}
+                  onChange={e => setEditingVehicle({ ...editingVehicle, maintenanceNotes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            )}
             <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 mt-4 pt-4">
               {deletingId === editingVehicle.id ? (
                 <div className="flex-1 flex gap-2">
@@ -311,14 +342,21 @@ const Vehicles: React.FC = () => {
                   <td className="px-5 py-3 font-bold text-text-main">{vehicle.vehicleNumber}</td>
                   <td className="px-5 py-3 text-text-muted">{vehicle.type}</td>
                   <td className="px-5 py-3">
-                    <span className={cn(
-                      "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase",
-                      vehicle.status === 'Available' ? "bg-emerald-100 text-emerald-700" :
-                      vehicle.status === 'On Trip' ? "bg-blue-100 text-blue-700" :
-                      "bg-orange-100 text-orange-700"
-                    )}>
-                      {vehicle.status}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase w-fit",
+                        vehicle.status === 'Available' ? "bg-emerald-100 text-emerald-700" :
+                        vehicle.status === 'On Trip' ? "bg-blue-100 text-blue-700" :
+                        "bg-orange-100 text-orange-700"
+                      )}>
+                        {vehicle.status}
+                      </span>
+                      {vehicle.status === 'Maintenance' && vehicle.maintenanceNotes && (
+                        <span className="text-[10px] text-amber-600 font-medium italic block max-w-xs truncate" title={vehicle.maintenanceNotes}>
+                          সমস্যা: {vehicle.maintenanceNotes}
+                        </span>
+                      )}
+                    </div>
                   </td>
                    <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -405,11 +443,11 @@ const Vehicles: React.FC = () => {
             <div className="p-6 overflow-y-auto space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* 1. OUT QR Card (actually named IN QR for user workflow) */}
+                {/* 1. OUT QR Card */}
                 <div className="border-2 border-emerald-100 rounded-2xl p-5 bg-emerald-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      IN QR (গাড়ি ছাড়পত্র)
+                      OUT QR (গাড়ি ছাড়পত্র)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">স্টক ছাড় দিয়ে ট্রিপ শুরু করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -426,7 +464,7 @@ const Vehicles: React.FC = () => {
 
                   <div className="w-full space-y-2">
                     <Button 
-                      onClick={() => downloadQR(`qr-out-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
+                      onClick={() => downloadQR(`qr-out-${selectedQRVehicle.id}`, `OUT_QR_${selectedQRVehicle.vehicleNumber}.png`)}
                       variant="secondary" 
                       className="w-full text-xs font-bold text-emerald-700 hover:bg-emerald-50 border-emerald-200"
                     >
@@ -441,11 +479,11 @@ const Vehicles: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. IN QR Card (actually named OUT QR for user workflow) */}
+                {/* 2. IN QR Card */}
                 <div className="border-2 border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      OUT QR (গাড়ি ফেরত)
+                      IN QR (গাড়ি ফেরত)
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">গাড়ি গ্যারেজে ফেরত ও স্টক এন্ট্রি করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -462,7 +500,7 @@ const Vehicles: React.FC = () => {
 
                   <div className="w-full space-y-2">
                     <Button 
-                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `OUT_QR_${selectedQRVehicle.vehicleNumber}.png`)}
+                      onClick={() => downloadQR(`qr-in-${selectedQRVehicle.id}`, `IN_QR_${selectedQRVehicle.vehicleNumber}.png`)}
                       variant="secondary" 
                       className="w-full text-xs font-bold text-indigo-700 hover:bg-indigo-50 border-indigo-200"
                     >
