@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
 import Dashboard from './Dashboard';
 import Vehicles from './Vehicles';
