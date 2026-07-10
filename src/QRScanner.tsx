@@ -14,7 +14,7 @@ import {
   updateVehicleStatus
 } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const QRScanner: React.FC = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -70,7 +70,7 @@ const QRScanner: React.FC = () => {
   });
   const [returnStatus, setReturnStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   // Constants
   const TOOL_LIST = ['Jack', 'Spare Wheel', 'Fire Extinguisher', 'First Aid Kit', 'Triangle', 'Tool Box'];
@@ -85,7 +85,11 @@ const QRScanner: React.FC = () => {
       unsubTrips();
       unsubCases();
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => console.error("Error clearing scanner:", err));
+        try {
+          scannerRef.current.stop().catch(err => console.error("Error stopping scanner on unmount:", err));
+        } catch (e) {
+          console.error("Scanner stop error on unmount:", e);
+        }
       }
     };
   }, []);
@@ -98,34 +102,41 @@ const QRScanner: React.FC = () => {
     // Defer initialization to let the div mount in the DOM
     setTimeout(() => {
       try {
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader-container",
+        const scanner = new Html5Qrcode("qr-reader-container");
+        
+        scanner.start(
+          { facingMode: "environment" },
           { 
             fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            rememberLastUsedCamera: true,
-            videoConstraints: {
-              facingMode: "environment"
-            }
+            qrbox: { width: 250, height: 250 }
           },
-          /* verbose= */ false
-        );
-        
-        scanner.render(
           (decodedText) => {
             handleDecodedText(decodedText);
-            scanner.clear().catch(err => console.error(err));
-            setScannerActive(false);
+            scanner.stop()
+              .then(() => {
+                setScannerActive(false);
+                scannerRef.current = null;
+              })
+              .catch(err => {
+                console.error("Error stopping scanner on decode:", err);
+                setScannerActive(false);
+                scannerRef.current = null;
+              });
           },
           (error) => {
             // Subtle debug log, not spamming UI
           }
-        );
+        ).then(() => {
+          scannerRef.current = scanner;
+        }).catch((err: any) => {
+          console.error("Scanner startup error inside start promise:", err);
+          setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
+          setScannerActive(false);
+        });
         
-        scannerRef.current = scanner;
       } catch (err: any) {
         console.error("Scanner startup error:", err);
-        setScannerError("Camera could not be accessed. Please ensure permission is granted or use the simulated scanner below.");
+        setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
         setScannerActive(false);
       }
     }, 100);
@@ -133,7 +144,7 @@ const QRScanner: React.FC = () => {
 
   const stopCameraScanner = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear()
+      scannerRef.current.stop()
         .then(() => {
           setScannerActive(false);
           scannerRef.current = null;
