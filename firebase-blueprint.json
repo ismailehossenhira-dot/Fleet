@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Represents a vehicle in the fleet",
+      "type": "object",
+      "properties": {
+        "vehicleNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["Small", "Medium", "Large"] },
+        "status": { "type": "string", "enum": ["Available", "On Trip", "Maintenance"] },
+        "lastLatLng": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleNumber", "type", "status"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "Represents a driver in the system",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string" },
+        "name": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["driverId", "name", "phoneNumber"]
+    },
+    "Trip": {
+      "title": "Trip",
+      "description": "Represents a trip taken by a vehicle",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "helperId": { "type": "string" },
+        "helperName": { "type": "string" },
+        "location": { "type": "string" },
+        "destinationLatLng": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          }
+        },
+        "routePoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            }
+          }
+        },
+        "tollAmount": { "type": "number" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Running", "Completed"] },
+        "documentsGiven": { "type": "array", "items": { "type": "string" } },
+        "inspectionOnReturn": { "$ref": "#/entities/Inspection" },
+        "caseDetails": { "$ref": "#/entities/Case" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "driverId", "driverName", "location", "status", "startTime"]
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "description": "Vehicle return inspection report",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "object",
+          "properties": {
+            "jackLever": { "type": "string", "enum": ["OK", "Missing"] },
+            "wrench": { "type": "string", "enum": ["OK", "Missing"] },
+            "spareTire": { "type": "string", "enum": ["OK", "Missing"] }
+          }
+        },
+        "missingDocuments": { "type": "array", "items": { "type": "string" } },
+        "inspectedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Case": {
+      "title": "Case",
+      "description": "Case (Mamla) management for vehicles",
+      "type": "object",
+      "properties": {
+        "caseId": { "type": "string" },
+        "amount": { "type": "number" },
+        "seizedDocuments": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Open", "Resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MissingReport": {
+      "title": "Missing Report",
+      "description": "Records of missing documents or tools during vehicle return",
+      "type": "object",
+      "properties": {
+        "tripId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "missingDocuments": { "type": "array", "items": { "type": "string" } },
+        "missingTools": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Resolved"] },
+        "date": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tripId", "vehiclePlate", "driverId", "driverName", "status"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Manager", "Checker", "Line Supervisor"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "vehicles": {
+      "schema": "Vehicle",
+      "description": "Collection of all vehicles"
+    },
+    "drivers": {
+      "schema": "Driver",
+      "description": "Collection of all drivers"
+    },
+    "trips": {
+      "schema": "Trip",
+      "description": "Collection of all trip records"
+    },
+    "cases": {
+      "schema": "Case",
+      "description": "Collection of legal cases (Mamla) on vehicles"
+    },
+    "missing_reports": {
+      "schema": "MissingReport",
+      "description": "Collection of reports for missing items found during return"
+    },
+    "users": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles and roles"
+    }
+  }
+}

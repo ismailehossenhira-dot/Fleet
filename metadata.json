@@ -1,0 +1,10 @@
+{
+  "name": "FleetFlow Pro",
+  "description": "A comprehensive Fleet & Vehicle Management System for transport businesses, featuring trip tracking, driver management, safety inspections, and case management with QR scanner-based dispatch & returns.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

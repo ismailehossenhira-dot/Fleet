@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function() {
+        try {
+          var currentFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() { return currentFetch; },
+            set: function(newFetch) { currentFetch = newFetch; },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          try {
+            var currentFetch = window.fetch;
+            Object.defineProperty(Window.prototype, 'fetch', {
+              get: function() { return currentFetch; },
+              set: function(newFetch) { currentFetch = newFetch; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (err) {
+            console.warn("Unable to safeguard window.fetch:", err);
+          }
+        }
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

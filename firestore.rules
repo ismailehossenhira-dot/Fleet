@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Auth Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    function hasRole(role) {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ismailehossenhira@gmail.com' || 
+        request.auth.token.email == 'admin@fleetflow.local' ||
+        hasRole('Admin')
+      );
+    }
+    
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'ismailehossenhira@gmail.com' || 
+        hasRole('Admin')
+      ); 
+    }
+    function isSubAdmin() { return hasRole('Sub Admin'); }
+    function isChecker() { return hasRole('Checker'); }
+    function isLineSupervisor() { return hasRole('Line Supervisor'); }
+    function canManage() { return isAdmin() || isSubAdmin(); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isSubAdmin() && incoming().role == 'Sub Admin') || (request.auth.uid == userId);
+      allow update: if isSuperAdmin() 
+        || (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny(['isSuspended']))
+        || (isSubAdmin() && incoming().role == 'Sub Admin' && existing().role == 'Sub Admin' && !incoming().diff(existing()).affectedKeys().hasAny(['isSuspended']))
+        || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuspended']));
+      allow delete: if isSuperAdmin();
+    }
+
+    // System Check
+    match /system/{docId} {
+      allow read: if isSignedIn();
+    }
+
+    // Vehicle Validation
+    function isValidVehicle(data) {
+      return data.keys().hasAll(['vehicleNumber', 'type', 'status'])
+        && data.vehicleNumber is string && data.vehicleNumber.size() > 0 && data.vehicleNumber.size() <= 64
+        && data.type in ['Small', 'Medium', 'Large']
+        && data.status in ['Available', 'On Trip', 'Maintenance'];
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow create: if canManage() && isValidVehicle(incoming());
+      allow update: if isSignedIn() && (
+        // Action: Status Update (during Trip start/end or Maintenance)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        // Action: Full Update
+        (canManage() && isValidVehicle(incoming()))
+      );
+      allow delete: if canManage();
+    }
+
+    // Driver/Staff Validation
+    function isValidDriver(data) {
+      return data.keys().hasAll(['driverId', 'name', 'phoneNumber'])
+        && data.driverId is string && data.driverId.size() > 0
+        && data.name is string && data.name.size() > 0
+        && data.phoneNumber is string;
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isSignedIn();
+      allow create: if canManage();
+      allow update: if canManage();
+      allow delete: if canManage();
+    }
+
+    // Trip Validation
+    function isValidTrip(data) {
+      return data.keys().hasAll(['vehicleId', 'driverId', 'driverName', 'location', 'status', 'startTime'])
+        && data.vehicleId is string
+        && data.driverId is string
+        && data.driverName is string
+        && data.location is string
+        && data.status in ['Running', 'Completed'];
+    }
+
+    match /trips/{tripId} {
+      allow read: if isSignedIn();
+      allow create: if canManage() || isLineSupervisor();
+      allow update: if isSignedIn() && (
+        // Action: Complete Trip (Return Vehicle)
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'inspectionOnReturn'])) ||
+        // Action: Assign Case
+        (incoming().diff(existing()).affectedKeys().hasOnly(['caseDetails'])) ||
+        // Action: Generic Update
+        canManage()
+      );
+      allow delete: if canManage() 
+        && existing().status != 'Running'
+        && (existing().startTime == null || existing().startTime < request.time - duration.value(24, 'h'));
+    }
+
+    match /cases/{caseId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if canManage();
+      allow delete: if canManage();
+    }
+
+    // Missing Reports Validation
+    function isValidMissingReport(data) {
+      return data.keys().hasAll(['tripId', 'vehiclePlate', 'driverId', 'driverName', 'status'])
+        && data.tripId is string
+        && data.vehiclePlate is string
+        && data.driverId is string
+        && data.driverName is string
+        && data.status in ['Pending', 'Resolved'];
+    }
+
+    match /missing_reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidMissingReport(incoming());
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    match /missing_reports_history/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow delete: if canManage();
+    }
+  }
+}
