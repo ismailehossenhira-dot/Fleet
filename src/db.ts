@@ -86,6 +86,32 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
       if (maintenanceNotes !== undefined) {
         updates.maintenanceNotes = maintenanceNotes;
       }
+      
+      // Auto-complete or cancel any Running or Pending trips for this vehicle!
+      try {
+        const q = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', vehicleId)
+        );
+        const tripsSnap = await getDocs(q);
+        for (const docObj of tripsSnap.docs) {
+          const tripData = docObj.data();
+          if (tripData.status === 'Running' || tripData.status === 'Pending') {
+            await updateDoc(doc(db, 'trips', docObj.id), {
+              status: 'Completed',
+              endTime: serverTimestamp(),
+              completedBy: getUserString(profile) || 'System (Maintenance Auto)',
+              updatedAt: serverTimestamp(),
+              inspectionOnReturn: {
+                notes: maintenanceNotes || 'Auto-completed on entering Maintenance',
+                inspectedAt: serverTimestamp()
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error auto-completing active trips on maintenance transition:", err);
+      }
     } else {
       // Clear notes if not in maintenance
       updates.maintenanceNotes = '';
@@ -186,16 +212,38 @@ export const findStaffById = async (staffId: string) => {
 // Trips
 export const createTrip = async (trip: any, profile?: any) => {
   try {
-    // 1. Create trip record
+    // 1. Verify that the vehicle is currently available
+    const vehicleSnap = await getDoc(doc(db, 'vehicles', trip.vehicleId));
+    if (!vehicleSnap.exists()) {
+      throw new Error("গাড়িটি ডাটাবেজে খুঁজে পাওয়া যায়নি। (Vehicle not found in database.)");
+    }
+    const vehicleData = vehicleSnap.data();
+    if (vehicleData.status !== 'Available') {
+      throw new Error(`গাড়িটি এখন উপলব্ধ (Available) নেই। বর্তমান স্ট্যাটাস: ${vehicleData.status}`);
+    }
+
+    // 2. Double-check if there is already an active (Pending or Running) trip for this vehicle
+    const q = query(
+      collection(db, 'trips'),
+      where('vehicleId', '==', trip.vehicleId)
+    );
+    const tripsSnap = await getDocs(q);
+    const hasActiveTrip = tripsSnap.docs.some(docObj => {
+      const t = docObj.data();
+      return t.status === 'Pending' || t.status === 'Running';
+    });
+
+    if (hasActiveTrip) {
+      throw new Error("এই গাড়ির জন্য ইতিমধ্যেই একটি ট্রিপ নিবন্ধিত (Pending) বা চলমান (Running) রয়েছে। প্রথমে সেটি শেষ বা বাতিল করুন।");
+    }
+
+    // 3. Create trip record
     const tripRef = await addDoc(collection(db, 'trips'), {
       ...trip,
       status: 'Pending',
       createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
-    
-    // 2. We DO NOT update vehicle status to 'On Trip' here anymore!
-    // The vehicle status remains 'Available' until OUT QR is scanned.
     
     return tripRef;
   } catch (error) {

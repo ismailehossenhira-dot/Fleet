@@ -162,16 +162,28 @@ const QRScanner: React.FC = () => {
           scannerRef.current = scanner;
           isStartingRef.current = false;
         }).catch((err: any) => {
-          console.error("Scanner startup error inside start promise:", err);
-          setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
+          console.warn("Scanner startup error inside start promise:", err);
+          let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।";
+          const errStr = String(err);
+          if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
+            errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। আপনি যদি ডেভেলপমেন্ট বা স্যান্ডবক্স আইফ্রেম মুডে থাকেন, অনুগ্রহ করে নিচের স্মার্ট সিমুলেটর (Simulator Fallback) ব্যবহার করে টেস্ট করুন।";
+          } else if (errStr.includes("NotAllowedError") || errStr.includes("permission") || (err && err.name === "NotAllowedError")) {
+            errMsg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজার সেটিংসে ক্যামেরা অ্যাক্সেস দিন অথবা নিচের স্মার্ট সিমুলেটর ব্যবহার করুন।";
+          }
+          setScannerError(errMsg);
           setScannerActive(false);
           isStartingRef.current = false;
           if (container) container.innerHTML = "";
         });
         
       } catch (err: any) {
-        console.error("Scanner startup error:", err);
-        setScannerError("ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।");
+        console.warn("Scanner startup error:", err);
+        let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।";
+        const errStr = String(err);
+        if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
+          errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। অনুগ্রহ করে নিচের স্মার্ট সিমুলেটর (Simulator Fallback) ব্যবহার করে সহজেই টেস্ট করুন।";
+        }
+        setScannerError(errMsg);
         setScannerActive(false);
         isStartingRef.current = false;
         if (container) container.innerHTML = "";

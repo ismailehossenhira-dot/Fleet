@@ -74,6 +74,9 @@ const NewTrip: React.FC = () => {
     }
   }, [canManage, navigate]);
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleVehicleChange = (val: string) => {
     const vehicle = vehicles.find(v => v.id === val);
     setFormData({ 
@@ -81,6 +84,7 @@ const NewTrip: React.FC = () => {
       vehicleId: val, 
       vehiclePlate: vehicle?.vehicleNumber || '' 
     });
+    setSubmitError(null);
   };
 
   const handleDriverSearch = async (val: string) => {
@@ -154,29 +158,49 @@ const NewTrip: React.FC = () => {
     e.preventDefault();
     if (!formData.vehicleId || !formData.driverId || !formData.location) return;
     
-    await createTrip(formData, profile);
-    setVehicleSearch('');
-    setFormData({
-      vehicleId: '',
-      vehiclePlate: '',
-      driverId: 'DRV-',
-      driverName: '',
-      driverPhone: '',
-      helperId: 'HLP-',
-      helperName: '',
-      helperPhone: '',
-      location: '',
-      destinationLatLng: null,
-      routePoints: [],
-      tollAmount: 0,
-      documentsGiven: [],
-      toolsGiven: []
-    });
-    localStorage.removeItem('newtrip_formData');
-    localStorage.removeItem('newtrip_vehicleSearch');
-    
-    // Switch or redirect back to Trips page
-    navigate('/trips');
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await createTrip(formData, profile);
+      setVehicleSearch('');
+      setFormData({
+        vehicleId: '',
+        vehiclePlate: '',
+        driverId: 'DRV-',
+        driverName: '',
+        driverPhone: '',
+        helperId: 'HLP-',
+        helperName: '',
+        helperPhone: '',
+        location: '',
+        destinationLatLng: null,
+        routePoints: [],
+        tollAmount: 0,
+        documentsGiven: [],
+        toolsGiven: []
+      });
+      localStorage.removeItem('newtrip_formData');
+      localStorage.removeItem('newtrip_vehicleSearch');
+      
+      // Switch or redirect back to Trips page
+      navigate('/trips');
+    } catch (err: any) {
+      console.error("Trip creation failed:", err);
+      let msg = "ট্রিপ এন্ট্রি করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।";
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.error) {
+          msg = parsed.error;
+        }
+      } catch (e) {
+        if (err.message) {
+          msg = err.message;
+        }
+      }
+      setSubmitError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const availableVehicles = vehicles.filter(v => v.status === 'Available');
@@ -198,6 +222,12 @@ const NewTrip: React.FC = () => {
         <div className="lg:col-span-2">
           <Card title="Register New Trip Dispatch">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {submitError && (
+                <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm font-semibold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <div>
@@ -327,8 +357,10 @@ const NewTrip: React.FC = () => {
               </div>
 
               <div className="flex gap-4 pt-4 border-t border-slate-100">
-                <Button type="submit" className="flex-1">Create Pending Trip (ট্রিপ এন্ট্রি করুন)</Button>
-                <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                  {isSubmitting ? "সংরক্ষণ করা হচ্ছে (Saving...)" : "Create Pending Trip (ট্রিপ এন্ট্রি করুন)"}
+                </Button>
+                <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>Cancel</Button>
               </div>
             </form>
           </Card>
