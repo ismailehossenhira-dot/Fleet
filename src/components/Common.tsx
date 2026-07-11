@@ -11,7 +11,8 @@ import {
   ChevronRight,
   Menu,
   X,
-  QrCode
+  QrCode,
+  PlusCircle
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/qr-scanner', icon: QrCode, label: 'QR Scanner', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/vehicles', icon: Truck, label: 'Vehicles', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/drivers', icon: Users, label: 'Drivers', roles: ['Admin', 'Sub Admin'] },
+  { to: '/new-trip', icon: PlusCircle, label: 'New Trip', roles: ['Admin', 'Sub Admin', 'Line Supervisor'] },
   { to: '/trips', icon: MapPin, label: 'Trips', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/return', icon: ClipboardCheck, label: 'Return', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/cases', icon: FileWarning, label: 'Cases', roles: ['Admin', 'Sub Admin', 'Checker'] },
