@@ -334,19 +334,19 @@ const NewTrip: React.FC = () => {
           </Card>
         </div>
         <div>
-          <Card title="Guidelines">
+          <Card title="নির্দেশনাবলী (Guidelines)">
             <ul className="space-y-4 text-sm text-slate-600">
               <li className="flex gap-3">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
-                <span>Vehicle must be in 'Available' status to start a new trip.</span>
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">১</span>
+                <span>নতুন ট্রিপ শুরু করার জন্য গাড়িটিকে অবশ্যই 'Available' (উপলব্ধ) স্ট্যাটাসে থাকতে হবে।</span>
               </li>
               <li className="flex gap-3">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
-                <span>Driver details are auto-synced based on their unique ID.</span>
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">২</span>
+                <span>চালকের ইউনিক আইডি (Driver ID) অনুযায়ী চালকের তথ্য স্বয়ংক্রিয়ভাবে সিঙ্ক বা যুক্ত হবে।</span>
               </li>
               <li className="flex gap-3">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
-                <span>Registered trip will remain pending until OUT QR code is scanned to start the trip.</span>
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">৩</span>
+                <span>নিবন্ধিত ট্রিপটি পেন্ডিং বা অপেক্ষমান থাকবে যতক্ষণ না গাড়ি ছাড়ার জন্য OUT QR কোড স্ক্যান করা হচ্ছে।</span>
               </li>
             </ul>
           </Card>

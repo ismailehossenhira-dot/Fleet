@@ -13,7 +13,8 @@ import {
   Filter,
   Wrench,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles
 } from 'lucide-react';
 import { Card } from './components/Common';
 import { subscribeToCollection, updateVehicleStatus } from './db';
@@ -56,6 +57,26 @@ const Dashboard: React.FC = () => {
   const [maintSearch, setMaintSearch] = useState('');
   const [maintStatusFilter, setMaintStatusFilter] = useState<'All' | 'Maintenance' | 'WithNotes'>('All');
   const [maintTypeFilter, setMaintTypeFilter] = useState<'All' | 'Small' | 'Medium' | 'Large'>('All');
+
+  // Bengali quotes rotating every 10 seconds
+  const bengaliQuotes = [
+    "নিরাপদ পথচলাই জীবনের প্রথম জয়।",
+    "গতি কমান, জীবন বাঁচান।",
+    "সময়ের চেয়ে জীবনের মূল্য অনেক বেশি।",
+    "শৃঙ্খলা মেনে চলুন, নিরাপদে গন্তব্যে পৌঁছান।",
+    "একটি দুর্ঘটনা সারাজীবনের কান্না।",
+    "সাবধানতা অবলম্বন করুন, পরিবার আপনার অপেক্ষায় আছে।",
+    "ধৈর্যই চালকের সর্বোত্তম শক্তি।",
+    "সঠিক সময়ে সঠিক সিদ্ধান্তই দুর্ঘটনার হাত থেকে রক্ষা করে।"
+  ];
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setQuoteIndex(prev => (prev + 1) % bengaliQuotes.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
@@ -258,6 +279,28 @@ const Dashboard: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
+            {/* Bengali Rotating Quote Banner */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-2xs overflow-hidden relative">
+              <div className="p-3 bg-blue-100/80 rounded-xl text-blue-600 shrink-0">
+                <Sparkles size={20} className="animate-pulse" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">আজকের উক্তি ও সচেতনতা বার্তা (Daily Quote & Safety Message)</div>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={quoteIndex}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-sm sm:text-base font-bold text-slate-800 tracking-wide"
+                  >
+                    “{bengaliQuotes[quoteIndex]}”
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard label="Net Active Fleet" value={stats.activeFleet} icon={Truck} />
