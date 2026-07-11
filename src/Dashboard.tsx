@@ -28,16 +28,37 @@ const StatCard: React.FC<{
   label: string, 
   value: number | string, 
   icon: any, 
-  trend?: string
-}> = ({ label, value, trend, icon: Icon }) => (
-  <div className="bg-surface border border-border p-5 rounded-xl shadow-sm">
+  trend?: string,
+  isActive?: boolean,
+  onClick?: () => void
+}> = ({ label, value, trend, icon: Icon, isActive, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+      "bg-surface border p-5 rounded-xl shadow-xs transition-all cursor-pointer select-none relative overflow-hidden",
+      isActive 
+        ? "border-blue-500 ring-2 ring-blue-100 bg-blue-50/40 scale-[1.02]" 
+        : "border-border hover:border-slate-300 hover:shadow-md"
+    )}
+  >
     <div className="flex justify-between items-start">
       <div className="stat-label text-[10px] uppercase font-bold text-text-muted tracking-wider">{label}</div>
-      <div className="text-accent opacity-20"><Icon size={14} /></div>
+      <div className={cn("text-accent opacity-20", isActive && "opacity-60 text-blue-600")}><Icon size={14} /></div>
     </div>
     <div className="mt-1 flex items-baseline gap-2">
       <div className="text-2xl font-bold text-text-main">{value}</div>
       {trend && <span className="text-xs font-semibold text-accent">{trend}</span>}
+    </div>
+    <div className="text-[9px] font-bold mt-2 flex items-center gap-1">
+      {isActive ? (
+        <span className="text-blue-600 flex items-center gap-1 bg-blue-100/60 px-1.5 py-0.5 rounded">
+          ✓ নির্বাচিত (Selected)
+        </span>
+      ) : (
+        <span className="text-slate-400 hover:text-slate-600">
+          বিস্তারিত দেখতে ক্লিক করুন (Click for details) →
+        </span>
+      )}
     </div>
   </div>
 );
@@ -48,6 +69,10 @@ const Dashboard: React.FC = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const { searchQuery } = useSearch();
+
+  // Active Stat Card Filter state
+  const [activeStatFilter, setActiveStatFilter] = useState<'activeFleet' | 'available' | 'onTrip' | 'maintenance' | null>(null);
+  const [detailSearch, setDetailSearch] = useState('');
 
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState('');
@@ -302,17 +327,360 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard label="Net Active Fleet" value={stats.activeFleet} icon={Truck} />
-          <StatCard label="Available (Ready)" value={stats.availableVehicles} icon={CheckCircle} />
-          <StatCard label="On Trip (Running)" value={stats.onTripVehicles} trend="▲" icon={Activity} />
-        </div>
-        <div className="bg-primary text-white p-5 rounded-xl flex flex-col justify-center">
-          <div className="text-[10px] uppercase font-bold opacity-60 tracking-wider">Under Maintenance (Offline)</div>
-          <div className="text-2xl font-bold mt-1 text-orange-300">{stats.maintenanceVehicles}</div>
-          <div className="text-[9px] mt-1 opacity-50">Total Fleet: {stats.totalVehicles}</div>
-        </div>
-      </div>
+              <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <StatCard 
+                  label="Net Active Fleet" 
+                  value={stats.activeFleet} 
+                  icon={Truck} 
+                  isActive={activeStatFilter === 'activeFleet'}
+                  onClick={() => {
+                    setActiveStatFilter(prev => prev === 'activeFleet' ? null : 'activeFleet');
+                    setDetailSearch('');
+                  }}
+                />
+                <StatCard 
+                  label="Available (Ready)" 
+                  value={stats.availableVehicles} 
+                  icon={CheckCircle} 
+                  isActive={activeStatFilter === 'available'}
+                  onClick={() => {
+                    setActiveStatFilter(prev => prev === 'available' ? null : 'available');
+                    setDetailSearch('');
+                  }}
+                />
+                <StatCard 
+                  label="On Trip (Running)" 
+                  value={stats.onTripVehicles} 
+                  trend="▲" 
+                  icon={Activity} 
+                  isActive={activeStatFilter === 'onTrip'}
+                  onClick={() => {
+                    setActiveStatFilter(prev => prev === 'onTrip' ? null : 'onTrip');
+                    setDetailSearch('');
+                  }}
+                />
+              </div>
+              <div 
+                onClick={() => {
+                  setActiveStatFilter(prev => prev === 'maintenance' ? null : 'maintenance');
+                  setDetailSearch('');
+                }}
+                className={cn(
+                  "p-5 rounded-xl flex flex-col justify-center cursor-pointer select-none transition-all duration-200",
+                  activeStatFilter === 'maintenance' 
+                    ? "bg-slate-900 ring-4 ring-orange-400/40 border border-orange-400" 
+                    : "bg-primary text-white hover:bg-primary/95 hover:shadow-md"
+                )}
+              >
+                <div className="text-[10px] uppercase font-bold opacity-60 tracking-wider">Under Maintenance (Offline)</div>
+                <div className="text-2xl font-bold mt-1 text-orange-300">{stats.maintenanceVehicles}</div>
+                <div className="text-[9px] mt-1 opacity-50">Total Fleet: {stats.totalVehicles}</div>
+                <div className="text-[9px] font-bold mt-2 text-orange-400 flex items-center gap-1">
+                  {activeStatFilter === 'maintenance' ? "✓ নির্বাচিত" : "বিস্তারিত দেখতে ক্লিক করুন →"}
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Filter Panel */}
+            <AnimatePresence>
+              {activeStatFilter && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <Card 
+                    title={
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping shrink-0"></span>
+                          <span className="font-bold text-slate-800 text-sm sm:text-base">
+                            {activeStatFilter === 'onTrip' && "ট্রিপে থাকা গাড়ি সমুহ এবং গন্তব্য (Vehicles On Trip & Destinations)"}
+                            {activeStatFilter === 'available' && "উপলব্ধ গাড়ি সমুহ (Available Vehicles)"}
+                            {activeStatFilter === 'activeFleet' && "নেট একটিভ ফ্লিট এবং গাড়ির অবস্থা (Net Active Fleet & Status)"}
+                            {activeStatFilter === 'maintenance' && "মেইনটেনেন্স বা মেরামতে থাকা গাড়ি সমুহ (Vehicles Under Maintenance)"}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => { setActiveStatFilter(null); setDetailSearch(''); }}
+                          className="text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+                        >
+                          বন্ধ করুন (Close) ×
+                        </button>
+                      </div>
+                    }
+                    className="border-blue-100 bg-blue-50/10 shadow-xs"
+                  >
+                    <div className="space-y-4">
+                      {/* Search box inside detail panel */}
+                      <div className="flex items-center gap-2 max-w-md">
+                        <div className="relative flex-1">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input 
+                            type="text"
+                            placeholder="গাড়ির নাম্বার দিয়ে খুঁজুন... (Search by vehicle number...)"
+                            value={detailSearch}
+                            onChange={e => setDetailSearch(e.target.value)}
+                            className="w-full pl-8 pr-4 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none focus:border-blue-400 font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filter logic & content rendering */}
+                      {activeStatFilter === 'onTrip' && (
+                        <div className="overflow-x-auto border border-slate-150 rounded-xl bg-white">
+                          <table className="w-full text-xs text-left">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-150">
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">চালক (Driver)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">কোথায় গেছে/গন্তব্য (Destination)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">শুরুর সময় (Start Time)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস (Status)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {vehicles
+                                .filter(v => v.status === 'On Trip' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
+                                .map(v => {
+                                  const activeTrip = trips.find(t => t.vehicleId === v.id && t.status === 'Running');
+                                  return (
+                                    <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-accent">{v.vehicleNumber}</td>
+                                      <td className="px-4 py-3 text-slate-600 font-medium">{activeTrip?.driverName || 'N/A'}</td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1.5">
+                                          <MapPin size={12} className="text-red-500 shrink-0" />
+                                          <span className="font-bold text-slate-850">{activeTrip?.location || 'Unknown'}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 text-slate-500">
+                                        {activeTrip ? formatMaintDate(activeTrip.startTime) : 'N/A'}
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase">
+                                          On Trip
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              {vehicles.filter(v => v.status === 'On Trip').length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                                    এই মুহূর্তে কোনো গাড়ি ট্রিপে নেই। (No vehicles currently on a trip)
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {activeStatFilter === 'available' && (
+                        <div className="overflow-x-auto border border-slate-150 rounded-xl bg-white">
+                          <table className="w-full text-xs text-left">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-150">
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">আইডি/ভ্যালু (Vehicle ID)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">লাইসেন্স/VIN</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা (State)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {vehicles
+                                .filter(v => v.status === 'Available' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
+                                .map(v => (
+                                  <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-4 py-3 font-bold text-accent">{v.vehicleNumber}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[10px]">
+                                        {v.type}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600 font-mono text-[11px]">{v.id}</td>
+                                    <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{v.vin || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-right">
+                                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase inline-flex items-center gap-1">
+                                        <CheckCircle size={10} />
+                                        <span>Available</span>
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              {vehicles.filter(v => v.status === 'Available').length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                                    বর্তমানে কোনো গাড়ি খালি/উপলব্ধ নেই। (No available vehicles in garage)
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {activeStatFilter === 'activeFleet' && (
+                        <div className="space-y-4">
+                          {/* Aggregate fleet overview summary bar */}
+                          <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl">
+                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">গাড়ির বর্তমান অবস্থা বিশ্লেষণ (Vehicle Status Distribution)</div>
+                            <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden flex">
+                              <div 
+                                style={{ width: `${(stats.availableVehicles / (stats.totalVehicles || 1)) * 100}%` }} 
+                                className="bg-emerald-500 h-full transition-all duration-300" 
+                                title={`Available: ${stats.availableVehicles}`}
+                              />
+                              <div 
+                                style={{ width: `${(stats.onTripVehicles / (stats.totalVehicles || 1)) * 100}%` }} 
+                                className="bg-blue-500 h-full transition-all duration-300" 
+                                title={`On Trip: ${stats.onTripVehicles}`}
+                              />
+                              <div 
+                                style={{ width: `${(stats.maintenanceVehicles / (stats.totalVehicles || 1)) * 100}%` }} 
+                                className="bg-orange-500 h-full transition-all duration-300" 
+                                title={`Maintenance: ${stats.maintenanceVehicles}`}
+                              />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4 mt-3 text-[10px] font-bold text-slate-600">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                                <span>উপলব্ধ (Available): {stats.availableVehicles} টি</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                                <span>চলমান ট্রিপে (On Trip): {stats.onTripVehicles} টি</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                                <span>মেইনটেনেন্সে (Maintenance): {stats.maintenanceVehicles} টি</span>
+                              </div>
+                              <div className="ml-auto font-mono text-slate-500">মোট গাড়ি (Total Vehicles): {stats.totalVehicles} টি</div>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto border border-slate-150 rounded-xl bg-white">
+                            <table className="w-full text-xs text-left">
+                              <thead>
+                                <tr className="bg-slate-50 border-b border-slate-150">
+                                  <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">লাইসেন্স/VIN</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">বর্তমান অবস্থান/চালক (Current Location / Driver)</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস (Status)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {vehicles
+                                  .filter(v => detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true)
+                                  .map(v => {
+                                    const activeTrip = trips.find(t => t.vehicleId === v.id && t.status === 'Running');
+                                    return (
+                                      <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-accent">{v.vehicleNumber}</td>
+                                        <td className="px-4 py-3">
+                                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[10px]">
+                                            {v.type}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{v.vin || 'N/A'}</td>
+                                        <td className="px-4 py-3">
+                                          {v.status === 'On Trip' ? (
+                                            <div className="flex flex-col">
+                                              <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                                                <MapPin size={10} className="text-red-500 shrink-0" /> {activeTrip?.location || 'On Route'}
+                                              </span>
+                                              <span className="text-[10px] text-slate-500">চালক: {activeTrip?.driverName || 'N/A'}</span>
+                                            </div>
+                                          ) : v.status === 'Maintenance' ? (
+                                            <span className="text-amber-700 text-[11px] flex items-center gap-1 font-medium">
+                                              <AlertCircle size={10} className="shrink-0" /> মেইনটেনেন্স গ্যারেজে (In Workshop)
+                                            </span>
+                                          ) : (
+                                            <span className="text-emerald-700 text-[11px] flex items-center gap-1 font-medium">
+                                              <Check size={10} className="shrink-0" /> গ্যারেজে প্রস্তুত (Ready in Garage)
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                          <span className={cn(
+                                            "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                                            v.status === 'Available' ? 'bg-emerald-100 text-emerald-700' :
+                                            v.status === 'On Trip' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-orange-100 text-orange-700'
+                                          )}>
+                                            {v.status}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStatFilter === 'maintenance' && (
+                        <div className="overflow-x-auto border border-slate-150 rounded-xl bg-white">
+                          <table className="w-full text-xs text-left">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-150">
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">সমস্যা বা মেইনটেনেন্স নোট (Reported Issue / Repair Note)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">আপডেটের সময় (Last Updated)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা (State)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {vehicles
+                                .filter(v => v.status === 'Maintenance' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
+                                .map(v => (
+                                  <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-4 py-3 font-bold text-accent">{v.vehicleNumber}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium text-[10px]">
+                                        {v.type}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-700 font-medium">
+                                      {v.maintenanceNotes ? (
+                                        <span className="text-amber-800 bg-amber-50 px-2 py-1 rounded border border-amber-100/55 text-[11px] block">
+                                          {v.maintenanceNotes}
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-400 italic">কোনো সমস্যা উল্লেখ করা নেই (No notes reported)</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-500">{formatMaintDate(v.updatedAt || v.createdAt)}</td>
+                                    <td className="px-4 py-3 text-right">
+                                      <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-bold uppercase inline-flex items-center gap-1">
+                                        <Wrench size={10} />
+                                        <span>Maintenance</span>
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              {vehicles.filter(v => v.status === 'Maintenance').length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                                    বর্তমানে কোনো গাড়ি মেইনটেনেন্সে নেই। (No vehicles currently in maintenance)
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Object.entries(stats.typeBreakdown).map(([type, count]) => (

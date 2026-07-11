@@ -169,11 +169,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode, title?: string, className?: string }> = ({ children, title, className }) => (
+export const Card: React.FC<{ children: React.ReactNode, title?: React.ReactNode, className?: string }> = ({ children, title, className }) => (
   <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden", className)}>
     {title && (
       <div className="px-5 py-4 border-b border-border bg-[#f8fafc]">
-        <h3 className="font-semibold text-sm text-text-main">{title}</h3>
+        {typeof title === 'string' ? (
+          <h3 className="font-semibold text-sm text-text-main">{title}</h3>
+        ) : (
+          title
+        )}
       </div>
     )}
     <div className="p-5">
