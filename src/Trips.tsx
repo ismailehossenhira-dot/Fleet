@@ -36,7 +36,10 @@ const Trips: React.FC = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => {
+    const saved = localStorage.getItem('trips_showAdd');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [viewingTripMap, setViewingTripMap] = useState<any | null>(null);
   
   // Trip log & grouping state
@@ -116,25 +119,43 @@ const Trips: React.FC = () => {
   }, [trips]);
   
   // Form State
-  const [formData, setFormData] = useState({
-    vehicleId: '',
-    vehiclePlate: '',
-    driverId: 'DRV-',
-    driverName: '',
-    driverPhone: '',
-    helperId: 'HLP-',
-    helperName: '',
-    helperPhone: '',
-    location: '',
-    destinationLatLng: null as { lat: number, lng: number } | null,
-    routePoints: [] as Array<{ lat: number, lng: number }>,
-    tollAmount: 0,
-    documentsGiven: [] as string[],
-    toolsGiven: [] as string[]
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('trips_formData');
+    return saved ? JSON.parse(saved) : {
+      vehicleId: '',
+      vehiclePlate: '',
+      driverId: 'DRV-',
+      driverName: '',
+      driverPhone: '',
+      helperId: 'HLP-',
+      helperName: '',
+      helperPhone: '',
+      location: '',
+      destinationLatLng: null as { lat: number, lng: number } | null,
+      routePoints: [] as Array<{ lat: number, lng: number }>,
+      tollAmount: 0,
+      documentsGiven: [] as string[],
+      toolsGiven: [] as string[]
+    };
   });
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
   const [isSearchingHelper, setIsSearchingHelper] = useState(false);
-  const [vehicleSearch, setVehicleSearch] = useState('');
+  const [vehicleSearch, setVehicleSearch] = useState(() => {
+    const saved = localStorage.getItem('trips_vehicleSearch');
+    return saved || '';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('trips_showAdd', JSON.stringify(showAdd));
+  }, [showAdd]);
+
+  useEffect(() => {
+    localStorage.setItem('trips_formData', JSON.stringify(formData));
+  }, [formData]);
+
+  useEffect(() => {
+    localStorage.setItem('trips_vehicleSearch', vehicleSearch);
+  }, [vehicleSearch]);
 
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
@@ -223,6 +244,30 @@ const Trips: React.FC = () => {
     }));
   };
 
+  const handleCancel = () => {
+    setShowAdd(false);
+    setVehicleSearch('');
+    setFormData({
+      vehicleId: '',
+      vehiclePlate: '',
+      driverId: 'DRV-',
+      driverName: '',
+      driverPhone: '',
+      helperId: 'HLP-',
+      helperName: '',
+      helperPhone: '',
+      location: '',
+      destinationLatLng: null,
+      routePoints: [],
+      tollAmount: 0,
+      documentsGiven: [],
+      toolsGiven: []
+    });
+    localStorage.removeItem('trips_formData');
+    localStorage.removeItem('trips_showAdd');
+    localStorage.removeItem('trips_vehicleSearch');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vehicleId || !formData.driverId || !formData.location) return;
@@ -247,6 +292,9 @@ const Trips: React.FC = () => {
       documentsGiven: [],
       toolsGiven: []
     });
+    localStorage.removeItem('trips_formData');
+    localStorage.removeItem('trips_showAdd');
+    localStorage.removeItem('trips_vehicleSearch');
   };
 
   const availableVehicles = vehicles.filter(v => v.status === 'Available');
@@ -443,7 +491,7 @@ const Trips: React.FC = () => {
 
                 <div className="flex gap-4 pt-4 border-t border-slate-100">
                   <Button type="submit" className="flex-1">Create Pending Trip (ট্রিপ এন্ট্রি করুন)</Button>
-                  <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+                  <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
                 </div>
               </form>
             </Card>

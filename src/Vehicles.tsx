@@ -10,15 +10,29 @@ const Vehicles: React.FC = () => {
   const { isAdmin, isSubAdmin } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => {
+    const saved = localStorage.getItem('vehicles_showAdd');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newVehicle, setNewVehicle] = useState({
-    vehicleNumber: '',
-    type: 'Medium',
-    status: 'Available',
-    maintenanceNotes: ''
+  const [newVehicle, setNewVehicle] = useState(() => {
+    const saved = localStorage.getItem('vehicles_newVehicle');
+    return saved ? JSON.parse(saved) : {
+      vehicleNumber: '',
+      type: 'Medium',
+      status: 'Available',
+      maintenanceNotes: ''
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('vehicles_showAdd', JSON.stringify(showAdd));
+  }, [showAdd]);
+
+  useEffect(() => {
+    localStorage.setItem('vehicles_newVehicle', JSON.stringify(newVehicle));
+  }, [newVehicle]);
 
   const [selectedQRVehicle, setSelectedQRVehicle] = useState<any | null>(null);
 
@@ -124,6 +138,13 @@ const Vehicles: React.FC = () => {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const handleCancel = () => {
+    setShowAdd(false);
+    setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
+    localStorage.removeItem('vehicles_newVehicle');
+    localStorage.removeItem('vehicles_showAdd');
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newVehicle.vehicleNumber) return;
@@ -137,6 +158,8 @@ const Vehicles: React.FC = () => {
     await addVehicle(normalizedVehicle);
     setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
     setShowAdd(false);
+    localStorage.removeItem('vehicles_newVehicle');
+    localStorage.removeItem('vehicles_showAdd');
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -243,7 +266,7 @@ const Vehicles: React.FC = () => {
             )}
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1">Save Vehicle</Button>
-              <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
             </div>
           </form>
         </Card>

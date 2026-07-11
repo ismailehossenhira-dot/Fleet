@@ -12,22 +12,49 @@ const CaseManagement: React.FC = () => {
   const [cases, setCases] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'Active' | 'Stats'>('Active');
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => {
+    const saved = localStorage.getItem('cases_showAdd');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState({ start: '', end: '' });
-  const [vehicleSearch, setVehicleSearch] = useState('');
-  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
-  const [newCase, setNewCase] = useState({
-    vehicleId: '',
-    driverId: 'DRV-',
-    driverName: '',
-    driverPhone: '',
-    caseId: '',
-    amount: 0,
-    reason: '',
-    seizedDocuments: [] as string[]
+  const [vehicleSearch, setVehicleSearch] = useState(() => {
+    const saved = localStorage.getItem('cases_vehicleSearch');
+    return saved || '';
   });
+  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
+  const [newCase, setNewCase] = useState(() => {
+    const saved = localStorage.getItem('cases_newCase');
+    return saved ? JSON.parse(saved) : {
+      vehicleId: '',
+      driverId: 'DRV-',
+      driverName: '',
+      driverPhone: '',
+      caseId: '',
+      amount: 0,
+      reason: '',
+      seizedDocuments: [] as string[]
+    };
+  });
+
+  useEffect(() => {
+    if (!editingId) {
+      localStorage.setItem('cases_showAdd', JSON.stringify(showAdd));
+    }
+  }, [showAdd, editingId]);
+
+  useEffect(() => {
+    if (!editingId) {
+      localStorage.setItem('cases_vehicleSearch', vehicleSearch);
+    }
+  }, [vehicleSearch, editingId]);
+
+  useEffect(() => {
+    if (!editingId) {
+      localStorage.setItem('cases_newCase', JSON.stringify(newCase));
+    }
+  }, [newCase, editingId]);
 
   useEffect(() => {
     const unsubCases = subscribeToCollection('cases', setCases);
@@ -69,6 +96,16 @@ const CaseManagement: React.FC = () => {
     }));
   };
 
+  const handleCancel = () => {
+    setShowAdd(false);
+    setEditingId(null);
+    setVehicleSearch('');
+    setNewCase({ vehicleId: '', driverId: 'DRV-', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
+    localStorage.removeItem('cases_newCase');
+    localStorage.removeItem('cases_showAdd');
+    localStorage.removeItem('cases_vehicleSearch');
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCase.vehicleId || !newCase.caseId) return;
@@ -81,7 +118,12 @@ const CaseManagement: React.FC = () => {
     
     setShowAdd(false);
     setEditingId(null);
+    setVehicleSearch('');
     setNewCase({ vehicleId: '', driverId: 'DRV-', driverName: '', driverPhone: '', caseId: '', amount: 0, reason: '', seizedDocuments: [] });
+    
+    localStorage.removeItem('cases_newCase');
+    localStorage.removeItem('cases_showAdd');
+    localStorage.removeItem('cases_vehicleSearch');
   };
 
   const startEdit = (item: any) => {
@@ -370,7 +412,7 @@ const CaseManagement: React.FC = () => {
 
              <div className="flex gap-3">
                <Button type="submit" variant="danger" className="flex-1">{editingId ? 'Update Record' : 'Flag Documents'}</Button>
-               <Button type="button" variant="secondary" onClick={() => { setShowAdd(false); setEditingId(null); setVehicleSearch(''); }}>Cancel</Button>
+               <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
              </div>
            </form>
         </Card>

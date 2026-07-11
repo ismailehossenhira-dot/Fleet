@@ -9,21 +9,42 @@ const Drivers: React.FC = () => {
   const { isAdmin, isSubAdmin } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => {
+    const saved = localStorage.getItem('drivers_showAdd');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newDriver, setNewDriver] = useState({
-    driverId: 'DRV-',
-    name: '',
-    phoneNumber: '',
-    role: 'Driver'
+  const [newDriver, setNewDriver] = useState(() => {
+    const saved = localStorage.getItem('drivers_newDriver');
+    return saved ? JSON.parse(saved) : {
+      driverId: 'DRV-',
+      name: '',
+      phoneNumber: '',
+      role: 'Driver'
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('drivers_showAdd', JSON.stringify(showAdd));
+  }, [showAdd]);
+
+  useEffect(() => {
+    localStorage.setItem('drivers_newDriver', JSON.stringify(newDriver));
+  }, [newDriver]);
 
   useEffect(() => {
     return subscribeToCollection('drivers', setDrivers);
   }, []);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleCancel = () => {
+    setShowAdd(false);
+    setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
+    localStorage.removeItem('drivers_newDriver');
+    localStorage.removeItem('drivers_showAdd');
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +56,8 @@ const Drivers: React.FC = () => {
     await addDriver(normalizedDriver);
     setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
     setShowAdd(false);
+    localStorage.removeItem('drivers_newDriver');
+    localStorage.removeItem('drivers_showAdd');
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -250,7 +273,7 @@ const Drivers: React.FC = () => {
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1">Enroll Driver</Button>
-              <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
             </div>
           </form>
         </Card>
