@@ -380,7 +380,6 @@ const QRScanner: React.FC = () => {
       const updates = {
         documentsGiven: dispatchForm.documentsGiven,
         toolsGiven: dispatchForm.toolsGiven,
-        tollAmount: Number(dispatchForm.tollAmount) || 0,
       };
 
       await startPendingTrip(pendingTrip.id, vehicle.id, updates, profile);
@@ -778,18 +777,6 @@ const QRScanner: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Estimated Toll */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">টোল বাজেট (Estimated Toll Amount)</label>
-                    <input 
-                      type="number"
-                      placeholder="যেমন: ১৫০০"
-                      className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 font-mono"
-                      value={dispatchForm.tollAmount || ''}
-                      onChange={e => setDispatchForm({ ...dispatchForm, tollAmount: Number(e.target.value) })}
-                    />
                   </div>
 
                   {/* Documents Handed Over */}

@@ -16,7 +16,6 @@ import {
 } from './db';
 import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
-import MapComponent from './components/MapComponent';
 
 const NewTrip: React.FC = () => {
   const { isAdmin, isSubAdmin, isLineSupervisor, profile } = useAuth();
@@ -315,50 +314,15 @@ const NewTrip: React.FC = () => {
                     onChange={e => setFormData({ ...formData, location: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-medium text-slate-700">Map Destination & Route (Click to draw)</label>
-                  <button 
-                    type="button" 
-                    onClick={() => setFormData({ ...formData, destinationLatLng: null, routePoints: [] })}
-                    className="text-[10px] text-danger font-bold uppercase hover:underline"
-                  >
-                    Reset Route
-                  </button>
-                </div>
-                <MapComponent 
-                  className="h-[300px] w-full rounded-xl border border-slate-200"
-                  markers={[
-                    ...(formData.destinationLatLng ? [{ 
-                      position: [formData.destinationLatLng.lat, formData.destinationLatLng.lng] as [number, number], 
-                      label: "Destination" 
-                    }] : []),
-                    ...formData.routePoints.map((p, i) => ({
-                      position: [p.lat, p.lng] as [number, number],
-                      label: `Point ${i + 1}`
-                    }))
-                  ]}
-                  route={formData.routePoints.map(p => [p.lat, p.lng])}
-                  onClick={(latlng) => {
-                    const point = { lat: latlng.lat, lng: latlng.lng };
-                    setFormData({ 
-                      ...formData, 
-                      destinationLatLng: point, 
-                      routePoints: [...formData.routePoints, point] 
-                    });
-                  }}
-                />
-                <div className="mt-2 flex items-center justify-between">
-                  {formData.destinationLatLng && (
-                    <p className="text-[10px] text-text-muted">
-                      Target: {formData.destinationLatLng.lat.toFixed(4)}, {formData.destinationLatLng.lng.toFixed(4)}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-accent font-bold uppercase">
-                    {formData.routePoints.length} Points Added
-                  </p>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">টোল বাজেট (Estimated Toll Amount)</label>
+                  <input 
+                    type="number" 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-mono"
+                    placeholder="e.g. 1500"
+                    value={formData.tollAmount || ''}
+                    onChange={e => setFormData({ ...formData, tollAmount: Number(e.target.value) || 0 })}
+                  />
                 </div>
               </div>
 
