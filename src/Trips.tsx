@@ -27,11 +27,13 @@ import {
 } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useSearch } from './SearchContext';
 
 import MapComponent from './components/MapComponent';
 
 const Trips: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, isLineSupervisor, profile } = useAuth();
+  const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
@@ -47,6 +49,10 @@ const Trips: React.FC = () => {
   const [logSearch, setLogSearch] = useState('');
   const [selectedDateFilter, setSelectedDateFilter] = useState('');
   const [expandedDates, setExpandedDates] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    setLogSearch(searchQuery);
+  }, [searchQuery]);
 
   const getTripDateString = (trip: any) => {
     const timestamp = trip.startTime || trip.createdAt;
@@ -557,81 +563,110 @@ const Trips: React.FC = () => {
         </button>
       </div>
 
-      {activeTab === 'pending' && (
-        <div className="grid grid-cols-1 gap-6">
-          <Card title="Pending Dispatch (ছাড়পত্র অপেক্ষায় - গেটে Out QR স্ক্যানের পর চালু হবে)">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="bg-[#f8fafc] border-b border-border">
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {trips.filter(t => t.status === 'Pending').map(trip => (
-                    <tr key={trip.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
-                      <td className="px-5 py-3 text-text-muted">
-                        <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
-                        <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
-                        {trip.createdBy && (
-                          <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">এন্ট্রি: {trip.createdBy}</div>
-                        )}
-                        {trip.helperName && (
-                          <div className="mt-1 pt-1 border-t border-border border-dashed">
-                             <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
-                             <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-1">
-                          <MapPin size={10} className="text-accent" />
-                          <span>{trip.location}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-50 border border-amber-200 text-amber-700">
-                           Pending Out Scan
-                         </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {trips.filter(t => t.status === 'Pending').length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-text-muted italic">
-                        No pending transports waiting for Out QR Scan.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
+      {(() => {
+        const filteredPendingTrips = trips.filter(t => {
+          if (t.status !== 'Pending') return false;
+          if (!logSearch.trim()) return true;
+          const q = logSearch.toLowerCase();
+          return (t.id || '').toLowerCase().includes(q) ||
+            (t.vehiclePlate || t.vehicleId || '').toLowerCase().includes(q) ||
+            (t.driverName || '').toLowerCase().includes(q) ||
+            (t.driverId || '').toLowerCase().includes(q) ||
+            (t.helperName || '').toLowerCase().includes(q) ||
+            (t.helperId || '').toLowerCase().includes(q) ||
+            (t.location || '').toLowerCase().includes(q);
+        });
 
-      {activeTab === 'active' && (
-        <div className="grid grid-cols-1 gap-6">
-          <Card title="Active Transports">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="bg-[#f8fafc] border-b border-border">
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Documents</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {trips.filter(t => t.status === 'Running').map(trip => (
-                    <tr key={trip.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
+        const filteredActiveTrips = trips.filter(t => {
+          if (t.status !== 'Running') return false;
+          if (!logSearch.trim()) return true;
+          const q = logSearch.toLowerCase();
+          return (t.id || '').toLowerCase().includes(q) ||
+            (t.vehiclePlate || t.vehicleId || '').toLowerCase().includes(q) ||
+            (t.driverName || '').toLowerCase().includes(q) ||
+            (t.driverId || '').toLowerCase().includes(q) ||
+            (t.helperName || '').toLowerCase().includes(q) ||
+            (t.helperId || '').toLowerCase().includes(q) ||
+            (t.location || '').toLowerCase().includes(q);
+        });
+
+        return (
+          <>
+            {activeTab === 'pending' && (
+              <div className="grid grid-cols-1 gap-6">
+                <Card title="Pending Dispatch (ছাড়পত্র অপেক্ষায় - গেটে Out QR স্ক্যানের পর চালু হবে)">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="bg-[#f8fafc] border-b border-border">
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredPendingTrips.map(trip => (
+                          <tr key={trip.id} className="hover:bg-slate-50">
+                            <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
+                            <td className="px-5 py-3 text-text-muted">
+                              <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
+                              <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
+                              {trip.createdBy && (
+                                <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">এন্ট্রি: {trip.createdBy}</div>
+                              )}
+                              {trip.helperName && (
+                                <div className="mt-1 pt-1 border-t border-border border-dashed">
+                                   <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
+                                   <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-1">
+                                <MapPin size={10} className="text-accent" />
+                                <span>{trip.location}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-50 border border-amber-200 text-amber-700">
+                                 Pending Out Scan
+                               </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {filteredPendingTrips.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-5 py-10 text-center text-text-muted italic">
+                              No pending transports waiting for Out QR Scan.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'active' && (
+              <div className="grid grid-cols-1 gap-6">
+                <Card title="Active Transports">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="bg-[#f8fafc] border-b border-border">
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Documents</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredActiveTrips.map(trip => (
+                          <tr key={trip.id} className="hover:bg-slate-50">
+                            <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
                       <td className="px-5 py-3 text-text-muted">
                         <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
                         <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
@@ -689,7 +724,7 @@ const Trips: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {trips.filter(t => t.status === 'Running').length === 0 && (
+                  {filteredActiveTrips.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-5 py-10 text-center text-text-muted italic">
                         No active transport in progress.
@@ -702,6 +737,9 @@ const Trips: React.FC = () => {
           </Card>
         </div>
       )}
+          </>
+        );
+      })()}
 
       {activeTab === 'log' && (
         /* Daily Trip Log tab with Date Grouping and Full Details */
@@ -717,7 +755,10 @@ const Trips: React.FC = () => {
                   placeholder="গাড়ি প্লেট, স্টাফ আইডি বা নাম..."
                   className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500"
                   value={logSearch}
-                  onChange={e => setLogSearch(e.target.value)}
+                  onChange={e => {
+                    setLogSearch(e.target.value);
+                    setSearchQuery(e.target.value);
+                  }}
                 />
                 <Search size={14} className="absolute left-3 top-3 text-slate-400" />
               </div>
@@ -771,6 +812,7 @@ const Trips: React.FC = () => {
                 // Search filter
                 if (logSearch.trim()) {
                   const searchLower = logSearch.toLowerCase();
+                  const idMatch = (trip.id || '').toLowerCase().includes(searchLower);
                   const vehicleMatch = (trip.vehiclePlate || '').toLowerCase().includes(searchLower);
                   const driverIdMatch = (trip.driverId || '').toLowerCase().includes(searchLower);
                   const driverNameMatch = (trip.driverName || '').toLowerCase().includes(searchLower);
@@ -778,7 +820,7 @@ const Trips: React.FC = () => {
                   const helperNameMatch = (trip.helperName || '').toLowerCase().includes(searchLower);
                   const locationMatch = (trip.location || '').toLowerCase().includes(searchLower);
                   
-                  return vehicleMatch || driverIdMatch || driverNameMatch || helperIdMatch || helperNameMatch || locationMatch;
+                  return idMatch || vehicleMatch || driverIdMatch || driverNameMatch || helperIdMatch || helperNameMatch || locationMatch;
                 }
                 
                 return true;
@@ -807,7 +849,7 @@ const Trips: React.FC = () => {
 
               return sortedLogDates.map(dateStr => {
                 const { bnDate, enDate } = formatGroupDate(dateStr);
-                const isExpanded = expandedDates[dateStr] !== false; // Default to expanded
+                const isExpanded = logSearch.trim() ? (expandedDates[dateStr] !== false) : (expandedDates[dateStr] === true); // Default to closed unless searching
                 const dayTrips = groupedLogTrips[dateStr];
 
                 return (

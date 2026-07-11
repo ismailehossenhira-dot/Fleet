@@ -4,9 +4,11 @@ import { Card, Button } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useSearch } from './SearchContext';
 
 const Drivers: React.FC = () => {
   const { isAdmin, isSubAdmin, profile } = useAuth();
+  const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
@@ -15,6 +17,10 @@ const Drivers: React.FC = () => {
   });
   const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
   const [newDriver, setNewDriver] = useState(() => {
     const saved = localStorage.getItem('drivers_newDriver');
     return saved ? JSON.parse(saved) : {
@@ -357,7 +363,10 @@ const Drivers: React.FC = () => {
               placeholder="Search staff by ID or name..."
               className="bg-transparent border-none outline-none w-full text-xs py-1"
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setSearchQuery(e.target.value);
+              }}
             />
           </div>
           

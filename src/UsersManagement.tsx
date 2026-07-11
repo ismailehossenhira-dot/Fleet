@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { useAuth, UserRole } from './AuthContext';
+import { useSearch } from './SearchContext';
 import { 
   subscribeToCollection, 
   createUserAccount, 
@@ -28,10 +29,15 @@ import {
 
 const UsersManagement: React.FC = () => {
   const { profile, isAdmin, isSubAdmin, isSuperAdmin } = useAuth();
+  const { searchQuery, setSearchQuery } = useSearch();
   
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
   
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -377,7 +383,10 @@ const UsersManagement: React.FC = () => {
                   placeholder="ইউজারনেম বা নাম দিয়ে খুঁজুন..."
                   className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-700"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSearchQuery(e.target.value);
+                  }}
                 />
               </div>
               <div className="text-xs text-slate-500 font-medium">

@@ -4,9 +4,11 @@ import { Card, Button } from './components/Common';
 import { subscribeToCollection, resolveMissingReport, deleteMissingReport, deleteTrip, updateTrip } from './db';
 import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useSearch } from './SearchContext';
 
 const Reports: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
+  const { searchQuery, setSearchQuery } = useSearch();
   const canManageReports = isAdmin || isSubAdmin;
   const canResolveReports = isAdmin || isSubAdmin || isChecker;
   const [trips, setTrips] = useState<any[]>([]);
@@ -18,6 +20,10 @@ const Reports: React.FC = () => {
   const [filter, setFilter] = useState('All');
 
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
@@ -192,7 +198,7 @@ const Reports: React.FC = () => {
                    placeholder="Search by vehicle, driver, helper or location..."
                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-border outline-none focus:border-accent text-xs bg-slate-50"
                    value={searchTerm}
-                   onChange={e => setSearchTerm(e.target.value)}
+                   onChange={e => { setSearchTerm(e.target.value); setSearchQuery(e.target.value); }}
                  />
                </div>
                <div className="flex items-center gap-2">

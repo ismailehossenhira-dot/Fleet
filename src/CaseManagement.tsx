@@ -4,9 +4,11 @@ import { Card, Button } from './components/Common';
 import { addCase, resolveCase, subscribeToCollection, updateCase, deleteCase, findStaffById } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useSearch } from './SearchContext';
 
 const CaseManagement: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
+  const { searchQuery } = useSearch();
   const canManageItems = isAdmin || isSubAdmin;
   const canSubmit = isAdmin || isSubAdmin || isChecker;
   const [cases, setCases] = useState<any[]>([]);
@@ -18,6 +20,20 @@ const CaseManagement: React.FC = () => {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const searchFilteredCases = useMemo(() => {
+    if (!searchQuery.trim()) return cases;
+    const q = searchQuery.toLowerCase();
+    return cases.filter(c => {
+      return (c.id || '').toLowerCase().includes(q) ||
+        (c.caseId || '').toLowerCase().includes(q) ||
+        (c.vehicleId || '').toLowerCase().includes(q) ||
+        (c.driverName || '').toLowerCase().includes(q) ||
+        (c.driverId || '').toLowerCase().includes(q) ||
+        (c.reason || '').toLowerCase().includes(q) ||
+        (c.documentType || '').toLowerCase().includes(q);
+    });
+  }, [cases, searchQuery]);
   const [filterDate, setFilterDate] = useState({ start: '', end: '' });
   const [vehicleSearch, setVehicleSearch] = useState(() => {
     const saved = localStorage.getItem('cases_vehicleSearch');
@@ -432,7 +448,7 @@ const CaseManagement: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {cases.filter(c => (c.status || 'Open') === 'Open').map(item => (
+                  {searchFilteredCases.filter(c => (c.status || 'Open') === 'Open').map(item => (
                     <tr key={item.id} className="hover:bg-red-50/20 transition-colors">
                       <td className="px-5 py-3 align-top">
                          <div className="font-black text-slate-900 text-sm whitespace-nowrap">{item.vehicleId}</div>
@@ -473,7 +489,7 @@ const CaseManagement: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {cases.filter(c => (c.status || 'Open') === 'Open').length === 0 && (
+                  {searchFilteredCases.filter(c => (c.status || 'Open') === 'Open').length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-5 py-20 text-center text-text-muted italic">
                         <div className="flex flex-col items-center gap-3">
@@ -601,7 +617,7 @@ const CaseManagement: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {cases
+                          {searchFilteredCases
                             .filter(c => {
                               if (!filterDate.start && !filterDate.end) return true;
                               const caseDate = c.createdAt?.toDate ? c.createdAt.toDate() : new Date(c.createdAt || Date.now());

@@ -292,23 +292,26 @@ const Dashboard: React.FC = () => {
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="bg-[#f8fafc] border-b border-border">
-                    <th className="px-5 py-3 font-semibold text-text-muted">Vehicle ID</th>
+                    <th className="px-5 py-3 font-semibold text-text-muted">Vehicle Number (গাড়ির নাম্বার)</th>
                     <th className="px-5 py-3 font-semibold text-text-muted">Driver</th>
                     <th className="px-5 py-3 font-semibold text-text-muted">Destination</th>
                     <th className="px-5 py-3 font-semibold text-text-muted text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {trips.filter(t => t.status === 'Running').map(trip => (
-                    <tr key={trip.id}>
-                      <td className="px-5 py-3 font-semibold">{trip.vehicleId}</td>
-                      <td className="px-5 py-3 text-text-muted">{trip.driverName}</td>
-                      <td className="px-5 py-3">{trip.location}</td>
-                      <td className="px-5 py-3 text-right">
-                        <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {trips.filter(t => t.status === 'Running').map(trip => {
+                    const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
+                    return (
+                      <tr key={trip.id}>
+                        <td className="px-5 py-3 font-bold text-accent">{vehicleNum}</td>
+                        <td className="px-5 py-3 text-text-muted">{trip.driverName}</td>
+                        <td className="px-5 py-3">{trip.location}</td>
+                        <td className="px-5 py-3 text-right">
+                          <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {stats.runningTrips === 0 && (
                     <tr>
                       <td colSpan={4} className="px-5 py-8 text-center text-text-muted italic">No active trips running.</td>

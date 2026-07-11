@@ -4,10 +4,12 @@ import { Card, Button } from './components/Common';
 import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus } from './db';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useSearch } from './SearchContext';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const Vehicles: React.FC = () => {
   const { isAdmin, isSubAdmin, profile } = useAuth();
+  const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
@@ -16,6 +18,10 @@ const Vehicles: React.FC = () => {
   });
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
   const [newVehicle, setNewVehicle] = useState(() => {
     const saved = localStorage.getItem('vehicles_newVehicle');
     return saved ? JSON.parse(saved) : {
@@ -345,7 +351,10 @@ const Vehicles: React.FC = () => {
             placeholder="Search by vehicle number..."
             className="bg-transparent border-none outline-none w-full text-xs py-1"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              setSearchTerm(e.target.value);
+              setSearchQuery(e.target.value);
+            }}
           />
         </div>
 
