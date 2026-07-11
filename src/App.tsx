@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
 import Dashboard from './Dashboard';
 import Vehicles from './Vehicles';
@@ -144,7 +144,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SearchProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -158,7 +158,7 @@ export default function App() {
             <Route path="/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </SearchProvider>
     </AuthProvider>
   );
