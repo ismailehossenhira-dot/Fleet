@@ -6,7 +6,7 @@ import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 
 const CaseManagement: React.FC = () => {
-  const { isAdmin, isSubAdmin, isChecker } = useAuth();
+  const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
   const canManageItems = isAdmin || isSubAdmin;
   const canSubmit = isAdmin || isSubAdmin || isChecker;
   const [cases, setCases] = useState<any[]>([]);
@@ -111,9 +111,9 @@ const CaseManagement: React.FC = () => {
     if (!newCase.vehicleId || !newCase.caseId) return;
     
     if (editingId) {
-      await updateCase(editingId, newCase);
+      await updateCase(editingId, newCase, profile);
     } else {
-      await addCase(newCase);
+      await addCase(newCase, profile);
     }
     
     setShowAdd(false);
@@ -442,6 +442,12 @@ const CaseManagement: React.FC = () => {
                              <div className="text-[9px] text-slate-400 mt-0.5">{item.driverId}</div>
                            </div>
                          )}
+                         {item.createdBy && (
+                           <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {item.createdBy}</div>
+                         )}
+                         {item.updatedBy && (
+                           <div className="text-[9px] text-slate-400 font-normal">এডিট: {item.updatedBy}</div>
+                         )}
                          <div className="text-[10px] font-mono text-slate-500 mt-1">#{item.caseId}</div>
                       </td>
                       <td className="px-5 py-3 align-top max-w-xs">
@@ -459,7 +465,7 @@ const CaseManagement: React.FC = () => {
                          {canManageItems && (
                            <button 
                              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg transition-colors" 
-                             onClick={() => resolveCase(item.id)}
+                             onClick={() => resolveCase(item.id, profile)}
                            >
                              Resolve
                            </button>
@@ -623,6 +629,15 @@ const CaseManagement: React.FC = () => {
                                     <div className="text-[10px] text-slate-500 font-medium">
                                       {item.driverName} ({item.driverId})
                                     </div>
+                                  )}
+                                  {item.createdBy && (
+                                    <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {item.createdBy}</div>
+                                  )}
+                                  {item.updatedBy && (
+                                    <div className="text-[9px] text-slate-400 font-normal">এডিট: {item.updatedBy}</div>
+                                  )}
+                                  {item.resolvedBy && (
+                                    <div className="text-[9px] text-emerald-600 font-semibold mt-0.5">সমাধান: {item.resolvedBy}</div>
                                   )}
                                   <div className="text-[10px] font-mono text-slate-400 mt-1">#{item.caseId}</div>
                                 </td>

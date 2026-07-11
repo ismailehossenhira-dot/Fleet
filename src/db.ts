@@ -54,10 +54,18 @@ export const subscribeToCollection = (collName: string, callback: (data: any[]) 
 };
 
 // Vehicles
-export const addVehicle = async (vehicle: any) => {
+const getUserString = (profile?: any) => {
+  if (!profile) return 'System';
+  const name = profile.displayName || profile.username || 'System User';
+  const role = profile.role ? ` (${profile.role})` : '';
+  return `${name}${role}`;
+};
+
+export const addVehicle = async (vehicle: any, profile?: any) => {
   try {
     return await addDoc(collection(db, 'vehicles'), {
       ...vehicle,
+      createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -66,12 +74,13 @@ export const addVehicle = async (vehicle: any) => {
   }
 };
 
-export const updateVehicleStatus = async (vehicleId: string, status: string, maintenanceNotes?: string) => {
+export const updateVehicleStatus = async (vehicleId: string, status: string, maintenanceNotes?: string, profile?: any) => {
   try {
     const docRef = doc(db, 'vehicles', vehicleId);
     const updates: any = { 
       status, 
-      updatedAt: serverTimestamp() 
+      updatedAt: serverTimestamp(),
+      updatedBy: getUserString(profile)
     };
     if (status === 'Maintenance') {
       if (maintenanceNotes !== undefined) {
@@ -87,11 +96,12 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
   }
 };
 
-export const updateVehicle = async (id: string, vehicle: any) => {
+export const updateVehicle = async (id: string, vehicle: any, profile?: any) => {
   try {
     const docRef = doc(db, 'vehicles', id);
     await updateDoc(docRef, { 
       ...vehicle, 
+      updatedBy: getUserString(profile),
       updatedAt: serverTimestamp() 
     });
   } catch (error) {
@@ -108,10 +118,11 @@ export const deleteVehicle = async (id: string) => {
 };
 
 // Drivers
-export const addDriver = async (driver: any) => {
+export const addDriver = async (driver: any, profile?: any) => {
   try {
     return await addDoc(collection(db, 'drivers'), {
       ...driver,
+      createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
   } catch (error) {
@@ -119,11 +130,12 @@ export const addDriver = async (driver: any) => {
   }
 };
 
-export const updateDriver = async (id: string, driver: any) => {
+export const updateDriver = async (id: string, driver: any, profile?: any) => {
   try {
     const docRef = doc(db, 'drivers', id);
     await updateDoc(docRef, {
       ...driver,
+      updatedBy: getUserString(profile),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -172,12 +184,13 @@ export const findStaffById = async (staffId: string) => {
 };
 
 // Trips
-export const createTrip = async (trip: any) => {
+export const createTrip = async (trip: any, profile?: any) => {
   try {
     // 1. Create trip record
     const tripRef = await addDoc(collection(db, 'trips'), {
       ...trip,
       status: 'Pending',
+      createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
     
@@ -190,28 +203,30 @@ export const createTrip = async (trip: any) => {
   }
 };
 
-export const startPendingTrip = async (tripId: string, vehicleId: string, updates: any) => {
+export const startPendingTrip = async (tripId: string, vehicleId: string, updates: any, profile?: any) => {
   try {
     const tripRef = doc(db, 'trips', tripId);
     await updateDoc(tripRef, {
       ...updates,
       status: 'Running',
       startTime: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      startedBy: getUserString(profile)
     });
 
     // Update vehicle status to 'On Trip' now that OUT QR is scanned
-    await updateVehicleStatus(vehicleId, 'On Trip');
+    await updateVehicleStatus(vehicleId, 'On Trip', undefined, profile);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `trips/${tripId}`);
   }
 };
 
-export const updateTrip = async (tripId: string, updates: any) => {
+export const updateTrip = async (tripId: string, updates: any, profile?: any) => {
   try {
     const tripRef = doc(db, 'trips', tripId);
     await updateDoc(tripRef, {
       ...updates,
+      updatedBy: getUserString(profile),
       updatedAt: serverTimestamp()
     });
   } catch (error) {
@@ -227,10 +242,11 @@ export const deleteTrip = async (tripId: string) => {
   }
 };
 
-export const createMissingReport = async (report: any) => {
+export const createMissingReport = async (report: any, profile?: any) => {
   try {
     return await addDoc(collection(db, 'missing_reports'), {
       ...report,
+      createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
   } catch (error) {
@@ -238,7 +254,7 @@ export const createMissingReport = async (report: any) => {
   }
 };
 
-export const resolveMissingReport = async (reportId: string) => {
+export const resolveMissingReport = async (reportId: string, profile?: any) => {
   try {
     const reportRef = doc(db, 'missing_reports', reportId);
     const reportSnap = await getDoc(reportRef);
@@ -250,6 +266,7 @@ export const resolveMissingReport = async (reportId: string) => {
         ...data,
         status: 'Resolved',
         originalId: reportId,
+        resolvedBy: getUserString(profile),
         resolvedAt: serverTimestamp(),
         deletedAt: serverTimestamp(), // fallback for display in History
       });
@@ -289,12 +306,13 @@ export const deleteMissingReport = async (reportId: string) => {
   }
 };
 
-export const completeTrip = async (tripId: string, vehicleId: string, inspection: any) => {
+export const completeTrip = async (tripId: string, vehicleId: string, inspection: any, profile?: any) => {
   try {
     const tripRef = doc(db, 'trips', tripId);
     await updateDoc(tripRef, {
       status: 'Completed',
       endTime: serverTimestamp(),
+      completedBy: getUserString(profile),
       inspectionOnReturn: {
         ...inspection,
         inspectedAt: serverTimestamp()
@@ -302,18 +320,19 @@ export const completeTrip = async (tripId: string, vehicleId: string, inspection
     });
 
     // Reset vehicle status
-    await updateVehicleStatus(vehicleId, 'Available');
+    await updateVehicleStatus(vehicleId, 'Available', undefined, profile);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `trips/${tripId}`);
   }
 };
 
 // Cases (Mamla)
-export const addCase = async (caseData: any) => {
+export const addCase = async (caseData: any, profile?: any) => {
   try {
     return await addDoc(collection(db, 'cases'), {
       ...caseData,
       status: 'Open',
+      createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
   } catch (error) {
@@ -321,11 +340,12 @@ export const addCase = async (caseData: any) => {
   }
 };
 
-export const resolveCase = async (caseId: string) => {
+export const resolveCase = async (caseId: string, profile?: any) => {
   try {
     const caseRef = doc(db, 'cases', caseId);
     await updateDoc(caseRef, {
       status: 'Resolved',
+      resolvedBy: getUserString(profile),
       resolvedAt: serverTimestamp()
     });
   } catch (error) {
@@ -333,11 +353,12 @@ export const resolveCase = async (caseId: string) => {
   }
 };
 
-export const updateCase = async (id: string, caseData: any) => {
+export const updateCase = async (id: string, caseData: any, profile?: any) => {
   try {
     const docRef = doc(db, 'cases', id);
     await updateDoc(docRef, {
       ...caseData,
+      updatedBy: getUserString(profile),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

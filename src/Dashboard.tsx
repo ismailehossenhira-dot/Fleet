@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useSearch } from './SearchContext';
 import { cn } from './lib/utils';
+import { useAuth } from './AuthContext';
 
 const StatCard: React.FC<{ 
   label: string, 
@@ -41,6 +42,7 @@ const StatCard: React.FC<{
 );
 
 const Dashboard: React.FC = () => {
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -69,7 +71,7 @@ const Dashboard: React.FC = () => {
   const handleSaveNotes = async (vehicleId: string) => {
     setIsSavingNotes(true);
     try {
-      await updateVehicleStatus(vehicleId, 'Maintenance', tempNotes.trim());
+      await updateVehicleStatus(vehicleId, 'Maintenance', tempNotes.trim(), profile);
       setEditingNotesId(null);
     } catch (err) {
       console.error(err);
@@ -116,7 +118,7 @@ const Dashboard: React.FC = () => {
 
   const handleResolveRepair = async (vehicleId: string) => {
     try {
-      await updateVehicleStatus(vehicleId, 'Available', '');
+      await updateVehicleStatus(vehicleId, 'Available', '', profile);
     } catch (err) {
       console.error(err);
     }
@@ -127,7 +129,7 @@ const Dashboard: React.FC = () => {
       const nextStatus = currentStatus === 'Maintenance' ? 'Available' : 'Maintenance';
       // Retain existing notes if putting under maintenance, or clear if moving to available
       const existingNotes = vehicles.find(v => v.id === vehicleId)?.maintenanceNotes || '';
-      await updateVehicleStatus(vehicleId, nextStatus, nextStatus === 'Maintenance' ? existingNotes : '');
+      await updateVehicleStatus(vehicleId, nextStatus, nextStatus === 'Maintenance' ? existingNotes : '', profile);
     } catch (err) {
       console.error(err);
     }

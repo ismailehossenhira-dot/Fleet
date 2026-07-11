@@ -6,7 +6,7 @@ import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 
 const Drivers: React.FC = () => {
-  const { isAdmin, isSubAdmin } = useAuth();
+  const { isAdmin, isSubAdmin, profile } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
@@ -53,7 +53,7 @@ const Drivers: React.FC = () => {
       ...newDriver,
       driverId: newDriver.driverId.trim().toUpperCase()
     };
-    await addDriver(normalizedDriver);
+    await addDriver(normalizedDriver, profile);
     setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
     setShowAdd(false);
     localStorage.removeItem('drivers_newDriver');
@@ -70,7 +70,7 @@ const Drivers: React.FC = () => {
       driverId: updateData.driverId.trim().toUpperCase()
     };
     
-    await updateDriver(id, normalized);
+    await updateDriver(id, normalized, profile);
     setEditingDriver(null);
   };
 
@@ -123,7 +123,15 @@ const Drivers: React.FC = () => {
                 <td className="px-5 py-3">
                    <span className="font-bold text-accent uppercase tracking-tight">{driver.driverId}</span>
                 </td>
-                <td className="px-5 py-3 font-bold text-slate-800">{driver.name}</td>
+                <td className="px-5 py-3 font-bold text-slate-800">
+                  <div>{driver.name}</div>
+                  {driver.createdBy && (
+                    <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {driver.createdBy}</div>
+                  )}
+                  {driver.updatedBy && (
+                    <div className="text-[9px] text-slate-400 font-normal">এডিট: {driver.updatedBy}</div>
+                  )}
+                </td>
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Phone size={14} className="opacity-50" />

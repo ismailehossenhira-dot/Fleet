@@ -16,8 +16,10 @@ import {
 } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { Html5Qrcode } from 'html5-qrcode';
+import { useAuth } from './AuthContext';
 
 const QRScanner: React.FC = () => {
+  const { profile } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
@@ -28,7 +30,7 @@ const QRScanner: React.FC = () => {
 
   const handleInstantStatusUpdate = async (vehicleId: string, status: 'Available' | 'Maintenance', notes?: string) => {
     try {
-      await updateVehicleStatus(vehicleId, status, notes);
+      await updateVehicleStatus(vehicleId, status, notes, profile);
       setInstantUpdateStatus(status === 'Available' ? 'success_available' : 'success_maintenance');
       setTimeout(() => {
         setInstantUpdateStatus('idle');
@@ -381,7 +383,7 @@ const QRScanner: React.FC = () => {
         tollAmount: Number(dispatchForm.tollAmount) || 0,
       };
 
-      await startPendingTrip(pendingTrip.id, vehicle.id, updates);
+      await startPendingTrip(pendingTrip.id, vehicle.id, updates, profile);
       setDispatchStatus('success');
       setTimeout(() => setScanResult(null), 2500);
     } catch (err) {
@@ -420,7 +422,7 @@ const QRScanner: React.FC = () => {
 
     try {
       // 1. Mark trip as completed
-      await completeTrip(activeTrip.id, vehicle.id, returnForm);
+      await completeTrip(activeTrip.id, vehicle.id, returnForm, profile);
 
       // 2. If items are missing, generate missing report automatically
       if (returnForm.missingDocuments.length > 0 || returnForm.missingTools.length > 0) {
@@ -435,7 +437,7 @@ const QRScanner: React.FC = () => {
           notes: returnForm.notes,
           status: 'Pending',
           date: new Date()
-        });
+        }, profile);
       }
 
       setReturnStatus('success');

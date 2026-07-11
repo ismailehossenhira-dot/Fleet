@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const Vehicles: React.FC = () => {
-  const { isAdmin, isSubAdmin } = useAuth();
+  const { isAdmin, isSubAdmin, profile } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
@@ -155,7 +155,7 @@ const Vehicles: React.FC = () => {
     if (normalizedVehicle.status !== 'Maintenance') {
       normalizedVehicle.maintenanceNotes = '';
     }
-    await addVehicle(normalizedVehicle);
+    await addVehicle(normalizedVehicle, profile);
     setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
     setShowAdd(false);
     localStorage.removeItem('vehicles_newVehicle');
@@ -174,7 +174,7 @@ const Vehicles: React.FC = () => {
     }
     // Exclude id from the object sent to updateVehicle
     const { id, createdAt, updatedAt, ...updateData } = normalized;
-    await updateVehicle(id, updateData);
+    await updateVehicle(id, updateData, profile);
     setEditingVehicle(null);
   };
 
@@ -362,7 +362,15 @@ const Vehicles: React.FC = () => {
             <tbody className="divide-y divide-border">
               {filtered.map(vehicle => (
                 <tr key={vehicle.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 font-bold text-text-main">{vehicle.vehicleNumber}</td>
+                  <td className="px-5 py-3 font-bold text-text-main">
+                    <div>{vehicle.vehicleNumber}</div>
+                    {vehicle.createdBy && (
+                      <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {vehicle.createdBy}</div>
+                    )}
+                    {vehicle.updatedBy && (
+                      <div className="text-[9px] text-slate-400 font-normal">এডিট: {vehicle.updatedBy}</div>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-text-muted">{vehicle.type}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-col gap-1">

@@ -6,7 +6,7 @@ import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 
 const Reports: React.FC = () => {
-  const { isAdmin, isSubAdmin, isChecker } = useAuth();
+  const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
   const canManageReports = isAdmin || isSubAdmin;
   const canResolveReports = isAdmin || isSubAdmin || isChecker;
   const [trips, setTrips] = useState<any[]>([]);
@@ -26,7 +26,7 @@ const Reports: React.FC = () => {
   const handleResolve = async (id: string) => {
     try {
       setResolvingId(id);
-      await resolveMissingReport(id);
+      await resolveMissingReport(id, profile);
       alert('সফলভাবে সমাধান করা হয়েছে এবং রেকর্ডটি ইতিহাসে সংরক্ষিত হয়েছে।');
     } catch (e: any) {
       console.error("Resolve failed:", e);
@@ -349,6 +349,12 @@ const Reports: React.FC = () => {
                     </td>
                     <td className="px-5 py-3">
                        <div className="font-black text-text-main text-[11px] uppercase tracking-tight">{report.vehiclePlate}</div>
+                        {report.createdBy && (
+                          <div className="text-[9px] text-slate-400 font-normal mt-1">শনাক্তকারী: {report.createdBy}</div>
+                        )}
+                        {report.resolvedBy && (
+                          <div className="text-[9px] text-emerald-600 font-semibold">সমাধানকারী: {report.resolvedBy}</div>
+                        )}
                        <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-text-muted">{report.driverName}</span>
                           <span className={cn(
@@ -505,6 +511,12 @@ const Reports: React.FC = () => {
                       </td>
                       <td className="px-5 py-3 text-slate-500">
                          <div className="font-bold text-[11px] uppercase tracking-tight">{report.vehiclePlate}</div>
+                         {report.createdBy && (
+                           <div className="text-[9px] text-slate-400 font-normal mt-1">শনাক্তকারী: {report.createdBy}</div>
+                         )}
+                         {report.resolvedBy && (
+                           <div className="text-[9px] text-emerald-600 font-semibold">সমাধানকারী: {report.resolvedBy}</div>
+                         )}
                          <div className="flex items-center gap-1.5 mt-0.5">
                             <span>{report.driverName}</span>
                             <span className="text-[9px] font-bold py-0.5 px-1 bg-slate-100 text-slate-500 rounded uppercase">{report.driverId}</span>

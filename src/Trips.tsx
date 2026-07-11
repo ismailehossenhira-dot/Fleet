@@ -31,7 +31,7 @@ import { useAuth } from './AuthContext';
 import MapComponent from './components/MapComponent';
 
 const Trips: React.FC = () => {
-  const { isAdmin, isSubAdmin, isChecker, isLineSupervisor } = useAuth();
+  const { isAdmin, isSubAdmin, isChecker, isLineSupervisor, profile } = useAuth();
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
@@ -272,7 +272,7 @@ const Trips: React.FC = () => {
     e.preventDefault();
     if (!formData.vehicleId || !formData.driverId || !formData.location) return;
     
-    await createTrip(formData);
+    await createTrip(formData, profile);
     setShowAdd(false);
     setVehicleSearch('');
     setActiveTab('pending'); // Automatically switch to pending tab to show created trip!
@@ -577,6 +577,9 @@ const Trips: React.FC = () => {
                       <td className="px-5 py-3 text-text-muted">
                         <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
                         <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
+                        {trip.createdBy && (
+                          <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">এন্ট্রি: {trip.createdBy}</div>
+                        )}
                         {trip.helperName && (
                           <div className="mt-1 pt-1 border-t border-border border-dashed">
                              <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
@@ -632,6 +635,9 @@ const Trips: React.FC = () => {
                       <td className="px-5 py-3 text-text-muted">
                         <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
                         <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
+                        {trip.startedBy && (
+                          <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">রিলিজ: {trip.startedBy}</div>
+                        )}
                         {trip.helperName && (
                           <div className="mt-1 pt-1 border-t border-border border-dashed">
                              <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
@@ -967,6 +973,11 @@ const Trips: React.FC = () => {
                                         <ArrowRight size={12} className="text-blue-500" />
                                         <span>{formatTripTime(trip.startTime)}</span>
                                       </span>
+                                      {trip.startedBy && (
+                                        <span className="text-[10px] text-slate-500 block mt-1 font-medium bg-slate-100/60 px-1.5 py-0.5 rounded w-max">
+                                          রিলিজ বাই: {trip.startedBy}
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="border-t pt-2 mt-2">
                                       <span className="text-slate-400 block mb-0.5">ফেরত সময় (In-Time):</span>
@@ -982,7 +993,19 @@ const Trips: React.FC = () => {
                                           </span>
                                         )}
                                       </span>
+                                      {isCompleted && trip.completedBy && (
+                                        <span className="text-[10px] text-emerald-700 block mt-1 font-medium bg-emerald-50/60 px-1.5 py-0.5 rounded w-max">
+                                          রিসিভ বাই: {trip.completedBy}
+                                        </span>
+                                      )}
                                     </div>
+                                    {trip.createdBy && (
+                                      <div className="border-t pt-2 mt-2">
+                                        <span className="text-[10px] text-slate-500 block font-medium">
+                                          এন্ট্রি বাই: {trip.createdBy}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
