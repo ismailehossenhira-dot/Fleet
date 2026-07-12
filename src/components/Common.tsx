@@ -12,7 +12,9 @@ import {
   Menu,
   X,
   QrCode,
-  PlusCircle
+  PlusCircle,
+  ClipboardList,
+  Sunrise
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -20,6 +22,7 @@ import { useAuth, UserRole } from '../AuthContext';
 import { useSearch } from '../SearchContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { subscribeToCollection } from '../db';
 
 interface NavItem {
   to: string;
@@ -32,10 +35,11 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/qr-scanner', icon: QrCode, label: 'QR Scanner', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/vehicles', icon: Truck, label: 'Vehicles', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
+  { to: '/requests', icon: ClipboardList, label: 'Requests', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/drivers', icon: Users, label: 'Drivers', roles: ['Admin', 'Sub Admin'] },
   { to: '/new-trip', icon: PlusCircle, label: 'New Trip', roles: ['Admin', 'Sub Admin', 'Line Supervisor'] },
   { to: '/trips', icon: MapPin, label: 'Trips', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/return', icon: ClipboardCheck, label: 'Return', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
+  { to: '/morning-prep', icon: Sunrise, label: 'Morning Prep', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/cases', icon: FileWarning, label: 'Cases', roles: ['Admin', 'Sub Admin', 'Checker'] },
   { to: '/reports', icon: History, label: 'Reports', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/users', icon: Users, label: 'Users', roles: ['Admin', 'Sub Admin'] },
@@ -45,6 +49,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { user, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [pendingCount, setPendingCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const unsub = subscribeToCollection('requests', (items: any[]) => {
+      const count = items.filter(r => r.status === 'Pending').length;
+      setPendingCount(count);
+    });
+    return () => unsub();
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -84,22 +97,49 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
 
           <nav className="flex-1 px-3 space-y-1">
-            {filteredNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setIsSidebarOpen(false)}
-                className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group text-sm",
-                  isActive 
-                    ? "bg-white/10 text-white font-semibold" 
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+            {filteredNavItems.map((item) => {
+              const isRequests = item.to === '/requests';
+              const hasPending = isRequests && pendingCount > 0;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={({ isActive }) => cn(
+                    "flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 group text-sm",
+                    isActive 
+                      ? "bg-white/10 text-white font-semibold" 
+                      : "text-slate-400 hover:text-white hover:bg-white/5",
+                    hasPending && "bg-amber-500/10 text-amber-200 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon size={18} className={cn(
+                      "transition-colors",
+                      hasPending && "text-amber-400 animate-pulse"
+                    )} />
+                    <span className={cn(
+                      "transition-all",
+                      hasPending && "font-bold text-amber-100"
+                    )}>
+                      {item.label}
+                    </span>
+                  </div>
+
+                  {hasPending && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-md">
+                        {pendingCount}
+                      </span>
+                    </div>
+                  )}
+                </NavLink>
+              );
+            })}
           </nav>
 
           <div className="p-4 mt-auto border-t border-white/10">

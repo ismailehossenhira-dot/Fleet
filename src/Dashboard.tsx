@@ -14,7 +14,8 @@ import {
   Wrench,
   Check,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  PlusCircle
 } from 'lucide-react';
 import { Card } from './components/Common';
 import { subscribeToCollection, updateVehicleStatus } from './db';
@@ -126,26 +127,41 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Dynamically calculate operational status for display consistency and resilience
+  const computedVehicles = vehicles.map(v => {
+    if (v.status === 'Maintenance') {
+      return v;
+    }
+    const hasRunningTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Running');
+    if (hasRunningTrip) {
+      return { ...v, status: 'On Trip' as const };
+    }
+    const hasPendingTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Pending');
+    if (hasPendingTrip) {
+      return { ...v, status: 'Pending Out Scan' as const };
+    }
+    return { ...v, status: 'Available' as const };
+  });
+
   const stats = {
-    totalVehicles: vehicles.length,
-    activeFleet: vehicles.filter(v => v.status !== 'Maintenance').length,
-    availableVehicles: vehicles.filter(v => v.status === 'Available').length,
-    onTripVehicles: vehicles.filter(v => v.status === 'On Trip').length,
-    maintenanceVehicles: vehicles.filter(v => v.status === 'Maintenance').length,
+    totalVehicles: computedVehicles.length,
+    activeFleet: computedVehicles.filter(v => v.status !== 'Maintenance').length,
+    availableVehicles: computedVehicles.filter(v => v.status === 'Available').length,
+    onTripVehicles: computedVehicles.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan').length,
+    maintenanceVehicles: computedVehicles.filter(v => v.status === 'Maintenance').length,
     runningTrips: trips.filter(t => t.status === 'Running').length,
     completedTrips: trips.filter(t => t.status === 'Completed').length,
     totalDrivers: drivers.length,
     typeBreakdown: {
-      Small: vehicles.filter(v => v.type === 'Small').length,
-      Medium: vehicles.filter(v => v.type === 'Medium').length,
-      Large: vehicles.filter(v => v.type === 'Large').length,
+      Small: computedVehicles.filter(v => v.type === 'Small').length,
+      Medium: computedVehicles.filter(v => v.type === 'Medium').length,
+      Large: computedVehicles.filter(v => v.type === 'Large').length,
     }
   };
 
   const filteredSearch = {
-    vehicles: vehicles.filter(v => 
+    vehicles: computedVehicles.filter(v => 
       v.vehicleNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      v.vin?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.id?.toLowerCase().includes(searchQuery.toLowerCase())
     ),
     drivers: drivers.filter(d => 
@@ -174,7 +190,7 @@ const Dashboard: React.FC = () => {
     try {
       const nextStatus = currentStatus === 'Maintenance' ? 'Available' : 'Maintenance';
       // Retain existing notes if putting under maintenance, or clear if moving to available
-      const existingNotes = vehicles.find(v => v.id === vehicleId)?.maintenanceNotes || '';
+      const existingNotes = computedVehicles.find(v => v.id === vehicleId)?.maintenanceNotes || '';
       await updateVehicleStatus(vehicleId, nextStatus, nextStatus === 'Maintenance' ? existingNotes : '', profile);
     } catch (err) {
       console.error(err);
@@ -182,7 +198,7 @@ const Dashboard: React.FC = () => {
   };
 
   // Filter vehicles for Maintenance Overview table
-  const maintOverviewVehicles = vehicles.filter(v => {
+  const maintOverviewVehicles = computedVehicles.filter(v => {
     const hasNotesOrMaint = v.status === 'Maintenance' || (v.maintenanceNotes && v.maintenanceNotes.trim() !== '');
     if (!hasNotesOrMaint) return false;
 
@@ -194,10 +210,9 @@ const Dashboard: React.FC = () => {
     if (maintSearch.trim() !== '') {
       const q = maintSearch.toLowerCase();
       const matchesNum = v.vehicleNumber?.toLowerCase().includes(q);
-      const matchesVin = v.vin?.toLowerCase().includes(q);
       const matchesNotes = v.maintenanceNotes?.toLowerCase().includes(q);
       const matchesType = v.type?.toLowerCase().includes(q);
-      if (!matchesNum && !matchesVin && !matchesNotes && !matchesType) return false;
+      if (!matchesNum && !matchesNotes && !matchesType) return false;
     }
 
     return true;
@@ -247,7 +262,7 @@ const Dashboard: React.FC = () => {
                           'bg-orange-100 text-orange-700'
                         )}>{v.status}</span>
                       </div>
-                      <p className="text-[10px] text-text-muted mt-1">{v.type} • VIN: {v.vin}</p>
+                      <p className="text-[10px] text-text-muted mt-1">{v.type}</p>
                       {v.status === 'Maintenance' && v.maintenanceNotes && (
                         <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded mt-1.5 whitespace-pre-wrap break-words italic">
                           সমস্যা: {v.maintenanceNotes}
@@ -441,10 +456,10 @@ const Dashboard: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {vehicles
-                                .filter(v => v.status === 'On Trip' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
+                              {computedVehicles
+                                .filter(v => (v.status === 'On Trip' || v.status === 'Pending Out Scan') && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
                                 .map(v => {
-                                  const activeTrip = trips.find(t => t.vehicleId === v.id && t.status === 'Running');
+                                  const activeTrip = trips.find(t => t.vehicleId === v.id && (t.status === 'Running' || t.status === 'Pending'));
                                   return (
                                     <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
                                       <td className="px-4 py-3 font-bold text-accent">{v.vehicleNumber}</td>
@@ -456,17 +471,27 @@ const Dashboard: React.FC = () => {
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 text-slate-500">
-                                        {activeTrip ? formatMaintDate(activeTrip.startTime) : 'N/A'}
+                                        {activeTrip ? (
+                                          activeTrip.status === 'Running' 
+                                            ? formatMaintDate(activeTrip.startTime) 
+                                            : `পেন্ডিং (Created: ${formatMaintDate(activeTrip.createdAt)})`
+                                        ) : 'N/A'}
                                       </td>
                                       <td className="px-4 py-3 text-right">
-                                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase">
-                                          On Trip
-                                        </span>
+                                        {v.status === 'Pending Out Scan' ? (
+                                          <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold uppercase whitespace-nowrap animate-pulse">
+                                            Pending Out Scan
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase whitespace-nowrap">
+                                            On Trip
+                                          </span>
+                                        )}
                                       </td>
                                     </tr>
                                   );
                                 })}
-                              {vehicles.filter(v => v.status === 'On Trip').length === 0 && (
+                              {computedVehicles.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan').length === 0 && (
                                 <tr>
                                   <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
                                     এই মুহূর্তে কোনো গাড়ি ট্রিপে নেই। (No vehicles currently on a trip)
@@ -485,13 +510,12 @@ const Dashboard: React.FC = () => {
                               <tr className="bg-slate-50 border-b border-slate-150">
                                 <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
                                 <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">আইডি/ভ্যালু (Vehicle ID)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">লাইসেন্স/VIN</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ইনস্ট্যান্ট ট্রিপ (Instant Trip)</th>
                                 <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা (State)</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {vehicles
+                              {computedVehicles
                                 .filter(v => v.status === 'Available' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
                                 .map(v => (
                                   <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
@@ -501,8 +525,15 @@ const Dashboard: React.FC = () => {
                                         {v.type}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600 font-mono text-[11px]">{v.id}</td>
-                                    <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{v.vin || 'N/A'}</td>
+                                    <td className="px-4 py-3">
+                                      <Link 
+                                        to={`/new-trip?vehicleId=${v.id}`}
+                                        className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold inline-flex items-center gap-1 shadow-sm hover:shadow transition-all cursor-pointer"
+                                      >
+                                        <PlusCircle size={10} />
+                                        <span>Instant Trip Entry</span>
+                                      </Link>
+                                    </td>
                                     <td className="px-4 py-3 text-right">
                                       <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase inline-flex items-center gap-1">
                                         <CheckCircle size={10} />
@@ -511,9 +542,9 @@ const Dashboard: React.FC = () => {
                                     </td>
                                   </tr>
                                 ))}
-                              {vehicles.filter(v => v.status === 'Available').length === 0 && (
+                              {computedVehicles.filter(v => v.status === 'Available').length === 0 && (
                                 <tr>
-                                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
+                                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400 italic">
                                     বর্তমানে কোনো গাড়ি খালি/উপলব্ধ নেই। (No available vehicles in garage)
                                   </td>
                                 </tr>
@@ -568,13 +599,12 @@ const Dashboard: React.FC = () => {
                                 <tr className="bg-slate-50 border-b border-slate-150">
                                   <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
                                   <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
-                                  <th className="px-4 py-3 font-semibold text-slate-500">লাইসেন্স/VIN</th>
                                   <th className="px-4 py-3 font-semibold text-slate-500">বর্তমান অবস্থান/চালক (Current Location / Driver)</th>
                                   <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস (Status)</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
-                                {vehicles
+                                {computedVehicles
                                   .filter(v => detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true)
                                   .map(v => {
                                     const activeTrip = trips.find(t => t.vehicleId === v.id && t.status === 'Running');
@@ -586,7 +616,6 @@ const Dashboard: React.FC = () => {
                                             {v.type}
                                           </span>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">{v.vin || 'N/A'}</td>
                                         <td className="px-4 py-3">
                                           {v.status === 'On Trip' ? (
                                             <div className="flex flex-col">
@@ -637,7 +666,7 @@ const Dashboard: React.FC = () => {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {vehicles
+                              {computedVehicles
                                 .filter(v => v.status === 'Maintenance' && (detailSearch ? v.vehicleNumber?.toLowerCase().includes(detailSearch.toLowerCase()) : true))
                                 .map(v => (
                                   <tr key={v.id} className="hover:bg-slate-50/50 transition-colors">
@@ -665,7 +694,7 @@ const Dashboard: React.FC = () => {
                                     </td>
                                   </tr>
                                 ))}
-                              {vehicles.filter(v => v.status === 'Maintenance').length === 0 && (
+                              {computedVehicles.filter(v => v.status === 'Maintenance').length === 0 && (
                                 <tr>
                                   <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
                                     বর্তমানে কোনো গাড়ি মেইনটেনেন্সে নেই। (No vehicles currently in maintenance)
@@ -682,7 +711,7 @@ const Dashboard: React.FC = () => {
               )}
             </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         {Object.entries(stats.typeBreakdown).map(([type, count]) => (
           <div key={type} className="bg-surface border border-border p-4 rounded-xl flex items-center justify-between">
             <div>
@@ -696,7 +725,7 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="lg:col-span-2">
           <Card title="Live Fleet Status">
              <div className="overflow-x-auto">
@@ -710,7 +739,7 @@ const Dashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {trips.filter(t => t.status === 'Running').map(trip => {
+                  {trips.filter(t => t.status === 'Running' || t.status === 'Pending').map(trip => {
                     const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
                     return (
                       <tr key={trip.id}>
@@ -718,12 +747,16 @@ const Dashboard: React.FC = () => {
                         <td className="px-5 py-3 text-text-muted">{trip.driverName}</td>
                         <td className="px-5 py-3">{trip.location}</td>
                         <td className="px-5 py-3 text-right">
-                          <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
+                          {trip.status === 'Pending' ? (
+                            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px] animate-pulse">Pending Out Scan</span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
+                          )}
                         </td>
                       </tr>
                     );
                   })}
-                  {stats.runningTrips === 0 && (
+                  {trips.filter(t => t.status === 'Running' || t.status === 'Pending').length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-5 py-8 text-center text-text-muted italic">No active trips running.</td>
                     </tr>
@@ -803,39 +836,6 @@ const Dashboard: React.FC = () => {
                 <div className="text-center py-4 text-text-muted text-xs">No active alerts.</div>
               )}
             </div>
-          </Card>
-
-          <Card title="Quick Driver Stats">
-             <Link to="/drivers" className="block group">
-               <div className="space-y-4">
-                 <div className="flex justify-between items-center text-xs">
-                   <div className="flex flex-col">
-                     <span className="text-text-muted">Total Active Drivers</span>
-                     <span className="text-[9px] text-accent font-bold group-hover:underline flex items-center gap-1">
-                       View All Drivers <ArrowRight size={10} />
-                     </span>
-                   </div>
-                   <span className="font-bold text-lg">{stats.totalDrivers}</span>
-                 </div>
-                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                   <div className="h-full bg-accent transition-all duration-500" style={{ width: `${Math.min((stats.totalDrivers / (stats.totalVehicles || 1)) * 100, 100)}%` }} />
-                 </div>
-                 <div className="pt-2 border-t border-slate-50">
-                    <div className="flex -space-x-2 overflow-hidden">
-                      {drivers.slice(0, 5).map((driver, i) => (
-                        <div key={driver.id || i} className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-600 uppercase">
-                          {driver.name?.charAt(0) || 'D'}
-                        </div>
-                      ))}
-                      {stats.totalDrivers > 5 && (
-                        <div className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400">
-                          +{stats.totalDrivers - 5}
-                        </div>
-                      )}
-                    </div>
-                 </div>
-               </div>
-             </Link>
           </Card>
         </div>
       </div>
@@ -962,7 +962,6 @@ const Dashboard: React.FC = () => {
                       <td className="px-4 py-3">
                         <Link to="/vehicles" className="font-bold text-accent hover:underline flex flex-col">
                           <span>{v.vehicleNumber}</span>
-                          <span className="text-[9px] text-slate-400 font-mono font-normal">VIN: {v.vin || 'N/A'}</span>
                         </Link>
                       </td>
 

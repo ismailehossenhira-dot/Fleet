@@ -12,6 +12,7 @@ const Vehicles: React.FC = () => {
   const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
     const saved = localStorage.getItem('vehicles_showAdd');
     return saved ? JSON.parse(saved) : false;
@@ -139,7 +140,12 @@ const Vehicles: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('All');
 
   useEffect(() => {
-    return subscribeToCollection('vehicles', setVehicles);
+    const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
+    const unsubTrips = subscribeToCollection('trips', setTrips);
+    return () => {
+      unsubVehicles();
+      unsubTrips();
+    };
   }, []);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -197,7 +203,22 @@ const Vehicles: React.FC = () => {
     }
   };
 
-  const filtered = vehicles.filter(v => 
+  const computedVehicles = vehicles.map(v => {
+    if (v.status === 'Maintenance') {
+      return v;
+    }
+    const hasRunningTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Running');
+    if (hasRunningTrip) {
+      return { ...v, status: 'On Trip' };
+    }
+    const hasPendingTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Pending');
+    if (hasPendingTrip) {
+      return { ...v, status: 'Pending Out Scan' };
+    }
+    return { ...v, status: 'Available' };
+  });
+
+  const filtered = computedVehicles.filter(v => 
     (v.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (typeFilter === 'All' || v.type === typeFilter)
   );
@@ -387,6 +408,7 @@ const Vehicles: React.FC = () => {
                         "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase w-fit",
                         vehicle.status === 'Available' ? "bg-emerald-100 text-emerald-700" :
                         vehicle.status === 'On Trip' ? "bg-blue-100 text-blue-700" :
+                        vehicle.status === 'Pending Out Scan' ? "bg-amber-100 text-amber-700" :
                         "bg-orange-100 text-orange-700"
                       )}>
                         {vehicle.status}

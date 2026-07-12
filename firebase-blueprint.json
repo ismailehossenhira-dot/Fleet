@@ -28,6 +28,11 @@
         "driverId": { "type": "string" },
         "name": { "type": "string" },
         "phoneNumber": { "type": "string" },
+        "isSuspended": { "type": "boolean" },
+        "suspensionEndDate": { "type": "string" },
+        "suspensionReason": { "type": "string" },
+        "suspendedBy": { "type": "string" },
+        "suspensionDays": { "type": "integer" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["driverId", "name", "phoneNumber"]
@@ -132,6 +137,59 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "VehicleRequest": {
+      "title": "Vehicle Request",
+      "description": "Represents a vehicle demand or request from a zone",
+      "type": "object",
+      "properties": {
+        "zone": { "type": "string" },
+        "type": { "type": "string", "enum": ["Small", "Medium", "Large"] },
+        "quantity": { "type": "integer" },
+        "allocatedCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["Pending", "Partially Allocated", "Fulfilled", "Rejected"] },
+        "notes": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["zone", "type", "quantity", "status"]
+    },
+    "VehicleStatusLog": {
+      "title": "Vehicle Status Log",
+      "description": "Represents status logs/transitions of a vehicle",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "oldStatus": { "type": "string" },
+        "newStatus": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "vehiclePlate", "oldStatus", "newStatus"]
+    },
+    "MorningPrep": {
+      "title": "Morning Prep",
+      "description": "Represents morning checkup and preparations for trip readiness",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "vehicleType": { "type": "string" },
+        "driverId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "odometer": { "type": "integer" },
+        "checklist": { "type": "object" },
+        "overallStatus": { "type": "string" },
+        "notes": { "type": "string" },
+        "dateStr": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehicleId", "vehiclePlate", "driverId", "driverName", "overallStatus"]
     }
   },
   "firestore": {
@@ -158,6 +216,18 @@
     "users": {
       "schema": "UserProfile",
       "description": "Collection of user profiles and roles"
+    },
+    "requests": {
+      "schema": "VehicleRequest",
+      "description": "Collection of vehicle requests from zones"
+    },
+    "vehicle_status_logs": {
+      "schema": "VehicleStatusLog",
+      "description": "Collection of vehicle status transition logs"
+    },
+    "morning_preps": {
+      "schema": "MorningPrep",
+      "description": "Collection of morning inspection and preparations"
     }
   }
 }

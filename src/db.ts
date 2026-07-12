@@ -63,12 +63,25 @@ const getUserString = (profile?: any) => {
 
 export const addVehicle = async (vehicle: any, profile?: any) => {
   try {
-    return await addDoc(collection(db, 'vehicles'), {
+    const docRef = await addDoc(collection(db, 'vehicles'), {
       ...vehicle,
       createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    // Log initial status
+    await addDoc(collection(db, 'vehicle_status_logs'), {
+      vehicleId: docRef.id,
+      vehiclePlate: vehicle.vehicleNumber,
+      oldStatus: 'None',
+      newStatus: vehicle.status || 'Available',
+      notes: vehicle.maintenanceNotes || 'Initial registration',
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp()
+    });
+
+    return docRef;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, 'vehicles');
   }
@@ -77,6 +90,13 @@ export const addVehicle = async (vehicle: any, profile?: any) => {
 export const updateVehicleStatus = async (vehicleId: string, status: string, maintenanceNotes?: string, profile?: any) => {
   try {
     const docRef = doc(db, 'vehicles', vehicleId);
+    
+    // Fetch current status to check transition
+    const docSnap = await getDoc(docRef);
+    const vehicleData = docSnap.exists() ? docSnap.data() : null;
+    const oldStatus = vehicleData ? vehicleData.status : 'None';
+    const vehiclePlate = vehicleData ? vehicleData.vehicleNumber : 'Unknown';
+
     const updates: any = { 
       status, 
       updatedAt: serverTimestamp(),
@@ -112,11 +132,46 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
       } catch (err) {
         console.error("Error auto-completing active trips on maintenance transition:", err);
       }
-    } else {
+    } else if (status === 'Available') {
       // Clear notes if not in maintenance
+      updates.maintenanceNotes = '';
+      
+      // If manually set to Available, complete any Running trip
+      try {
+        const q = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', vehicleId),
+          where('status', '==', 'Running')
+        );
+        const tripsSnap = await getDocs(q);
+        for (const docObj of tripsSnap.docs) {
+          await updateDoc(doc(db, 'trips', docObj.id), {
+            status: 'Completed',
+            endTime: serverTimestamp(),
+            completedBy: getUserString(profile) || 'System (Manual Available)',
+            updatedAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error("Error completing running trips on available transition:", err);
+      }
+    } else {
       updates.maintenanceNotes = '';
     }
     await updateDoc(docRef, updates);
+
+    // Log the status transition if status changed
+    if (oldStatus !== status) {
+      await addDoc(collection(db, 'vehicle_status_logs'), {
+        vehicleId,
+        vehiclePlate,
+        oldStatus,
+        newStatus: status,
+        notes: maintenanceNotes || '',
+        createdBy: getUserString(profile),
+        createdAt: serverTimestamp()
+      });
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `vehicles/${vehicleId}`);
   }
@@ -125,11 +180,78 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
 export const updateVehicle = async (id: string, vehicle: any, profile?: any) => {
   try {
     const docRef = doc(db, 'vehicles', id);
+    
+    // Fetch current status to check transition
+    const docSnap = await getDoc(docRef);
+    const vehicleData = docSnap.exists() ? docSnap.data() : null;
+    const oldStatus = vehicleData ? vehicleData.status : 'None';
+    const vehiclePlate = vehicleData ? vehicleData.vehicleNumber : vehicle.vehicleNumber || 'Unknown';
+
     await updateDoc(docRef, { 
       ...vehicle, 
       updatedBy: getUserString(profile),
       updatedAt: serverTimestamp() 
     });
+
+    // Log transition if status changed
+    if (vehicle.status && vehicle.status !== oldStatus) {
+      await addDoc(collection(db, 'vehicle_status_logs'), {
+        vehicleId: id,
+        vehiclePlate,
+        oldStatus,
+        newStatus: vehicle.status,
+        notes: vehicle.maintenanceNotes || '',
+        createdBy: getUserString(profile),
+        createdAt: serverTimestamp()
+      });
+    }
+
+    // Auto-complete trips on update transitions if needed
+    if (vehicle.status === 'Maintenance') {
+      try {
+        const q = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', id)
+        );
+        const tripsSnap = await getDocs(q);
+        for (const docObj of tripsSnap.docs) {
+          const tripData = docObj.data();
+          if (tripData.status === 'Running' || tripData.status === 'Pending') {
+            await updateDoc(doc(db, 'trips', docObj.id), {
+              status: 'Completed',
+              endTime: serverTimestamp(),
+              completedBy: getUserString(profile) || 'System (Maintenance Auto)',
+              updatedAt: serverTimestamp(),
+              inspectionOnReturn: {
+                notes: vehicle.maintenanceNotes || 'Auto-completed on entering Maintenance',
+                inspectedAt: serverTimestamp()
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error auto-completing active trips on maintenance transition:", err);
+      }
+    } else if (vehicle.status === 'Available') {
+      try {
+        const q = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', id),
+          where('status', '==', 'Running')
+        );
+        const tripsSnap = await getDocs(q);
+        for (const docObj of tripsSnap.docs) {
+          await updateDoc(doc(db, 'trips', docObj.id), {
+            status: 'Completed',
+            endTime: serverTimestamp(),
+            completedBy: getUserString(profile) || 'System (Manual Available)',
+            updatedAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error("Error completing running trips on available transition:", err);
+      }
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `vehicles/${id}`);
   }
@@ -237,7 +359,57 @@ export const createTrip = async (trip: any, profile?: any) => {
       throw new Error("এই গাড়ির জন্য ইতিমধ্যেই একটি ট্রিপ নিবন্ধিত (Pending) বা চলমান (Running) রয়েছে। প্রথমে সেটি শেষ বা বাতিল করুন।");
     }
 
-    // 3. Create trip record
+    // 2.5. Double-check if the selected driver is suspended
+    const drvId = trip.driverId?.trim().toUpperCase();
+    if (drvId && drvId !== 'DRV-') {
+      const driverObj = await findStaffById(drvId);
+      if (driverObj && (driverObj as any).isSuspended) {
+        throw new Error(`চালক ${(driverObj as any).name || drvId} বর্তমানে সাসপেন্ড আছেন! কারণ: ${(driverObj as any).suspensionReason || 'উল্লেখ নেই'} (${(driverObj as any).suspensionDays || '0'} দিন)`);
+      }
+    }
+
+    // 2.6. Double-check if the selected helper is suspended
+    const hlpId = trip.helperId?.trim().toUpperCase();
+    if (hlpId && hlpId !== 'HLP-' && hlpId !== '') {
+      const helperObj = await findStaffById(hlpId);
+      if (helperObj && (helperObj as any).isSuspended) {
+        throw new Error(`হেলপার ${(helperObj as any).name || hlpId} বর্তমানে সাসপেন্ড আছেন! কারণ: ${(helperObj as any).suspensionReason || 'উল্লেখ নেই'} (${(helperObj as any).suspensionDays || '0'} দিন)`);
+      }
+    }
+
+    // 3. Double-check if driver is already on an active trip
+    if (drvId && drvId !== 'DRV-') {
+      const qDrv = query(
+        collection(db, 'trips'),
+        where('driverId', '==', drvId)
+      );
+      const drvTripsSnap = await getDocs(qDrv);
+      const isDriverBusy = drvTripsSnap.docs.some(docObj => {
+        const t = docObj.data();
+        return t.status === 'Pending' || t.status === 'Running';
+      });
+      if (isDriverBusy) {
+        throw new Error("এই চালক (Driver) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
+      }
+    }
+
+    // 4. Double-check if helper is already on an active trip
+    if (hlpId && hlpId !== 'HLP-' && hlpId !== '') {
+      const qHlp = query(
+        collection(db, 'trips'),
+        where('helperId', '==', hlpId)
+      );
+      const hlpTripsSnap = await getDocs(qHlp);
+      const isHelperBusy = hlpTripsSnap.docs.some(docObj => {
+        const t = docObj.data();
+        return t.status === 'Pending' || t.status === 'Running';
+      });
+      if (isHelperBusy) {
+        throw new Error("এই হেলপার (Helper) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
+      }
+    }
+
+    // 5. Create trip record
     const tripRef = await addDoc(collection(db, 'trips'), {
       ...trip,
       status: 'Pending',
@@ -609,3 +781,65 @@ export const toggleUserSuspension = async (uid: string, isSuspended: boolean) =>
     handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
   }
 };
+
+// --- Requests Collection ---
+export const addRequest = async (requestData: any, profile?: any) => {
+  try {
+    return await addDoc(collection(db, 'requests'), {
+      ...requestData,
+      allocatedCount: 0,
+      allocatedVehicles: [],
+      status: 'Pending',
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'requests');
+  }
+};
+
+export const updateRequest = async (requestId: string, updates: any, profile?: any) => {
+  try {
+    const docRef = doc(db, 'requests', requestId);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `requests/${requestId}`);
+  }
+};
+
+export const deleteRequest = async (requestId: string) => {
+  try {
+    await deleteDoc(doc(db, 'requests', requestId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `requests/${requestId}`);
+  }
+};
+
+// --- Morning Preps Collection ---
+export const addMorningPrep = async (prepData: any, profile?: any) => {
+  try {
+    return await addDoc(collection(db, 'morning_preps'), {
+      ...prepData,
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'morning_preps');
+  }
+};
+
+export const deleteMorningPrep = async (prepId: string) => {
+  try {
+    await deleteDoc(doc(db, 'morning_preps', prepId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `morning_preps/${prepId}`);
+  }
+};
+
+

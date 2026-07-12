@@ -12,12 +12,13 @@ import Dashboard from './Dashboard';
 import Vehicles from './Vehicles';
 import Trips from './Trips';
 import NewTrip from './NewTrip';
-import VehicleReturn from './VehicleReturn';
+import MorningPrep from './MorningPrep';
 import Drivers from './Drivers';
 import CaseManagement from './CaseManagement';
 import Reports from './Reports';
 import QRScanner from './QRScanner';
 import UsersManagement from './UsersManagement';
+import Requests from './Requests';
 import { loginWithUsernameAndPassword } from './db';
 import { Truck, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -150,9 +151,10 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
+            <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
             <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
             <Route path="/new-trip" element={<ProtectedRoute><NewTrip /></ProtectedRoute>} />
-            <Route path="/return" element={<ProtectedRoute><VehicleReturn /></ProtectedRoute>} />
+            <Route path="/morning-prep" element={<ProtectedRoute><MorningPrep /></ProtectedRoute>} />
             <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
             <Route path="/cases" element={<ProtectedRoute><CaseManagement /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />

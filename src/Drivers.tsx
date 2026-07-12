@@ -1,10 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
+
+const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mt-1 flex flex-col items-start gap-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="px-2 py-0.5 text-[9px] bg-red-100 border border-red-200 text-red-700 font-black rounded-md flex items-center gap-1 animate-pulse">
+          সাসপেন্ডেড (Suspended)
+        </span>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="text-[10px] text-blue-600 hover:text-blue-800 font-bold hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+        >
+          <span>{isOpen ? 'Hide Details' : 'View Details'}</span>
+          {isOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="mt-1 bg-red-50/40 border border-red-100/60 p-2.5 rounded-lg space-y-1 text-[10px] font-normal text-red-800 max-w-sm animate-in slide-in-from-top-1 duration-200">
+          <p>
+            <strong className="text-red-900 font-bold">কারণ (Reason):</strong>{' '}
+            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionReason || 'উল্লেখ নেই'}</span>
+          </p>
+          <p>
+            <strong className="text-red-900 font-bold">মেয়াদ (Period):</strong>{' '}
+            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionDays || '0'} দিন</span>
+          </p>
+          <p>
+            <strong className="text-red-900 font-bold">কে করেছে (Suspended By):</strong>{' '}
+            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspendedBy || 'Admin'}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Drivers: React.FC = () => {
   const { isAdmin, isSubAdmin, profile } = useAuth();
@@ -130,7 +169,12 @@ const Drivers: React.FC = () => {
                    <span className="font-bold text-accent uppercase tracking-tight">{driver.driverId}</span>
                 </td>
                 <td className="px-5 py-3 font-bold text-slate-800">
-                  <div>{driver.name}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>{driver.name}</span>
+                  </div>
+                  {driver.isSuspended && (
+                    <SuspensionBadgeAndDetails driver={driver} />
+                  )}
                   {driver.createdBy && (
                     <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {driver.createdBy}</div>
                   )}
@@ -335,6 +379,79 @@ const Drivers: React.FC = () => {
                 value={editingDriver.phoneNumber}
                 onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
               />
+            </div>
+
+            {/* Suspension Control Section */}
+            <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    সাসপেনশন কন্ট্রোল (Suspension Control)
+                  </h4>
+                  <p className="text-[10px] text-slate-400">স্টাফ সাময়িকভাবে বরখাস্ত বা সাসপেন্ড করার জন্য</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={!!editingDriver.isSuspended}
+                    onChange={e => {
+                      const suspended = e.target.checked;
+                      setEditingDriver({
+                        ...editingDriver,
+                        isSuspended: suspended,
+                        suspensionDays: suspended ? (editingDriver.suspensionDays || 7) : null,
+                        suspensionReason: suspended ? (editingDriver.suspensionReason || '') : null,
+                        suspendedBy: suspended ? (editingDriver.suspendedBy || profile?.email || 'Admin') : null,
+                      });
+                    }}
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
+                </label>
+              </div>
+
+              {editingDriver.isSuspended && (
+                <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেনশন মেয়াদ (দিন) / Duration (Days)</label>
+                      <input 
+                        type="number" 
+                        min={1}
+                        required
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400"
+                        placeholder="e.g. 7"
+                        value={editingDriver.suspensionDays || ''}
+                        onChange={e => {
+                          const days = parseInt(e.target.value) || 0;
+                          setEditingDriver({ ...editingDriver, suspensionDays: days });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডকারী / Suspended By</label>
+                      <input 
+                        type="text" 
+                        disabled
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-150 bg-slate-100 outline-none text-slate-500"
+                        value={editingDriver.suspendedBy || profile?.email || 'Admin'}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডের কারণ / Reason for Suspension</label>
+                    <textarea 
+                      required
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400 bg-white"
+                      placeholder="e.g. ডিউটি অবহেলা বা নিয়ম ভঙ্গ করা"
+                      rows={2}
+                      value={editingDriver.suspensionReason || ''}
+                      onChange={e => setEditingDriver({ ...editingDriver, suspensionReason: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 mt-4 pt-4">
               {deletingId === editingDriver.id ? (

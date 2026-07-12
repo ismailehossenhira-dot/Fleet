@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   MapPin, 
   Search, 
@@ -20,10 +20,13 @@ import { useAuth } from './AuthContext';
 const NewTrip: React.FC = () => {
   const { isAdmin, isSubAdmin, isLineSupervisor, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryVehicleId = searchParams.get('vehicleId');
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
   const [isSearchingHelper, setIsSearchingHelper] = useState(false);
   const [vehicleSearch, setVehicleSearch] = useState(() => {
@@ -61,9 +64,11 @@ const NewTrip: React.FC = () => {
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
     const unsubCases = subscribeToCollection('cases', setCases);
+    const unsubTrips = subscribeToCollection('trips', setTrips);
     return () => {
       unsubVehicles();
       unsubCases();
+      unsubTrips();
     };
   }, []);
 
@@ -73,6 +78,24 @@ const NewTrip: React.FC = () => {
       navigate('/trips');
     }
   }, [canManage, navigate]);
+
+  // Pre-select vehicle if vehicleId query param is present
+  useEffect(() => {
+    if (queryVehicleId && vehicles.length > 0) {
+      const match = vehicles.find(v => v.id === queryVehicleId);
+      if (match) {
+        setFormData(prev => ({ 
+          ...prev, 
+          vehicleId: match.id, 
+          vehiclePlate: match.vehicleNumber || '' 
+        }));
+        if (match.vehicleNumber) {
+          const last4 = match.vehicleNumber.slice(-4);
+          setVehicleSearch(last4);
+        }
+      }
+    }
+  }, [queryVehicleId, vehicles]);
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,16 +113,26 @@ const NewTrip: React.FC = () => {
   const handleDriverSearch = async (val: string) => {
     const id = val.trim().toUpperCase();
     setFormData(prev => ({ ...prev, driverId: id, driverName: '', driverPhone: '' }));
+    setSubmitError(null);
     if (id.length >= 3) {
       setIsSearchingDriver(true);
       try {
         const staff = await findStaffById(id) as any;
         if (staff) {
-          setFormData(prev => ({ 
-            ...prev, 
-            driverName: staff.name, 
-            driverPhone: staff.phoneNumber || '' 
-          }));
+          if (staff.isSuspended) {
+            setSubmitError(`চালক ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! কারণ: ${staff.suspensionReason || 'উল্লেখ নেই'}, মেয়াদ: ${staff.suspensionDays || '0'} দিন (দ্বারা: ${staff.suspendedBy || 'Admin'})।`);
+            setFormData(prev => ({ 
+              ...prev, 
+              driverName: '', 
+              driverPhone: '' 
+            }));
+          } else {
+            setFormData(prev => ({ 
+              ...prev, 
+              driverName: staff.name, 
+              driverPhone: staff.phoneNumber || '' 
+            }));
+          }
         }
       } catch (err) {
         console.error("Driver fetch error:", err);
@@ -112,16 +145,26 @@ const NewTrip: React.FC = () => {
   const handleHelperSearch = async (val: string) => {
     const id = val.trim().toUpperCase();
     setFormData(prev => ({ ...prev, helperId: id, helperName: '', helperPhone: '' }));
+    setSubmitError(null);
     if (id.length >= 3) {
       setIsSearchingHelper(true);
       try {
         const staff = await findStaffById(id) as any;
         if (staff) {
-          setFormData(prev => ({ 
-            ...prev, 
-            helperName: staff.name,
-            helperPhone: staff.phoneNumber || ''
-          }));
+          if (staff.isSuspended) {
+            setSubmitError(`হেলপার ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! কারণ: ${staff.suspensionReason || 'উল্লেখ নেই'}, মেয়াদ: ${staff.suspensionDays || '0'} দিন (দ্বারা: ${staff.suspendedBy || 'Admin'})।`);
+            setFormData(prev => ({ 
+              ...prev, 
+              helperName: '', 
+              helperPhone: '' 
+            }));
+          } else {
+            setFormData(prev => ({ 
+              ...prev, 
+              helperName: staff.name,
+              helperPhone: staff.phoneNumber || ''
+            }));
+          }
         }
       } catch (err) {
         console.error("Helper fetch error:", err);
@@ -160,6 +203,51 @@ const NewTrip: React.FC = () => {
     
     setIsSubmitting(true);
     setSubmitError(null);
+
+    const drvId = formData.driverId?.trim().toUpperCase();
+    if (drvId && drvId !== 'DRV-') {
+      // 1. Fetch and double check driver's suspension status
+      const staff = await findStaffById(drvId) as any;
+      if (staff && staff.isSuspended) {
+        setSubmitError(`চালক ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! সাসপেন্ড থাকাকালীন ট্রিপে যোগ দেওয়া যাবে না।`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const activeDriverTrip = trips.find(t => 
+        t.driverId?.trim().toUpperCase() === drvId && 
+        (t.status === 'Pending' || t.status === 'Running')
+      );
+      if (activeDriverTrip) {
+        const activeVehicleNum = activeDriverTrip.vehiclePlate || activeDriverTrip.vehicleId;
+        setSubmitError(`এই চালক (Driver ID: ${formData.driverId}) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন (গাড়ি: ${activeVehicleNum})।`);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const hlpId = formData.helperId?.trim().toUpperCase();
+    if (hlpId && hlpId !== 'HLP-' && hlpId !== '') {
+      // 2. Fetch and double check helper's suspension status
+      const staff = await findStaffById(hlpId) as any;
+      if (staff && staff.isSuspended) {
+        setSubmitError(`হেলপার ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! সাসপেন্ড থাকাকালীন ট্রিপে যোগ দেওয়া যাবে না।`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const activeHelperTrip = trips.find(t => 
+        t.helperId?.trim().toUpperCase() === hlpId && 
+        (t.status === 'Pending' || t.status === 'Running')
+      );
+      if (activeHelperTrip) {
+        const activeVehicleNum = activeHelperTrip.vehiclePlate || activeHelperTrip.vehicleId;
+        setSubmitError(`এই হেলপার (Helper ID: ${formData.helperId}) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন (গাড়ি: ${activeVehicleNum})।`);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       await createTrip(formData, profile);
       setVehicleSearch('');
@@ -203,7 +291,12 @@ const NewTrip: React.FC = () => {
     }
   };
 
-  const availableVehicles = vehicles.filter(v => v.status === 'Available');
+  const availableVehicles = vehicles.filter(v => {
+    if (v.status !== 'Available') return false;
+    // Exclude vehicles that already have an active (Pending or Running) trip
+    const hasActiveTrip = trips.some(t => t.vehicleId === v.id && (t.status === 'Pending' || t.status === 'Running'));
+    return !hasActiveTrip;
+  });
 
   if (!canManage) {
     return null;

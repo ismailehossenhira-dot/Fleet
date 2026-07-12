@@ -23,6 +23,21 @@ const QRScanner: React.FC = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
+
+  const computedVehicles = vehicles.map(v => {
+    if (v.status === 'Maintenance') {
+      return v;
+    }
+    const hasRunningTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Running');
+    if (hasRunningTrip) {
+      return { ...v, status: 'On Trip' };
+    }
+    const hasPendingTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Pending');
+    if (hasPendingTrip) {
+      return { ...v, status: 'Pending Out Scan' };
+    }
+    return { ...v, status: 'Available' };
+  });
   
   // Scanner state
   const [scanResult, setScanResult] = useState<{ type: 'IN' | 'OUT'; vehicleId: string } | null>(null);
@@ -265,7 +280,7 @@ const QRScanner: React.FC = () => {
     }
 
     // Check if vehicle exists
-    const matchingVehicle = vehicles.find(v => v.id === vehicleId || v.vehicleNumber.toUpperCase() === vehicleId.toUpperCase());
+    const matchingVehicle = computedVehicles.find(v => v.id === vehicleId || v.vehicleNumber.toUpperCase() === vehicleId.toUpperCase());
     if (!matchingVehicle) {
       alert(`Vehicle with ID "${vehicleId}" not found in database!`);
       return;
@@ -276,7 +291,7 @@ const QRScanner: React.FC = () => {
   };
 
   const triggerScanResult = (type: 'IN' | 'OUT', vehicleDbId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleDbId);
+    const vehicle = computedVehicles.find(v => v.id === vehicleDbId);
     if (!vehicle) return;
 
     setScanResult({ type, vehicleId: vehicleDbId });
@@ -379,7 +394,7 @@ const QRScanner: React.FC = () => {
   const handleDispatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanResult) return;
-    const vehicle = vehicles.find(v => v.id === scanResult.vehicleId);
+    const vehicle = computedVehicles.find(v => v.id === scanResult.vehicleId);
     if (!vehicle) return;
 
     const pendingTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Pending');
@@ -427,7 +442,7 @@ const QRScanner: React.FC = () => {
   const handleReturnSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scanResult) return;
-    const vehicle = vehicles.find(v => v.id === scanResult.vehicleId);
+    const vehicle = computedVehicles.find(v => v.id === scanResult.vehicleId);
     const activeTrip = trips.find(t => t.vehicleId === scanResult.vehicleId && t.status === 'Running');
     if (!vehicle || !activeTrip) return;
 
@@ -463,7 +478,7 @@ const QRScanner: React.FC = () => {
   const renderScanResultDetails = () => {
     if (!scanResult) return null;
 
-    const vehicle = vehicles.find(v => v.id === scanResult.vehicleId);
+    const vehicle = computedVehicles.find(v => v.id === scanResult.vehicleId);
     if (!vehicle) return <p className="text-red-500">Vehicle not found!</p>;
 
     const activeTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Running');
@@ -1159,7 +1174,7 @@ const QRScanner: React.FC = () => {
                   onChange={e => setSelectedSimVehicleId(e.target.value)}
                 >
                   <option value="">-- গাড়ি সিলেক্ট করুন --</option>
-                  {vehicles.map(v => (
+                  {computedVehicles.map(v => (
                     <option key={v.id} value={v.id}>
                       {v.vehicleNumber} ({v.status})
                     </option>

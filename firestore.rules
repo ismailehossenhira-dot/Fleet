@@ -131,6 +131,25 @@ service cloud.firestore {
         && data.status in ['Pending', 'Resolved'];
     }
 
+    // Vehicle Status Log Validation
+    function isValidVehicleStatusLog(data) {
+      return data.keys().hasAll(['vehicleId', 'vehiclePlate', 'oldStatus', 'newStatus'])
+        && data.vehicleId is string && data.vehicleId.size() > 0
+        && data.vehiclePlate is string && data.vehiclePlate.size() > 0
+        && data.oldStatus is string
+        && data.newStatus is string;
+    }
+
+    // Morning Prep Validation
+    function isValidMorningPrep(data) {
+      return data.keys().hasAll(['vehicleId', 'vehiclePlate', 'driverId', 'driverName', 'overallStatus'])
+        && data.vehicleId is string && data.vehicleId.size() > 0
+        && data.vehiclePlate is string && data.vehiclePlate.size() > 0
+        && data.driverId is string && data.driverId.size() > 0
+        && data.driverName is string && data.driverName.size() > 0
+        && data.overallStatus in ['Ready', 'Requires Maintenance'];
+    }
+
     match /missing_reports/{reportId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidMissingReport(incoming());
@@ -142,6 +161,23 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow delete: if canManage();
+    }
+
+    match /requests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /vehicle_status_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidVehicleStatusLog(incoming());
+      allow update, delete: if false;
+    }
+
+    match /morning_preps/{prepId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidMorningPrep(incoming());
+      allow update: if isSignedIn() && canManage();
+      allow delete: if isSignedIn() && canManage();
     }
   }
 }
