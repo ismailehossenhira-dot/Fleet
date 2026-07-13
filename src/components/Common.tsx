@@ -60,8 +60,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
   const [activeReturns, setActiveReturns] = React.useState<ReturnNotification[]>([]);
+  const [vehicles, setVehicles] = React.useState<any[]>([]);
+  const [trips, setTrips] = React.useState<any[]>([]);
+  const [isVehiclesLoaded, setIsVehiclesLoaded] = React.useState(false);
+  const [isTripsLoaded, setIsTripsLoaded] = React.useState(false);
 
-  const prevVehiclesRef = React.useRef<any[]>([]);
+  const prevComputedStatusesRef = React.useRef<Record<string, string>>({});
   const isFirstLoadRef = React.useRef(true);
 
   React.useEffect(() => {
@@ -73,80 +77,111 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }, []);
 
   React.useEffect(() => {
-    const unsub = subscribeToCollection('vehicles', (newVehiclesList: any[]) => {
-      if (isFirstLoadRef.current) {
-        prevVehiclesRef.current = newVehiclesList;
-        isFirstLoadRef.current = false;
-        return;
-      }
+    const unsubVehicles = subscribeToCollection('vehicles', (list) => {
+      setVehicles(list);
+      setIsVehiclesLoaded(true);
+    });
+    const unsubTrips = subscribeToCollection('trips', (list) => {
+      setTrips(list);
+      setIsTripsLoaded(true);
+    });
+    return () => {
+      unsubVehicles();
+      unsubTrips();
+    };
+  }, []);
 
-      const prevVehicles = prevVehiclesRef.current;
-      newVehiclesList.forEach(newV => {
-        const prevV = prevVehicles.find(v => v.id === newV.id);
-        if (prevV) {
-          const oldStatus = prevV.status;
-          const newStatus = newV.status;
-          
-          if (oldStatus !== newStatus && newStatus === 'Available') {
-            if (oldStatus === 'Running' || oldStatus === 'Maintenance') {
-              const notificationId = `${newV.id}-${Date.now()}`;
-              const newNotification: ReturnNotification = {
-                id: notificationId,
-                vehicleId: newV.id,
-                vehicleNumber: newV.vehicleNumber,
-                previousStatus: oldStatus
-              };
-              
-              setActiveReturns(prev => [...prev, newNotification]);
+  React.useEffect(() => {
+    if (!isVehiclesLoaded || !isTripsLoaded) return;
 
-              // Play sound only for Checker and Line Supervisor
-              const isEligibleRole = profile?.role === 'Checker' || profile?.role === 'Line Supervisor';
-              if (isEligibleRole) {
-                try {
-                  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                  
-                  const osc1 = audioCtx.createOscillator();
-                  const gain1 = audioCtx.createGain();
-                  osc1.type = 'sine';
-                  osc1.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-                  gain1.gain.setValueAtTime(0.12, audioCtx.currentTime);
-                  gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-                  osc1.connect(gain1);
-                  gain1.connect(audioCtx.destination);
-                  osc1.start();
-                  osc1.stop(audioCtx.currentTime + 0.3);
-                  
-                  setTimeout(() => {
-                    const osc2 = audioCtx.createOscillator();
-                    const gain2 = audioCtx.createGain();
-                    osc2.type = 'sine';
-                    osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-                    gain2.gain.setValueAtTime(0.12, audioCtx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
-                    osc2.connect(gain2);
-                    gain2.connect(audioCtx.destination);
-                    osc2.start();
-                    osc2.stop(audioCtx.currentTime + 0.45);
-                  }, 150);
-                } catch (soundErr) {
-                  console.warn("Audio Context error or blocked:", soundErr);
-                }
-              }
-
-              // Auto-dismiss after 6 seconds
-              setTimeout(() => {
-                setActiveReturns(prev => prev.filter(n => n.id !== notificationId));
-              }, 6000);
-            }
+    // Compute current status for each vehicle
+    const currentStatuses: Record<string, string> = {};
+    vehicles.forEach(v => {
+      let status = 'Available';
+      if (v.status === 'Maintenance') {
+        status = 'Maintenance';
+      } else {
+        const hasRunningTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Running');
+        if (hasRunningTrip) {
+          status = 'On Trip';
+        } else {
+          const hasPendingTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Pending');
+          if (hasPendingTrip) {
+            status = 'Pending Out Scan';
           }
         }
-      });
-
-      prevVehiclesRef.current = newVehiclesList;
+      }
+      currentStatuses[v.id] = status;
     });
 
-    return () => unsub();
-  }, [profile?.role]);
+    if (isFirstLoadRef.current) {
+      prevComputedStatusesRef.current = currentStatuses;
+      isFirstLoadRef.current = false;
+      return;
+    }
+
+    const prevStatuses = prevComputedStatusesRef.current;
+
+    vehicles.forEach(vehicle => {
+      const oldStatus = prevStatuses[vehicle.id];
+      const newStatus = currentStatuses[vehicle.id];
+
+      if (oldStatus && oldStatus !== newStatus && newStatus === 'Available') {
+        if (oldStatus === 'On Trip' || oldStatus === 'Maintenance') {
+          const notificationId = `${vehicle.id}-${Date.now()}`;
+          const newNotification: ReturnNotification = {
+            id: notificationId,
+            vehicleId: vehicle.id,
+            vehicleNumber: vehicle.vehicleNumber,
+            previousStatus: oldStatus
+          };
+
+          setActiveReturns(prev => [...prev, newNotification]);
+
+          // Play sound only for Checker and Line Supervisor
+          const isEligibleRole = profile?.role === 'Checker' || profile?.role === 'Line Supervisor';
+          if (isEligibleRole) {
+            try {
+              const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+              const osc1 = audioCtx.createOscillator();
+              const gain1 = audioCtx.createGain();
+              osc1.type = 'sine';
+              osc1.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+              gain1.gain.setValueAtTime(0.12, audioCtx.currentTime);
+              gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+              osc1.connect(gain1);
+              gain1.connect(audioCtx.destination);
+              osc1.start();
+              osc1.stop(audioCtx.currentTime + 0.3);
+
+              setTimeout(() => {
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gain2.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 0.45);
+              }, 150);
+            } catch (soundErr) {
+              console.warn("Audio Context error or blocked:", soundErr);
+            }
+          }
+
+          // Auto-dismiss after 6 seconds
+          setTimeout(() => {
+            setActiveReturns(prev => prev.filter(n => n.id !== notificationId));
+          }, 6000);
+        }
+      }
+    });
+
+    prevComputedStatusesRef.current = currentStatuses;
+  }, [vehicles, trips, isVehiclesLoaded, isTripsLoaded, profile?.role]);
 
   const dismissNotification = (id: string) => {
     setActiveReturns(prev => prev.filter(n => n.id !== id));
