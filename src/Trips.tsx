@@ -23,7 +23,9 @@ import { Card, Button } from './components/Common';
 import { 
   subscribeToCollection, 
   findStaffById, 
-  createTrip 
+  createTrip,
+  updateVehicleStatus,
+  cancelPendingTrip
 } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -215,7 +217,8 @@ const Trips: React.FC = () => {
                           <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Transport ID</th>
                           <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Driver Info</th>
                           <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Destination</th>
-                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Status</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Status</th>
+                          <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -241,16 +244,33 @@ const Trips: React.FC = () => {
                                 <span>{trip.location}</span>
                               </div>
                             </td>
-                            <td className="px-5 py-3 text-right">
+                            <td className="px-5 py-3">
                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-50 border border-amber-200 text-amber-700">
                                  Pending Out Scan
                                </span>
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
+                                    try {
+                                      await cancelPendingTrip(trip.id, trip.vehicleId, profile);
+                                    } catch (err) {
+                                      console.error("Error cancelling pending trip and making vehicle available:", err);
+                                    }
+                                  }
+                                }}
+                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer inline-block"
+                                title="পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করুন"
+                              >
+                                বাতিল ও Available করুন
+                              </button>
                             </td>
                           </tr>
                         ))}
                         {filteredPendingTrips.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-5 py-10 text-center text-text-muted italic">
+                            <td colSpan={5} className="px-5 py-10 text-center text-text-muted italic">
                               No pending transports waiting for Out QR Scan.
                             </td>
                           </tr>

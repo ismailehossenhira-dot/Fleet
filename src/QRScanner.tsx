@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   QrCode, Camera, Truck, User as UserIcon, Users, 
   CheckCircle, XCircle, AlertTriangle, ClipboardCheck, 
-  Calendar, MapPin, RotateCcw, FileText, CheckCircle2, Wrench, Search
+  Calendar, MapPin, RotateCcw, FileText, CheckCircle2, Wrench, Search,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { 
@@ -79,6 +80,8 @@ const QRScanner: React.FC = () => {
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
   const [isSearchingHelper, setIsSearchingHelper] = useState(false);
   const [dispatchStatus, setDispatchStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isSeizedWarningExpanded, setIsSeizedWarningExpanded] = useState(false);
+  const [isQuickActionsExpanded, setIsQuickActionsExpanded] = useState(false);
 
   // Return Form State (for OUT Scan when On Trip)
   const [returnForm, setReturnForm] = useState({
@@ -300,6 +303,26 @@ const QRScanner: React.FC = () => {
 
     // Pre-populate forms based on action
     if (type === 'OUT') {
+      // Find active cases for this vehicle
+      const activeVehicleCases = cases.filter(c => 
+        c.vehicleId === vehicle.vehicleNumber && 
+        (c.status || 'Open') === 'Open'
+      );
+      // Collect all seized documents across those active cases
+      const seizedDocs = activeVehicleCases.reduce((acc, c) => {
+        if (c.seizedDocuments && Array.isArray(c.seizedDocuments)) {
+          c.seizedDocuments.forEach((doc: string) => {
+            if (!acc.includes(doc)) {
+              acc.push(doc);
+            }
+          });
+        }
+        return acc;
+      }, [] as string[]);
+
+      // Default documents are standard ones EXCEPT any that are currently seized/confiscated
+      const defaultDocs = DOCUMENT_TYPES.filter(doc => !seizedDocs.includes(doc));
+
       // Default dispatch form values
       setDispatchForm({
         driverId: 'DRV-',
@@ -310,7 +333,7 @@ const QRScanner: React.FC = () => {
         helperPhone: '',
         location: '',
         tollAmount: 0,
-        documentsGiven: ['RP', 'FC', 'TT', 'RC'], // default to all documents
+        documentsGiven: defaultDocs, // default to non-seized documents
         toolsGiven: [...TOOL_LIST] // default to all tools
       });
     } else {
@@ -483,6 +506,23 @@ const QRScanner: React.FC = () => {
 
     const activeTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Running');
 
+    // Find active cases for this vehicle
+    const activeVehicleCases = cases.filter(c => 
+      c.vehicleId === vehicle.vehicleNumber && 
+      (c.status || 'Open') === 'Open'
+    );
+    // Collect all seized documents across those active cases
+    const seizedDocs = activeVehicleCases.reduce((acc, c) => {
+      if (c.seizedDocuments && Array.isArray(c.seizedDocuments)) {
+        c.seizedDocuments.forEach((doc: string) => {
+          if (!acc.includes(doc)) {
+            acc.push(doc);
+          }
+        });
+      }
+      return acc;
+    }, [] as string[]);
+
     const vehicleSummaryHeader = (
       <Card title={`স্ক্যানকৃত গাড়ির তথ্য: ${vehicle.vehicleNumber}`}>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
@@ -520,86 +560,105 @@ const QRScanner: React.FC = () => {
     );
 
     const quickActionsCard = (
-      <Card title="তাৎক্ষণিক স্ট্যাটাস পরিবর্তন (Quick Status Actions)">
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500">
-            এই গাড়ির রানিং স্ট্যাটাস সরাসরি আপডেট করতে বাটন চাপুন (কোনো ফর্ম ফিলাপ ছাড়াই অটোমেটিক স্ট্যাটাস আপডেট হবে):
-          </p>
-          
-          {instantUpdateStatus === 'success_available' && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-semibold animate-pulse flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-600" />
-              <span>✓ সফলভাবে গ্যারেজে 'Available' করা হয়েছে!</span>
-            </div>
-          )}
-
-          {instantUpdateStatus === 'success_maintenance' && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs font-semibold animate-pulse flex items-center gap-2">
-              <Wrench size={16} className="text-amber-600 animate-spin" />
-              <span>🔧 সফলভাবে 'Maintenance' এ পাঠানো হয়েছে!</span>
-            </div>
-          )}
-
-          {instantUpdateStatus === 'error' && (
-            <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-semibold">
-              ⚠️ স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।
-            </div>
-          )}
-
-          {vehicle.status !== 'Maintenance' && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 block">গাড়ির সমস্যা/মেইনটেনেন্স নোট (ঐচ্ছিক - Maintenance Note):</label>
-              <input 
-                type="text"
-                placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-amber-400"
-                value={quickMaintenanceNotes}
-                onChange={e => setQuickMaintenanceNotes(e.target.value)}
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              disabled={vehicle.status === 'Available' || instantUpdateStatus !== 'idle'}
-              onClick={() => handleInstantStatusUpdate(vehicle.id, 'Available')}
-              className={cn(
-                "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                vehicle.status === 'Available'
-                  ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
-                  : "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100 shadow-sm"
-              )}
-            >
-              <CheckCircle2 size={14} className={vehicle.status === 'Available' ? "text-slate-300" : "text-emerald-600"} />
-              <span>Available করুন</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={vehicle.status === 'Maintenance' || instantUpdateStatus !== 'idle'}
-              onClick={() => {
-                handleInstantStatusUpdate(vehicle.id, 'Maintenance', quickMaintenanceNotes);
-                setQuickMaintenanceNotes('');
-              }}
-              className={cn(
-                "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                vehicle.status === 'Maintenance'
-                  ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
-                  : "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 shadow-sm"
-              )}
-            >
-              <Wrench size={14} className={vehicle.status === 'Maintenance' ? "text-slate-300" : "text-amber-600"} />
-              <span>Maintenance করুন</span>
-            </button>
+      <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
+        {/* Header containing the toggle button */}
+        <button
+          type="button"
+          onClick={() => setIsQuickActionsExpanded(!isQuickActionsExpanded)}
+          className="w-full flex items-center justify-between px-5 py-4 bg-[#f8fafc] border-b border-border hover:bg-slate-100/60 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-text-main font-bold text-sm">
+            <Wrench size={16} className="text-amber-500" />
+            <span>তাৎক্ষণিক স্ট্যাটাস পরিবর্তন (Quick Status Actions)</span>
           </div>
-        </div>
-      </Card>
+          {isQuickActionsExpanded ? (
+            <ChevronUp size={16} className="text-slate-500" />
+          ) : (
+            <ChevronDown size={16} className="text-slate-500" />
+          )}
+        </button>
+
+        {isQuickActionsExpanded && (
+          <div className="p-5 space-y-4">
+            <p className="text-xs text-slate-500">
+              এই গাড়ির রানিং স্ট্যাটাস সরাসরি আপডেট করতে বাটন চাপুন (কোনো ফর্ম ফিলাপ ছাড়াই অটোমেটিক স্ট্যাটাস আপডেট হবে):
+            </p>
+            
+            {instantUpdateStatus === 'success_available' && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-semibold animate-pulse flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-600" />
+                <span>✓ সফলভাবে গ্যারেজে 'Available' করা হয়েছে!</span>
+              </div>
+            )}
+
+            {instantUpdateStatus === 'success_maintenance' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs font-semibold animate-pulse flex items-center gap-2">
+                <Wrench size={16} className="text-amber-600 animate-spin" />
+                <span>🔧 সফলভাবে 'Maintenance' এ পাঠানো হয়েছে!</span>
+              </div>
+            )}
+
+            {instantUpdateStatus === 'error' && (
+              <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-semibold">
+                ⚠️ স্ট্যাটাস আপডেট করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।
+              </div>
+            )}
+
+            {vehicle.status !== 'Maintenance' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 block">গাড়ির সমস্যা/মেইনটেনেন্স নোট (ঐচ্ছিক - Maintenance Note):</label>
+                <input 
+                  type="text"
+                  placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white outline-none focus:border-amber-400"
+                  value={quickMaintenanceNotes}
+                  onChange={e => setQuickMaintenanceNotes(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={vehicle.status === 'Available' || instantUpdateStatus !== 'idle'}
+                onClick={() => handleInstantStatusUpdate(vehicle.id, 'Available')}
+                className={cn(
+                  "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                  vehicle.status === 'Available'
+                    ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+                    : "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100 shadow-sm"
+                )}
+              >
+                <CheckCircle2 size={14} className={vehicle.status === 'Available' ? "text-slate-300" : "text-emerald-600"} />
+                <span>Available করুন</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={vehicle.status === 'Maintenance' || instantUpdateStatus !== 'idle'}
+                onClick={() => {
+                  handleInstantStatusUpdate(vehicle.id, 'Maintenance', quickMaintenanceNotes);
+                  setQuickMaintenanceNotes('');
+                }}
+                className={cn(
+                  "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                  vehicle.status === 'Maintenance'
+                    ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+                    : "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 shadow-sm"
+                )}
+              >
+                <Wrench size={14} className={vehicle.status === 'Maintenance' ? "text-slate-300" : "text-amber-600"} />
+                <span>Maintenance করুন</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     );
 
     if (scanResult.type === 'OUT') {
-      // OUT SCAN: Start Trip/Dispatch (requires vehicle to be Available)
-      if (vehicle.status !== 'Available') {
+      // OUT SCAN: Start Trip/Dispatch (requires vehicle to be Available or Pending Out Scan)
+      if (vehicle.status !== 'Available' && vehicle.status !== 'Pending Out Scan') {
         if (vehicle.status === 'Maintenance') {
           return (
             <div className="space-y-6">
@@ -764,6 +823,42 @@ const QRScanner: React.FC = () => {
                     <span><strong>স্টক ছাড় ও কাগজ-টুলস যাচাই:</strong> গাড়ি ছাড়ার জন্য পেন্ডিং ট্রিপ পাওয়া গেছে। নিচে ডকুমেন্টস ও সরঞ্জামাদি চেক করে নিশ্চিত করুন।</span>
                   </div>
 
+                  {seizedDocs.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl overflow-hidden text-xs">
+                      {/* Header containing the toggle button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsSeizedWarningExpanded(!isSeizedWarningExpanded)}
+                        className="w-full flex items-center justify-between p-3.5 bg-red-100/60 hover:bg-red-100/80 transition-colors text-red-800 font-bold"
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={16} className="text-red-500 animate-pulse" />
+                          <span className="text-left">সতর্কতা: এই গাড়ির কাগজ জব্দ রয়েছে ({seizedDocs.join(', ')})!</span>
+                        </div>
+                        {isSeizedWarningExpanded ? <ChevronUp size={16} className="flex-shrink-0" /> : <ChevronDown size={16} className="flex-shrink-0" />}
+                      </button>
+
+                      {/* Expandable/collapsible content */}
+                      {isSeizedWarningExpanded && (
+                        <div className="p-4 border-t border-red-200 bg-red-50/50 text-red-700 space-y-2">
+                          <p className="font-semibold text-red-800">
+                            গাড়িটির বিরুদ্ধে সক্রিয় মামলা থাকায় নিম্নোক্ত কাগজপত্রসমূহ বর্তমানে জব্দ রয়েছে (Seized Documents):
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 my-1">
+                            {seizedDocs.map((doc: string) => (
+                              <span key={doc} className="font-bold text-slate-900 bg-red-100 border border-red-200 px-2 py-0.5 rounded text-xs">
+                                {doc}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="leading-relaxed text-[11px] text-red-600">
+                            এই কাগজগুলো ছাড়া গাড়ি চালানো আইনত দণ্ডনীয় হতে পারে। দয়া করে নিশ্চিত হয়ে ছাড়ুন।
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Trip details */}
                   <div className="bg-slate-50 border p-4 rounded-xl space-y-3 text-xs">
                     <h5 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5">
@@ -813,7 +908,22 @@ const QRScanner: React.FC = () => {
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {DOCUMENT_TYPES.map((docCode) => {
+                        const isSeized = seizedDocs.includes(docCode);
                         const isSelected = dispatchForm.documentsGiven.includes(docCode);
+
+                        if (isSeized) {
+                          return (
+                            <div
+                              key={docCode}
+                              className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-black flex items-center gap-1.5 shadow-sm"
+                              title="ডকুমেন্টটি মামলায় জব্দ রয়েছে (Seized under Legal Case)"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                              <span>{docCode} (জব্দ/Case) ⚠️</span>
+                            </div>
+                          );
+                        }
+
                         return (
                           <button
                             key={docCode}

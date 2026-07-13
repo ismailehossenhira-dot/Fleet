@@ -11,7 +11,7 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "project-8debfc28-129a-4c6b-b7c.firebasestorage.app",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "709369574428",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:709369574428:web:a58c75e875ebb7b62c9bd9",
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-16af0950-58ce-43a7-9571-c5b2b65c5091"
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "ai-studio-fleetflowpro-16af0950-58ce-43a7-9571-c5b2b65c5091"
 };
 
 const app = initializeApp(firebaseConfig);

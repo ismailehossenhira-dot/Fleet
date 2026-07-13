@@ -6,7 +6,13 @@ import {
   CheckCircle2, 
   PlusCircle, 
   Phone, 
-  AlertTriangle 
+  AlertTriangle,
+  FileText,
+  Wrench,
+  ShieldAlert,
+  CheckCircle,
+  XCircle,
+  Info
 } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { 
@@ -14,7 +20,7 @@ import {
   findStaffById, 
   createTrip 
 } from './db';
-import { cn } from './lib/utils';
+import { cn, DOCUMENT_TYPES } from './lib/utils';
 import { useAuth } from './AuthContext';
 
 const NewTrip: React.FC = () => {
@@ -27,6 +33,7 @@ const NewTrip: React.FC = () => {
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
+  const [missingReports, setMissingReports] = useState<any[]>([]);
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
   const [isSearchingHelper, setIsSearchingHelper] = useState(false);
   const [vehicleSearch, setVehicleSearch] = useState(() => {
@@ -65,10 +72,12 @@ const NewTrip: React.FC = () => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
     const unsubCases = subscribeToCollection('cases', setCases);
     const unsubTrips = subscribeToCollection('trips', setTrips);
+    const unsubMissing = subscribeToCollection('missing_reports', setMissingReports);
     return () => {
       unsubVehicles();
       unsubCases();
       unsubTrips();
+      unsubMissing();
     };
   }, []);
 
@@ -298,6 +307,63 @@ const NewTrip: React.FC = () => {
     return !hasActiveTrip;
   });
 
+  // Find selected vehicle object
+  const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
+
+  // Active cases for selected vehicle
+  const activeVehicleCases = selectedVehicle ? cases.filter(c => 
+    c.vehicleId === selectedVehicle.vehicleNumber && 
+    (c.status || 'Open') === 'Open'
+  ) : [];
+
+  // Seized documents (under open cases)
+  const seizedDocs = activeVehicleCases.reduce<string[]>((acc, c) => {
+    if (c.seizedDocuments) {
+      return [...acc, ...c.seizedDocuments];
+    }
+    return acc;
+  }, []);
+
+  // Missing documents and missing tools for this vehicle (under unresolved missing reports)
+  const activeMissingReports = selectedVehicle ? missingReports.filter(r => 
+    r.vehiclePlate === selectedVehicle.vehicleNumber && 
+    r.status !== 'Resolved'
+  ) : [];
+
+  const missingDocs = activeMissingReports.reduce<string[]>((acc, r) => {
+    if (r.missingDocuments) {
+      return [...acc, ...r.missingDocuments];
+    }
+    return acc;
+  }, []);
+
+  const missingTools = activeMissingReports.reduce<string[]>((acc, r) => {
+    if (r.missingTools) {
+      return [...acc, ...r.missingTools];
+    }
+    return acc;
+  }, []);
+
+  // Map of document types to their Bengali name
+  const documentLabelMap: Record<string, string> = {
+    'RP': 'রুট পারমিট (Route Permit)',
+    'FC': 'ফিটনেস সার্টিফিকেট (Fitness Certificate)',
+    'TT': 'ট্যাক্স টোকেন (Tax Token)',
+    'RC': 'রেজিস্ট্রেশন সার্টিফিকেট / ব্লু বুক',
+    'ADS': 'অনুমোদিত ড্রাইভার লাইসেন্স (ADS)'
+  };
+
+  // Standard tool list
+  const standardTools = ['Jack', 'Spare Wheel', 'Fire Extinguisher', 'First Aid Kit', 'Triangle', 'Tool Box'];
+  const toolLabelMap: Record<string, string> = {
+    'Jack': 'জ্যাক (Jack)',
+    'Spare Wheel': 'স্পেয়ার চাকা (Spare Wheel)',
+    'Fire Extinguisher': 'অগ্নি নির্বাপক সিলিন্ডার (Fire Extinguisher)',
+    'First Aid Kit': 'প্রাথমিক চিকিৎসা বক্স (First Aid Kit)',
+    'Triangle': 'নিরাপত্তা ট্রায়াঙ্গেল (Triangle)',
+    'Tool Box': 'টুল বক্স (Tool Box)'
+  };
+
   if (!canManage) {
     return null;
   }
@@ -475,6 +541,156 @@ const NewTrip: React.FC = () => {
               </li>
             </ul>
           </Card>
+
+          {!selectedVehicle ? (
+            <Card title="গাড়ির লাইভ তথ্য (Live Vehicle Status)" className="mt-6 border-slate-100 bg-slate-50/50">
+              <div className="flex items-start gap-3 p-4 text-slate-500 text-xs">
+                <Info size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold text-slate-700">কোনো গাড়ি সিলেক্ট করা হয়নি</p>
+                  <p className="text-slate-500 mt-1">বাম পাশে একটি উপলব্ধ গাড়ি সিলেক্ট বা অনুসন্ধান করলে গাড়ির কাগজপত্র, মামলা ও টুলস এর লাইভ আপডেট এখানে দেখতে পাবেন।</p>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card title={`গাড়ির লাইভ তথ্য: ${selectedVehicle.vehicleNumber}`} className="mt-6 border-slate-100 shadow-lg">
+              <div className="space-y-6 text-xs">
+                
+                {/* 1. Vehicle Documents */}
+                <div>
+                  <h4 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5 mb-3">
+                    <FileText size={14} className="text-blue-500" />
+                    গাড়ির কাগজপত্র (Documents Status)
+                  </h4>
+                  <div className="space-y-2">
+                    {DOCUMENT_TYPES.map(docCode => {
+                      const isSeized = seizedDocs.includes(docCode);
+                      const isMissing = missingDocs.includes(docCode);
+                      const label = documentLabelMap[docCode] || docCode;
+
+                      return (
+                        <div 
+                          key={docCode} 
+                          className={cn(
+                            "flex items-center justify-between p-2.5 rounded-xl border transition-all",
+                            isSeized ? "bg-red-50 border-red-200 text-red-800" :
+                            isMissing ? "bg-amber-50 border-amber-200 text-amber-800" :
+                            "bg-emerald-50/40 border-emerald-100 text-emerald-800"
+                          )}
+                        >
+                          <div className="font-semibold flex items-center gap-2">
+                            <span className={cn(
+                              "w-1.5 h-1.5 rounded-full shrink-0",
+                              isSeized ? "bg-red-500 animate-pulse" :
+                              isMissing ? "bg-amber-500" :
+                              "bg-emerald-500"
+                            )} />
+                            <span>{label}</span>
+                          </div>
+                          <span className={cn(
+                            "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 border",
+                            isSeized ? "bg-red-100 border-red-200 text-red-700" :
+                            isMissing ? "bg-amber-100 border-amber-200 text-amber-700" :
+                            "bg-emerald-100 border-emerald-200 text-emerald-700"
+                          )}>
+                            {isSeized ? "মামলায় জব্দ (Seized)" :
+                             isMissing ? "হারিয়ে গেছে (Missing)" :
+                             "গাড়িতে আছে (OK)"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Active Case Warning / Info */}
+                <div>
+                  <h4 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5 mb-3">
+                    <ShieldAlert size={14} className="text-red-500" />
+                    মামলার বিবরণ (Legal Cases)
+                  </h4>
+                  {activeVehicleCases.length === 0 ? (
+                    <div className="bg-emerald-50/40 border border-emerald-100 p-3 rounded-xl flex items-center gap-2 text-emerald-800">
+                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+                      <span className="font-semibold">এই গাড়ির কোনো সক্রিয় মামলা নেই (No Active Cases)</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="bg-red-50 border border-red-100 p-3 rounded-xl flex items-start gap-2.5 text-red-800">
+                        <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0 animate-bounce" />
+                        <div>
+                          <p className="font-bold text-[13px]">সতর্কতা: গাড়িটি মামলার আওতায় রয়েছে!</p>
+                          <p className="text-[10px] text-red-600 mt-0.5">গাড়ি রিলিজ করার পূর্বে অবশ্যই নিশ্চিত করুন যে মামলার কারণে কোনো গুরুত্বপূর্ণ আইনগত বাধা নেই।</p>
+                        </div>
+                      </div>
+                      {activeVehicleCases.map((c, i) => (
+                        <div key={c.id || i} className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1.5">
+                          <div className="flex items-center justify-between font-bold">
+                            <span className="text-slate-700 font-mono text-[11px]">মামলা আইডি: {c.caseId}</span>
+                            <span className="text-red-600">জরিমানা: ৳{c.amount?.toLocaleString()}</span>
+                          </div>
+                          {c.reason && (
+                            <p className="text-slate-500 text-[11px] italic">"কারণ: {c.reason}"</p>
+                          )}
+                          {c.seizedDocuments?.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              <span className="text-[10px] text-slate-500 mr-1 font-semibold self-center">জব্দকৃত কাগজ:</span>
+                              {c.seizedDocuments.map((doc: string) => (
+                                <span key={doc} className="px-1.5 py-0.5 rounded bg-red-100 border border-red-200 text-red-700 font-black text-[9px] uppercase">
+                                  {doc}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Vehicle Tools */}
+                <div>
+                  <h4 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5 mb-3">
+                    <Wrench size={14} className="text-emerald-600" />
+                    গাড়ির সরঞ্জাম ও টুলস (Tools Checklist)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {standardTools.map(tool => {
+                      const isMissing = missingTools.includes(tool);
+                      const label = toolLabelMap[tool] || tool;
+
+                      return (
+                        <div 
+                          key={tool} 
+                          className={cn(
+                            "flex items-center justify-between p-2.5 rounded-xl border transition-all",
+                            isMissing ? "bg-red-50/60 border-red-100 text-red-800" : "bg-slate-50/50 border-slate-100 text-slate-700"
+                          )}
+                        >
+                          <div className="font-semibold flex items-center gap-1.5">
+                            <span>🔧</span>
+                            <span className={cn(isMissing && "line-through text-slate-400")}>{label}</span>
+                          </div>
+                          <span className={cn(
+                            "text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase shrink-0 border",
+                            isMissing ? "bg-red-100 border-red-100 text-red-700" : "bg-emerald-50 border-emerald-100 text-emerald-700"
+                          )}>
+                            {isMissing ? "অনুপস্থিত" : "আছে"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {missingTools.length > 0 && (
+                    <p className="mt-2 text-[10px] text-amber-600 bg-amber-50 border border-amber-100/40 p-2 rounded-lg italic">
+                      ⚠️ গ্যারেজে গাড়িটি রিটার্ন করার সময় <strong>{missingTools.join(', ')}</strong> অনুপস্থিত ছিল। অনুগ্রহ করে রিলিজের সময় চালককে এই বিষয়ে অবহিত করুন।
+                    </p>
+                  )}
+                </div>
+
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

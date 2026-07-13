@@ -3,8 +3,9 @@
   "appId": "1:709369574428:web:a58c75e875ebb7b62c9bd9",
   "apiKey": "AIzaSyDa7RK3sIjmUYtgYpm5vTAnqgzigZ4hLoA",
   "authDomain": "project-8debfc28-129a-4c6b-b7c.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-16af0950-58ce-43a7-9571-c5b2b65c5091",
+  "firestoreDatabaseId": "ai-studio-fleetflowpro-16af0950-58ce-43a7-9571-c5b2b65c5091",
   "storageBucket": "project-8debfc28-129a-4c6b-b7c.firebasestorage.app",
   "messagingSenderId": "709369574428",
-  "measurementId": ""
+  "measurementId": "",
+  "oAuthClientId": "709369574428-ipag61l8ooeugi2ghqd3q8cu5rmqb7ha.apps.googleusercontent.com"
 }

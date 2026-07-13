@@ -18,7 +18,7 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { Card } from './components/Common';
-import { subscribeToCollection, updateVehicleStatus } from './db';
+import { subscribeToCollection, updateVehicleStatus, cancelPendingTrip } from './db';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useSearch } from './SearchContext';
@@ -748,7 +748,24 @@ const Dashboard: React.FC = () => {
                         <td className="px-5 py-3">{trip.location}</td>
                         <td className="px-5 py-3 text-right">
                           {trip.status === 'Pending' ? (
-                            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px] animate-pulse">Pending Out Scan</span>
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px] animate-pulse">Pending Out Scan</span>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
+                                    try {
+                                      await cancelPendingTrip(trip.id, trip.vehicleId, profile);
+                                    } catch (err) {
+                                      console.error("Error cancelling pending trip and making vehicle available:", err);
+                                    }
+                                  }
+                                }}
+                                className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-[10px] font-bold transition-all cursor-pointer inline-block"
+                                title="পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করুন"
+                              >
+                                বাতিল ও Available করুন
+                              </button>
+                            </div>
                           ) : (
                             <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
                           )}

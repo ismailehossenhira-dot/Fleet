@@ -152,8 +152,27 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
             updatedAt: serverTimestamp()
           });
         }
+
+        // Also delete any Pending trips for this vehicle (since they never left the garage)
+        const qPending = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', vehicleId),
+          where('status', '==', 'Pending')
+        );
+        const pendingSnap = await getDocs(qPending);
+        for (const docObj of pendingSnap.docs) {
+          try {
+            await deleteDoc(doc(db, 'trips', docObj.id));
+          } catch (deleteErr) {
+            console.log("Not authorized to delete trip document. Falling back to marking as Cancelled:", deleteErr);
+            await updateDoc(doc(db, 'trips', docObj.id), {
+              status: 'Cancelled',
+              updatedAt: serverTimestamp()
+            });
+          }
+        }
       } catch (err) {
-        console.error("Error completing running trips on available transition:", err);
+        console.error("Error clearing running/pending trips on available transition:", err);
       }
     } else {
       updates.maintenanceNotes = '';
@@ -248,8 +267,27 @@ export const updateVehicle = async (id: string, vehicle: any, profile?: any) => 
             updatedAt: serverTimestamp()
           });
         }
+
+        // Also delete any Pending trips for this vehicle (since they never left the garage)
+        const qPending = query(
+          collection(db, 'trips'),
+          where('vehicleId', '==', id),
+          where('status', '==', 'Pending')
+        );
+        const pendingSnap = await getDocs(qPending);
+        for (const docObj of pendingSnap.docs) {
+          try {
+            await deleteDoc(doc(db, 'trips', docObj.id));
+          } catch (deleteErr) {
+            console.log("Not authorized to delete trip document. Falling back to marking as Cancelled:", deleteErr);
+            await updateDoc(doc(db, 'trips', docObj.id), {
+              status: 'Cancelled',
+              updatedAt: serverTimestamp()
+            });
+          }
+        }
       } catch (err) {
-        console.error("Error completing running trips on available transition:", err);
+        console.error("Error clearing running/pending trips on available transition:", err);
       }
     }
   } catch (error) {
@@ -459,6 +497,35 @@ export const deleteTrip = async (tripId: string) => {
     await deleteDoc(doc(db, 'trips', tripId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `trips/${tripId}`);
+  }
+};
+
+export const cancelPendingTrip = async (tripId: string, vehicleId: string, profile?: any) => {
+  try {
+    const tripRef = doc(db, 'trips', tripId);
+    
+    // 1. Attempt to delete or fallback to marking as Cancelled
+    try {
+      await deleteDoc(tripRef);
+    } catch (deleteErr) {
+      console.log("Not authorized to delete trip document. Falling back to marking as Cancelled:", deleteErr);
+      await updateDoc(tripRef, {
+        status: 'Cancelled',
+        updatedBy: getUserString(profile),
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    // 2. Explicitly update the vehicle status back to 'Available'
+    const vehicleRef = doc(db, 'vehicles', vehicleId);
+    await updateDoc(vehicleRef, {
+      status: 'Available',
+      maintenanceNotes: '',
+      updatedAt: serverTimestamp(),
+      updatedBy: getUserString(profile)
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `trips/${tripId}`);
   }
 };
 

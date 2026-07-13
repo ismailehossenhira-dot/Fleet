@@ -27,6 +27,7 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'ismailehossenhira@gmail.com' || 
+        request.auth.token.email == 'admin@fleetflow.local' ||
         hasRole('Admin')
       ); 
     }
@@ -58,7 +59,7 @@ service cloud.firestore {
       return data.keys().hasAll(['vehicleNumber', 'type', 'status'])
         && data.vehicleNumber is string && data.vehicleNumber.size() > 0 && data.vehicleNumber.size() <= 64
         && data.type in ['Small', 'Medium', 'Large']
-        && data.status in ['Available', 'On Trip', 'Maintenance'];
+        && data.status in ['Available', 'On Trip', 'Maintenance', 'Pending Out Scan'];
     }
 
     match /vehicles/{vehicleId} {
@@ -66,7 +67,7 @@ service cloud.firestore {
       allow create: if canManage() && isValidVehicle(incoming());
       allow update: if isSignedIn() && (
         // Action: Status Update (during Trip start/end or Maintenance)
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes'])) ||
         // Action: Full Update
         (canManage() && isValidVehicle(incoming()))
       );

@@ -65,6 +65,8 @@ const MorningPrep: React.FC = () => {
 
   // Expanded details state for 24-hour summary cards
   const [activeDetailTab, setActiveDetailTab] = useState<'dispatched' | 'returned' | 'maintenance_in' | 'maintenance_out' | 'tolls' | null>(null);
+  const [missingHoursTab, setMissingHoursTab] = useState<24 | 48 | 72>(24);
+  const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
 
   // Form states
   const [selectedVehicle, setSelectedVehicle] = useState('');
@@ -1011,8 +1013,210 @@ const MorningPrep: React.FC = () => {
 
       {/* Logs Dashboard view */}
       {canInspect && !showForm && (
-        <div className="space-y-4">
-          
+        <div className="space-y-6">
+
+          {/* Delayed/Missing Inspections Tracker (Collapsible Dropdown) */}
+          {(() => {
+            const getDelayedVehicles = (hours: number) => {
+              return vehicles.filter(v => {
+                // 1. Exclude if status is 'Maintenance'
+                if (v.status === 'Maintenance') return false;
+
+                // 2. Find any trip for this vehicle in the last `hours` hours
+                const vehicleTripsInPeriod = trips.filter(t => {
+                  if (t.vehicleId !== v.id) return false;
+
+                  const tripTime = t.createdAt?.seconds 
+                    ? t.createdAt.seconds * 1000 
+                    : new Date(t.createdAt || 0).getTime();
+
+                  const diffHours = (Date.now() - tripTime) / (3600 * 1000);
+                  return diffHours <= hours;
+                });
+
+                // Include only if there are ZERO trips in the last `hours`
+                return vehicleTripsInPeriod.length === 0;
+              });
+            };
+
+            const getDelayedVehiclesCount = (hours: number) => {
+              return getDelayedVehicles(hours).length;
+            };
+
+            const delayedVehicles = getDelayedVehicles(missingHoursTab);
+            const totalDelayedCount = getDelayedVehiclesCount(missingHoursTab);
+
+            return (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                {/* Accordion Toggle Header */}
+                <button
+                  type="button"
+                  onClick={() => setIsTrackerExpanded(!isTrackerExpanded)}
+                  className="w-full text-left p-6 flex items-center justify-between gap-4 relative z-10 hover:bg-slate-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-50 text-amber-500 border border-amber-100 shrink-0">
+                      <AlertTriangle size={18} className={cn(totalDelayedCount > 0 && "animate-bounce")} />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
+                          ইন্সপেকশন অনুপস্থিত ট্র্যাকার (Delayed/Missing Pre-Trip Entry)
+                        </h3>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-extrabold border font-mono shrink-0",
+                          totalDelayedCount > 0
+                            ? "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        )}>
+                          {totalDelayedCount} টি গাড়ি অনুপস্থিত
+                        </span>
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5">
+                        যে সকল গাড়ি গত {missingHoursTab} ঘণ্টার মধ্যে কোনো ট্রিপে যায়নি বা কোনো ট্রিপ এন্ট্রি হয়নি (রক্ষণাবেক্ষণ ছাড়া)।
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                    {isTrackerExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </div>
+                </button>
+
+                {/* Collapsible content panel */}
+                {isTrackerExpanded && (
+                  <div className="px-6 pb-6 border-t border-slate-100 relative z-10 pt-5 animate-in slide-in-from-top-4 duration-200">
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:24px_24px] opacity-40 pointer-events-none" />
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 relative z-10">
+                      <div className="space-y-1">
+                        <p className="text-xs text-slate-500 font-medium">
+                          অনুগ্রহ করে সময়কাল নির্বাচন করুন (২৪ ঘণ্টা, ৪৮ ঘণ্টা বা ৭২ ঘণ্টা):
+                        </p>
+                      </div>
+                      
+                      {/* Hour Tabs Selector */}
+                      <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-start font-mono text-xs font-bold">
+                        {([24, 48, 72] as const).map(hours => {
+                          const count = getDelayedVehiclesCount(hours);
+
+                          return (
+                            <button
+                              key={hours}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMissingHoursTab(hours);
+                              }}
+                              className={cn(
+                                "px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+                                missingHoursTab === hours
+                                  ? "bg-amber-500 text-white shadow-sm"
+                                  : "text-slate-500 hover:text-slate-800"
+                              )}
+                            >
+                              <span>{hours === 24 ? '২৪ ঘণ্টা' : hours === 48 ? '৪৮ ঘণ্টা' : '৭২ ঘণ্টা'}</span>
+                              <span className={cn(
+                                "px-1.5 py-0.5 rounded-full text-[10px] font-black",
+                                missingHoursTab === hours ? "bg-white/30 text-white" : "bg-slate-200 text-slate-600"
+                              )}>
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* List of Delayed Vehicles */}
+                    <div className="mt-5 relative z-10">
+                      {delayedVehicles.length === 0 ? (
+                        <div className="bg-emerald-50/40 border border-emerald-100 p-6 rounded-2xl text-center space-y-2 flex flex-col items-center">
+                          <div className="p-3 bg-emerald-100 text-emerald-600 rounded-full w-fit">
+                            <CheckCircle size={24} />
+                          </div>
+                          <p className="font-bold text-slate-800 text-sm">সব গাড়ি সচল ও সুশৃঙ্খল!</p>
+                          <p className="text-slate-500 text-xs max-w-md">
+                            বর্তমানে এমন কোনো গাড়ি নেই যা গত {missingHoursTab} ঘণ্টার মধ্যে কোনো ট্রিপে যায়নি বা কোনো ট্রিপ এন্ট্রি করা হয়নি।
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {delayedVehicles.map(v => {
+                            // Get last trip for this vehicle to show info
+                            const vehicleTrips = trips.filter(t => t.vehicleId === v.id);
+                            let lastTripInfo = "কখনো ট্রিপ এন্ট্রি করা হয়নি";
+                            let timeAgoStr = "";
+                            
+                            if (vehicleTrips.length > 0) {
+                              const sorted = [...vehicleTrips].sort((a, b) => {
+                                const tA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt || 0).getTime();
+                                const tB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt || 0).getTime();
+                                return tB - tA;
+                              });
+                              const latest = sorted[0];
+                              const t = latest.createdAt?.seconds ? latest.createdAt.seconds * 1000 : new Date(latest.createdAt || 0).getTime();
+                              lastTripInfo = `শেষ ট্রিপ: ${latest.location || 'N/A'}`;
+                              timeAgoStr = formatTimeAgo(latest.createdAt);
+                            }
+
+                            return (
+                              <div 
+                                key={v.id} 
+                                className="bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl flex flex-col justify-between hover:bg-slate-100/50 hover:border-amber-300 hover:shadow-sm transition-all group"
+                              >
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-md border border-amber-200 uppercase">
+                                      {missingHoursTab === 24 ? '> ২৪ ঘণ্টা' : missingHoursTab === 48 ? '> ৪৮ ঘণ্টা' : '> ७২ ঘণ্টা'}
+                                    </span>
+                                    <span className={cn(
+                                      "text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase border",
+                                      v.status === 'Available' ? "bg-emerald-50 border-emerald-100 text-emerald-700" :
+                                      v.status === 'Running' ? "bg-blue-50 border-blue-100 text-blue-700" :
+                                      "bg-slate-100 border-slate-200 text-slate-700"
+                                    )}>
+                                      {v.status === 'Available' ? 'Available' : v.status === 'Running' ? 'Running' : v.status}
+                                    </span>
+                                  </div>
+                                  
+                                  <div>
+                                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                                      <Truck size={14} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
+                                      {v.vehicleNumber}
+                                    </h4>
+                                    <p className="text-[10px] text-slate-400 font-semibold">{v.type}</p>
+                                  </div>
+
+                                  <div className="text-[10px] text-slate-500 font-medium space-y-0.5">
+                                    <p className="font-semibold text-rose-600/95">{lastTripInfo}</p>
+                                    {timeAgoStr && <p className="text-[9px] text-slate-400">({timeAgoStr})</p>}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedVehicle(v.id);
+                                    setShowForm(true);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }}
+                                  className="mt-4 w-full py-2 bg-white hover:bg-amber-500 hover:text-white border border-slate-200 hover:border-amber-500 rounded-lg text-[10px] font-black text-slate-700 flex items-center justify-center gap-1 transition-all"
+                                >
+                                  <Plus size={11} />
+                                  ইন্সপেকশন এন্ট্রি করুন
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Controls Bar */}
           <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
             

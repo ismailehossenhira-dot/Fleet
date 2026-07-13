@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { History, Download, Filter, Search, FileText, AlertTriangle, CheckCircle2, Trash2, Edit3, X, Save } from 'lucide-react';
+import { History, Download, Filter, Search, FileText, AlertTriangle, CheckCircle2, Trash2, Edit3, X, Save, Printer } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { subscribeToCollection, resolveMissingReport, deleteMissingReport, deleteTrip, updateTrip } from './db';
 import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
+import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
 
 const Reports: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
@@ -135,6 +136,154 @@ const Reports: React.FC = () => {
     return matchesStatus && matchesSearch;
   });
 
+  const formatDate = (ts: any) => {
+    if (!ts) return 'N/A';
+    if (ts.toDate) return ts.toDate().toLocaleDateString();
+    if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleDateString();
+    return new Date(ts).toLocaleDateString();
+  };
+
+  const handleExportCSV = () => {
+    if (activeTab === 'Archive') {
+      const headers = [
+        'Date',
+        'Vehicle Plate',
+        'Vehicle ID',
+        'Driver ID',
+        'Driver Name',
+        'Driver Phone',
+        'Helper ID',
+        'Helper Name',
+        'Helper Phone',
+        'Destination',
+        'Status',
+        'Started By',
+        'Completed By'
+      ];
+      const rows = filteredTrips.map(t => [
+        formatDate(t.startTime || t.createdAt),
+        t.vehiclePlate || '',
+        t.vehicleId || '',
+        t.driverId || '',
+        t.driverName || '',
+        t.driverPhone || '',
+        t.helperId || '',
+        t.helperName || '',
+        t.helperPhone || '',
+        t.location || '',
+        t.status || '',
+        t.startedBy || '',
+        t.completedBy || ''
+      ]);
+      downloadCSV(headers, rows, `Transport_Archive_${new Date().toISOString().split('T')[0]}`);
+    } else if (activeTab === 'Missing') {
+      const headers = [
+        'Date Detected',
+        'Vehicle Plate',
+        'Driver ID',
+        'Driver Name',
+        'Missing Documents',
+        'Missing Tools',
+        'Status',
+        'Created By',
+        'Notes'
+      ];
+      const rows = missingReports.map(r => [
+        formatDate(r.date),
+        r.vehiclePlate || '',
+        r.driverId || '',
+        r.driverName || '',
+        (r.missingDocuments || []).join('; '),
+        (r.missingTools || []).join('; '),
+        r.status || '',
+        r.createdBy || '',
+        r.notes || ''
+      ]);
+      downloadCSV(headers, rows, `Pending_Missing_Reports_${new Date().toISOString().split('T')[0]}`);
+    } else if (activeTab === 'History') {
+      const headers = [
+        'Date Solved/Deleted',
+        'Vehicle Plate',
+        'Driver ID',
+        'Driver Name',
+        'Missing Documents',
+        'Missing Tools',
+        'Status',
+        'Created By',
+        'Resolved By'
+      ];
+      const rows = missingHistory.map(r => [
+        formatDate(r.resolvedAt || r.deletedAt),
+        r.vehiclePlate || '',
+        r.driverId || '',
+        r.driverName || '',
+        (r.missingDocuments || []).join('; '),
+        (r.missingTools || []).join('; '),
+        r.status || '',
+        r.createdBy || '',
+        r.resolvedBy || ''
+      ]);
+      downloadCSV(headers, rows, `Resolved_Reports_History_${new Date().toISOString().split('T')[0]}`);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (activeTab === 'Archive') {
+      const title = 'যানবাহন ট্রিপ ইতিহাস রিপোর্ট (Vehicle Trip History Report)';
+      const subtitle = 'লজিস্টিক ট্রান্সপোর্ট আর্কাইভের ট্রিপ রেকর্ড ও চলমান ট্রিপ সমূহের তালিকা।';
+      const metadata = [
+        { label: 'মোট রেকর্ড (Total Records)', value: `${filteredTrips.length} টি` },
+        { label: 'চলমান ট্রিপ (Running Trips)', value: `${filteredTrips.filter(t => t.status === 'Running').length} টি` },
+        { label: 'সম্পন্ন ট্রিপ (Completed Trips)', value: `${filteredTrips.filter(t => t.status === 'Completed').length} টি` }
+      ];
+      const headers = ['তারিখ (Date)', 'গাড়ির নাম্বার (Plate)', 'ড্রাইভার ও হেলপার (Crew Details)', 'গন্তব্য (Destination)', 'অবস্থা (Status)'];
+      const rows = filteredTrips.map(t => [
+        formatDate(t.startTime || t.createdAt),
+        t.vehiclePlate || t.vehicleId,
+        `ড্রাইভার: ${t.driverName} (${t.driverId})${t.helperName ? `<br/>হেলপার: ${t.helperName} (${t.helperId})` : ''}`,
+        t.location || '-',
+        t.status === 'Completed' 
+          ? '<span class="badge badge-completed">Completed</span>' 
+          : '<span class="badge badge-running">Running</span>'
+      ]);
+      exportPDFWindow(title, subtitle, metadata, headers, rows);
+    } else if (activeTab === 'Missing') {
+      const title = 'অনুপস্থিত সরঞ্জামের পেন্ডিং রিপোর্ট (Pending Missing Items Report)';
+      const subtitle = 'গাড়ি ফেরত আসার সময় অনুপস্থিত থাকা বিভিন্ন কাগজপত্র ও টুলের তালিকা।';
+      const metadata = [
+        { label: 'মোট পেন্ডিং কেস (Total Issues)', value: `${missingReports.length} টি` }
+      ];
+      const headers = ['তারিখ (Date)', 'গাড়ি ও ড্রাইভার (Vehicle & Driver)', 'অনুপস্থিত সরঞ্জাম (Missing Items)', 'নোট ও মন্তব্য (Notes)'];
+      const rows = missingReports.map(r => [
+        formatDate(r.date),
+        `<strong>${r.vehiclePlate}</strong><br/>ড্রাইভার: ${r.driverName} (${r.driverId})`,
+        `
+          ${r.missingDocuments?.length ? `<div><strong>কাগজপত্র:</strong> ${r.missingDocuments.map((d: string) => `<span class="badge badge-suspended" style="margin-right:2px">${d}</span>`).join('')}</div>` : ''}
+          ${r.missingTools?.length ? `<div style="margin-top:4px"><strong>সরঞ্জাম:</strong> ${r.missingTools.map((t: string) => `<span class="badge badge-suspended" style="margin-right:2px">${t}</span>`).join('')}</div>` : ''}
+        `,
+        r.notes || '-'
+      ]);
+      exportPDFWindow(title, subtitle, metadata, headers, rows);
+    } else if (activeTab === 'History') {
+      const title = 'সমাধানকৃত মিসিং রিপোর্টের ইতিহাস (Resolved Reports History)';
+      const subtitle = 'ইতিপূর্বে সমাধান করা হওয়া মিসিং ও ড্যামেজ রিপোর্টের সম্পূর্ণ বিবরণী।';
+      const metadata = [
+        { label: 'মোট সমাধানকৃত কেস', value: `${missingHistory.length} টি` }
+      ];
+      const headers = ['তারিখ (Date)', 'গাড়ি ও ড্রাইভার (Vehicle & Driver)', 'অনুপস্থিত সরঞ্জাম (Missing Items)', 'অবস্থা (Status)'];
+      const rows = missingHistory.map(r => [
+        formatDate(r.resolvedAt || r.deletedAt),
+        `<strong>${r.vehiclePlate}</strong><br/>ড্রাইভার: ${r.driverName} (${r.driverId})`,
+        `
+          ${r.missingDocuments?.length ? `<div><strong>কাগজপত্র:</strong> ${r.missingDocuments.join(', ')}</div>` : ''}
+          ${r.missingTools?.length ? `<div style="margin-top:4px"><strong>সরঞ্জাম:</strong> ${r.missingTools.join(', ')}</div>` : ''}
+        `,
+        `<span class="badge badge-active">${r.status || 'Resolved'}</span>`
+      ]);
+      exportPDFWindow(title, subtitle, metadata, headers, rows);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -144,10 +293,16 @@ const Reports: React.FC = () => {
         </div>
         <div className="flex gap-2">
           {canManageReports && (
-            <Button variant="secondary">
-              <Download size={18} />
-              <span>Export CSV</span>
-            </Button>
+            <>
+              <Button variant="secondary" onClick={handleExportCSV}>
+                <Download size={18} />
+                <span>Export CSV</span>
+              </Button>
+              <Button variant="secondary" onClick={handleExportPDF}>
+                <Printer size={18} />
+                <span>Export PDF</span>
+              </Button>
+            </>
           )}
         </div>
       </div>

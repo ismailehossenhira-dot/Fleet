@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer } from 'lucide-react';
 import { Card, Button } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
+import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
 
 const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,6 +51,7 @@ const Drivers: React.FC = () => {
   const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(() => {
     const saved = localStorage.getItem('drivers_showAdd');
     return saved ? JSON.parse(saved) : false;
@@ -79,8 +81,77 @@ const Drivers: React.FC = () => {
   }, [newDriver]);
 
   useEffect(() => {
-    return subscribeToCollection('drivers', setDrivers);
+    const unsubDrivers = subscribeToCollection('drivers', setDrivers);
+    const unsubTrips = subscribeToCollection('trips', setTrips);
+    return () => {
+      unsubDrivers();
+      unsubTrips();
+    };
   }, []);
+
+  const handleExportCSV = () => {
+    const headers = [
+      'Employee ID',
+      'Full Name',
+      'Role',
+      'Contact Number',
+      'Status',
+      'Suspension Reason',
+      'Suspension Days',
+      'Suspended By',
+      'Total Trips',
+      'Active Trips',
+      'Completed Trips'
+    ];
+    const rows = filtered.map(d => {
+      const staffTrips = trips.filter(t => t.driverId === d.driverId || t.helperId === d.driverId);
+      return [
+        d.driverId,
+        d.name,
+        d.role || 'Driver',
+        d.phoneNumber || '',
+        d.isSuspended ? 'Suspended' : 'Active',
+        d.suspensionReason || '',
+        d.suspensionDays || '',
+        d.suspendedBy || '',
+        staffTrips.length.toString(),
+        staffTrips.filter(t => t.status === 'Running').length.toString(),
+        staffTrips.filter(t => t.status === 'Completed').length.toString()
+      ];
+    });
+    downloadCSV(headers, rows, `Staff_Directory_Report_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const handleExportPDF = () => {
+    const title = 'স্টাফ ডিরেক্টরি ও পারফরম্যান্স রিপোর্ট (Staff Directory & Performance Report)';
+    const subtitle = 'নিবন্ধিত ড্রাইভার ও হেলপারদের বিবরণ, ট্রিপ পরিসংখ্যান এবং বর্তমান সাসপেনশন স্ট্যাটাস।';
+    const metadata = [
+      { label: 'মোট স্টাফ (Total Staff)', value: `${filtered.length} জন` },
+      { label: 'মোট ড্রাইভার (Drivers)', value: `${filtered.filter(d => (d.role || 'Driver') === 'Driver').length} জন` },
+      { label: 'মোট হেলপার (Helpers)', value: `${filtered.filter(d => d.role === 'Helper').length} জন` },
+      { label: 'সাসপেন্ডেড স্টাফ (Suspended)', value: `${filtered.filter(d => d.isSuspended).length} জন` }
+    ];
+    const headers = ['আইডি (Employee ID)', 'নাম ও পদবি (Name & Role)', 'মোবাইল (Contact)', 'ট্রিপ পরিসংখ্যান (Trip Stats)', 'অবস্থা (Status)'];
+    const rows = filtered.map(d => {
+      const staffTrips = trips.filter(t => t.driverId === d.driverId || t.helperId === d.driverId);
+      const tRun = staffTrips.filter(t => t.status === 'Running').length;
+      const tComp = staffTrips.filter(t => t.status === 'Completed').length;
+      const tTotal = staffTrips.length;
+      
+      const statusBadge = d.isSuspended 
+        ? `<span class="badge badge-suspended">Suspended</span><br/><span style="font-size:9px;color:#ef4444">কারণ: ${d.suspensionReason || 'উল্লেখ নেই'} (${d.suspensionDays || 0} দিন)</span>`
+        : '<span class="badge badge-active">Active</span>';
+
+      return [
+        `<strong>${d.driverId}</strong>`,
+        `<strong>${d.name}</strong><br/><span style="color:#64748b;font-size:10px">${d.role || 'Driver'}</span>`,
+        d.phoneNumber || '-',
+        `মোট: ${tTotal} | চলমান: ${tRun} | সম্পন্ন: ${tComp}`,
+        statusBadge
+      ];
+    });
+    exportPDFWindow(title, subtitle, metadata, headers, rows);
+  };
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -252,12 +323,24 @@ const Drivers: React.FC = () => {
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Staff Directory</h2>
           <p className="text-sm text-slate-500">Manage all registered drivers and helpers.</p>
         </div>
-        {canManage && (
-          <Button onClick={() => setShowAdd(!showAdd)} className="shadow-lg shadow-blue-200">
-            <Plus size={20} />
-            <span>Register New Staff</span>
-          </Button>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {canManage && (
+            <>
+              <Button variant="secondary" onClick={handleExportCSV}>
+                <Download size={18} />
+                <span>Export CSV</span>
+              </Button>
+              <Button variant="secondary" onClick={handleExportPDF}>
+                <Printer size={18} />
+                <span>Export PDF</span>
+              </Button>
+              <Button onClick={() => setShowAdd(!showAdd)} className="shadow-lg shadow-blue-200">
+                <Plus size={20} />
+                <span>Register New Staff</span>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {showAdd && (
