@@ -78,9 +78,15 @@ const UsersManagement: React.FC = () => {
   };
 
   const handleEdit = (user: any) => {
+    const isOwner = user.uid === profile?.uid;
     // Check permission to edit this user
-    if (isSubAdmin && user.role !== 'Sub Admin') {
+    if (!isAdmin && !isOwner && isSubAdmin && user.role !== 'Sub Admin') {
       setError('সাব-এডমিন শুধুমাত্র অন্য সাব-এডমিন একাউন্ট সংশোধন করতে পারবেন।');
+      return;
+    }
+
+    if (!isAdmin && !isOwner && !isSubAdmin) {
+      setError('আপনার অন্য কোনো ব্যবহারকারীর অ্যাকাউন্ট পরিবর্তন করার অনুমতি নেই।');
       return;
     }
 
@@ -178,8 +184,16 @@ const UsersManagement: React.FC = () => {
     }
 
     // Role safety validation
+    const editingUser = editingId ? users.find(u => u.id === editingId) : null;
+    const isEditingSelf = editingUser ? editingUser.uid === profile?.uid : false;
+
     if (isSubAdmin && formRole !== 'Sub Admin') {
       setError('সাব-এডমিন শুধুমাত্র "Sub Admin" রোল সম্পন্ন ইউজার তৈরি বা পরিবর্তন করতে পারবেন।');
+      return;
+    }
+
+    if (isEditingSelf && !isAdmin && formRole !== editingUser?.role) {
+      setError('আপনি নিজের অ্যাকাউন্টের রোল পরিবর্তন করতে পারবেন না।');
       return;
     }
 
@@ -216,6 +230,12 @@ const UsersManagement: React.FC = () => {
 
   // Filter users list based on search and roles visibility
   const filteredUsers = users.filter(user => {
+    // If not Admin or Sub Admin, show ONLY their own row
+    const isOwner = user.uid === profile?.uid;
+    if (!isAdmin && !isSubAdmin && !isOwner) {
+      return false;
+    }
+
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
       (user.username || '').toLowerCase().includes(searchLower) ||
@@ -223,6 +243,9 @@ const UsersManagement: React.FC = () => {
     
     return matchesSearch;
   });
+
+  const editingUser = editingId ? users.find(u => u.id === editingId) : null;
+  const isEditingSelf = editingUser ? editingUser.uid === profile?.uid : false;
 
   return (
     <div className="space-y-6">
@@ -236,14 +259,18 @@ const UsersManagement: React.FC = () => {
           <p className="text-slate-500">
             {isAdmin 
               ? 'সকল সিস্টেম ব্যবহারকারীদের একাউন্ট তৈরি ও পাসওয়ার্ড পরিবর্তন করুন।' 
-              : 'সাব-এডমিন একাউন্ট তৈরি ও পরিচালনা করুন।'}
+              : isSubAdmin
+              ? 'সাব-এডমিন একাউন্ট তৈরি ও পরিচালনা করুন।'
+              : 'আপনার প্রোফাইল তথ্য এবং পাসওয়ার্ড পরিবর্তন করুন।'}
           </p>
         </div>
         
-        <Button onClick={handleOpenCreate} className="gap-2">
-          <UserPlus size={18} />
-          <span>নতুন ইউজার যোগ করুন</span>
-        </Button>
+        {(isAdmin || isSubAdmin) && (
+          <Button onClick={handleOpenCreate} className="gap-2">
+            <UserPlus size={18} />
+            <span>নতুন ইউজার যোগ করুন</span>
+          </Button>
+        )}
       </div>
 
       {/* Alert Messages */}
@@ -318,13 +345,13 @@ const UsersManagement: React.FC = () => {
                     অ্যাকাউন্টের রোল (Account Role)
                   </label>
                   <select
-                    disabled={isSubAdmin}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm text-slate-800 transition-all"
+                    disabled={isSubAdmin || (isEditingSelf && !isAdmin)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm text-slate-800 transition-all disabled:opacity-65"
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value as UserRole)}
                   >
-                    {isSubAdmin ? (
-                      <option value="Sub Admin">Sub Admin (সাব এডমিন)</option>
+                    {isSubAdmin || (isEditingSelf && !isAdmin) ? (
+                      <option value={formRole}>{formRole}</option>
                     ) : (
                       <>
                         <option value="Admin">Admin (এডমিন)</option>
@@ -338,6 +365,12 @@ const UsersManagement: React.FC = () => {
                     <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
                       <Info size={12} />
                       <span>সাব-এডমিন শুধুমাত্র সাব-এডমিন রোল নির্বাচন করতে পারেন।</span>
+                    </p>
+                  )}
+                  {isEditingSelf && !isAdmin && (
+                    <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                      <Info size={12} />
+                      <span>আপনি নিজের অ্যাকাউন্টের রোল পরিবর্তন করতে পারবেন না।</span>
                     </p>
                   )}
                 </div>
@@ -421,7 +454,7 @@ const UsersManagement: React.FC = () => {
                     {filteredUsers.map((user) => {
                       const isOwner = user.uid === profile?.uid;
                       const isSubAdminTarget = user.role === 'Sub Admin';
-                      const canModify = isAdmin || (isSubAdmin && isSubAdminTarget);
+                      const canModify = isAdmin || (isSubAdmin && isSubAdminTarget) || isOwner;
 
                       return (
                         <tr key={user.id} className="hover:bg-slate-50/55 transition-colors group">
@@ -449,17 +482,19 @@ const UsersManagement: React.FC = () => {
                           <td className="py-4 px-4 font-mono text-xs text-slate-600">
                             <div className="flex items-center gap-2">
                               <span>
-                                {visiblePasswords[user.username] 
+                                {(isAdmin || isOwner) && visiblePasswords[user.username] 
                                   ? (user.password || '••••••••') 
                                   : '••••••••'}
                               </span>
-                              <button
-                                onClick={() => togglePasswordVisibility(user.username)}
-                                className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
-                                title={visiblePasswords[user.username] ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
-                              >
-                                {visiblePasswords[user.username] ? <EyeOff size={14} /> : <Eye size={14} />}
-                              </button>
+                              {(isAdmin || isOwner) && (
+                                <button
+                                  onClick={() => togglePasswordVisibility(user.username)}
+                                  className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
+                                  title={visiblePasswords[user.username] ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
+                                >
+                                  {visiblePasswords[user.username] ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-4">

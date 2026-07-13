@@ -14,7 +14,9 @@ import {
   QrCode,
   PlusCircle,
   ClipboardList,
-  Sunrise
+  Sunrise,
+  Bell,
+  Volume2
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -42,14 +44,25 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/morning-prep', icon: Sunrise, label: 'Morning Prep', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/cases', icon: FileWarning, label: 'Cases', roles: ['Admin', 'Sub Admin', 'Checker'] },
   { to: '/reports', icon: History, label: 'Reports', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/users', icon: Users, label: 'Users', roles: ['Admin', 'Sub Admin'] },
+  { to: '/users', icon: Users, label: 'Users', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
 ];
+
+interface ReturnNotification {
+  id: string;
+  vehicleId: string;
+  vehicleNumber: string;
+  previousStatus: string;
+}
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
+  const [activeReturns, setActiveReturns] = React.useState<ReturnNotification[]>([]);
+
+  const prevVehiclesRef = React.useRef<any[]>([]);
+  const isFirstLoadRef = React.useRef(true);
 
   React.useEffect(() => {
     const unsub = subscribeToCollection('requests', (items: any[]) => {
@@ -58,6 +71,88 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     });
     return () => unsub();
   }, []);
+
+  React.useEffect(() => {
+    const unsub = subscribeToCollection('vehicles', (newVehiclesList: any[]) => {
+      if (isFirstLoadRef.current) {
+        prevVehiclesRef.current = newVehiclesList;
+        isFirstLoadRef.current = false;
+        return;
+      }
+
+      const prevVehicles = prevVehiclesRef.current;
+      newVehiclesList.forEach(newV => {
+        const prevV = prevVehicles.find(v => v.id === newV.id);
+        if (prevV) {
+          const oldStatus = prevV.status;
+          const newStatus = newV.status;
+          
+          if (oldStatus !== newStatus && newStatus === 'Available') {
+            if (oldStatus === 'Running' || oldStatus === 'Maintenance') {
+              const notificationId = `${newV.id}-${Date.now()}`;
+              const newNotification: ReturnNotification = {
+                id: notificationId,
+                vehicleId: newV.id,
+                vehicleNumber: newV.vehicleNumber,
+                previousStatus: oldStatus
+              };
+              
+              setActiveReturns(prev => [...prev, newNotification]);
+
+              // Play sound only for Checker and Line Supervisor
+              const isEligibleRole = profile?.role === 'Checker' || profile?.role === 'Line Supervisor';
+              if (isEligibleRole) {
+                try {
+                  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                  
+                  const osc1 = audioCtx.createOscillator();
+                  const gain1 = audioCtx.createGain();
+                  osc1.type = 'sine';
+                  osc1.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+                  gain1.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                  gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                  osc1.connect(gain1);
+                  gain1.connect(audioCtx.destination);
+                  osc1.start();
+                  osc1.stop(audioCtx.currentTime + 0.3);
+                  
+                  setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                    gain2.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start();
+                    osc2.stop(audioCtx.currentTime + 0.45);
+                  }, 150);
+                } catch (soundErr) {
+                  console.warn("Audio Context error or blocked:", soundErr);
+                }
+              }
+
+              // Auto-dismiss after 6 seconds
+              setTimeout(() => {
+                setActiveReturns(prev => prev.filter(n => n.id !== notificationId));
+              }, 6000);
+            }
+          }
+        }
+      });
+
+      prevVehiclesRef.current = newVehiclesList;
+    });
+
+    return () => unsub();
+  }, [profile?.role]);
+
+  const dismissNotification = (id: string) => {
+    setActiveReturns(prev => prev.filter(n => n.id !== id));
+  };
+
+  const isEligibleRole = profile?.role === 'Checker' || profile?.role === 'Line Supervisor';
 
   const handleLogout = async () => {
     await signOut();
@@ -100,6 +195,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             {filteredNavItems.map((item) => {
               const isRequests = item.to === '/requests';
               const hasPending = isRequests && pendingCount > 0;
+              
+              const isVehicles = item.to === '/vehicles';
+              const hasActiveReturns = isVehicles && activeReturns.length > 0;
+
               return (
                 <NavLink
                   key={item.to}
@@ -110,17 +209,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     isActive 
                       ? "bg-white/10 text-white font-semibold" 
                       : "text-slate-400 hover:text-white hover:bg-white/5",
-                    hasPending && "bg-amber-500/10 text-amber-200 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse"
+                    hasPending && "bg-amber-500/10 text-amber-200 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse",
+                    hasActiveReturns && "bg-rose-600 text-white border border-rose-500 hover:bg-rose-700 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-bold animate-pulse"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon size={18} className={cn(
                       "transition-colors",
-                      hasPending && "text-amber-400 animate-pulse"
+                      hasPending && "text-amber-400 animate-pulse",
+                      hasActiveReturns && "text-white animate-bounce"
                     )} />
                     <span className={cn(
                       "transition-all",
-                      hasPending && "font-bold text-amber-100"
+                      hasPending && "font-bold text-amber-100",
+                      hasActiveReturns && "font-black text-white"
                     )}>
                       {item.label}
                     </span>
@@ -134,6 +236,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       </span>
                       <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-md">
                         {pendingCount}
+                      </span>
+                    </div>
+                  )}
+
+                  {hasActiveReturns && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-white text-[10px] font-black text-rose-600 shadow-md">
+                        {activeReturns.length}
                       </span>
                     </div>
                   )}
@@ -205,6 +319,47 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </motion.div>
         </div>
       </main>
+
+      {/* Floating Returned Vehicle Pop-up Notifications */}
+      {isEligibleRole && activeReturns.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+          <AnimatePresence>
+            {activeReturns.map((notif) => (
+              <motion.div
+                key={notif.id}
+                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
+                className="pointer-events-auto bg-slate-900 text-white border border-slate-800 p-4 rounded-2xl shadow-2xl flex items-start gap-3.5 relative overflow-hidden"
+              >
+                {/* Decorative top accent strip */}
+                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-rose-500 to-amber-500 opacity-80" />
+                
+                <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0 mt-0.5 animate-pulse">
+                  <Truck size={18} className="animate-bounce" />
+                </div>
+                
+                <div className="flex-1 min-w-0 pr-4">
+                  <h4 className="font-bold text-sm tracking-tight text-white flex items-center gap-2">
+                    গাড়ি ফিরে এসেছে!
+                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </h4>
+                  <p className="text-xs text-slate-300 mt-1 font-medium leading-relaxed">
+                    গাড়ি <span className="font-extrabold text-amber-400 text-sm font-mono tracking-wider">{notif.vehicleNumber}</span> {notif.previousStatus === 'Maintenance' ? 'মেইনটেনেন্স' : 'ট্রিপ'} থেকে ফিরে এসেছে এবং এখন <span className="text-emerald-400 font-extrabold">Available</span> রয়েছে।
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => dismissNotification(notif.id)}
+                  className="absolute top-3 right-3 p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 };
