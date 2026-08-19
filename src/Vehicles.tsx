@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer } from 'lucide-react';
-import { Card, Button } from './components/Common';
+import { Card, Button, AuditDetailsDropdown } from './components/Common';
 import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus } from './db';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -13,33 +13,20 @@ const Vehicles: React.FC = () => {
   const canManage = isAdmin || isSubAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(() => {
-    const saved = localStorage.getItem('vehicles_showAdd');
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [showAdd, setShowAdd] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setSearchTerm(searchQuery);
   }, [searchQuery]);
-  const [newVehicle, setNewVehicle] = useState(() => {
-    const saved = localStorage.getItem('vehicles_newVehicle');
-    return saved ? JSON.parse(saved) : {
-      vehicleNumber: '',
-      type: 'Medium',
-      status: 'Available',
-      maintenanceNotes: ''
-    };
+
+  const [newVehicle, setNewVehicle] = useState({
+    vehicleNumber: '',
+    type: 'Medium' as 'Small' | 'Medium' | 'Large',
+    status: 'Available' as 'Available' | 'Maintenance',
+    maintenanceNotes: ''
   });
-
-  useEffect(() => {
-    localStorage.setItem('vehicles_showAdd', JSON.stringify(showAdd));
-  }, [showAdd]);
-
-  useEffect(() => {
-    localStorage.setItem('vehicles_newVehicle', JSON.stringify(newVehicle));
-  }, [newVehicle]);
 
   const [selectedQRVehicle, setSelectedQRVehicle] = useState<any | null>(null);
 
@@ -243,125 +230,198 @@ const Vehicles: React.FC = () => {
         </div>
       </div>
 
+      {/* Register New Vehicle Modal (Hidden by default, shown on demand) */}
       {showAdd && (
-        <Card title="Register New Vehicle" className="max-w-xl">
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Number (Plate)</label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none"
-                placeholder="e.g. DHAKA-METRO-KA-12-3456"
-                value={newVehicle.vehicleNumber}
-                onChange={e => setNewVehicle({ ...newVehicle, vehicleNumber: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
-                <select 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                  value={newVehicle.type}
-                  onChange={e => setNewVehicle({ ...newVehicle, type: e.target.value as any })}
-                >
-                  {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Truck size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base md:text-lg">
+                    নতুন গাড়ি এন্ট্রি (Register New Vehicle)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">ফ্লিটে নতুন গাড়ি যুক্ত করার ফর্ম</p>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                <select 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                  value={newVehicle.status}
-                  onChange={e => setNewVehicle({ ...newVehicle, status: e.target.value as any })}
-                >
-                  {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+              <button 
+                type="button"
+                onClick={handleCancel}
+                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition-colors font-bold text-sm"
+              >
+                ✕
+              </button>
             </div>
-            {newVehicle.status === 'Maintenance' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট (Maintenance Notes / Problems)</label>
-                <textarea 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-xs"
-                  placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
-                  value={newVehicle.maintenanceNotes || ''}
-                  onChange={e => setNewVehicle({ ...newVehicle, maintenanceNotes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            )}
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1">Save Vehicle</Button>
-              <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
+
+            {/* Modal Body Form */}
+            <div className="overflow-y-auto p-6">
+              <form onSubmit={handleAdd} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Number (Plate)</label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none font-bold uppercase tracking-wider"
+                    placeholder="e.g. DHAKA-METRO-KA-12-3456"
+                    value={newVehicle.vehicleNumber}
+                    onChange={e => setNewVehicle({ ...newVehicle, vehicleNumber: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                      value={newVehicle.type}
+                      onChange={e => setNewVehicle({ ...newVehicle, type: e.target.value as any })}
+                    >
+                      {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                      value={newVehicle.status}
+                      onChange={e => setNewVehicle({ ...newVehicle, status: e.target.value as any })}
+                    >
+                      {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {newVehicle.status === 'Maintenance' && (
+                  <div className="animate-in fade-in duration-200">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট</label>
+                    <textarea 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-100 focus:border-amber-400 transition-all outline-none text-xs"
+                      placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                      value={newVehicle.maintenanceNotes || ''}
+                      onChange={e => setNewVehicle({ ...newVehicle, maintenanceNotes: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4 border-t border-slate-100">
+                  <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
+                    <Plus size={18} />
+                    <span>গাড়ি সংরক্ষণ করুন</span>
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={handleCancel}>
+                    বাতিল (Cancel)
+                  </Button>
+                </div>
+              </form>
             </div>
-          </form>
-        </Card>
+          </div>
+        </div>
       )}
 
+      {/* Edit Vehicle Modal (Hidden by default, shown on demand) */}
       {editingVehicle && (
-        <Card title={`Edit Vehicle: ${editingVehicle.vehicleNumber}`} className="max-w-xl">
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Number (Plate)</label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none"
-                value={editingVehicle.vehicleNumber}
-                onChange={e => setEditingVehicle({ ...editingVehicle, vehicleNumber: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
-                <select 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                  value={editingVehicle.type}
-                  onChange={e => setEditingVehicle({ ...editingVehicle, type: e.target.value as any })}
-                >
-                  {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                <select 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                  value={editingVehicle.status}
-                  onChange={e => setEditingVehicle({ ...editingVehicle, status: e.target.value as any })}
-                >
-                  {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-            {editingVehicle.status === 'Maintenance' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট (Maintenance Notes / Problems)</label>
-                <textarea 
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-xs"
-                  placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
-                  value={editingVehicle.maintenanceNotes || ''}
-                  onChange={e => setEditingVehicle({ ...editingVehicle, maintenanceNotes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 mt-4 pt-4">
-              {deletingId === editingVehicle.id ? (
-                <div className="flex-1 flex gap-2">
-                  <Button type="button" variant="danger" onClick={() => handleDelete(editingVehicle.id)} className="flex-1">Confirm Permanent Delete</Button>
-                  <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">Cancel</Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-white rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Edit2 size={18} />
                 </div>
-              ) : (
-                <>
-                  <Button type="submit" className="flex-1">Update Vehicle</Button>
-                  <Button type="button" variant="danger" onClick={() => setDeletingId(editingVehicle.id)} className="flex-1 text-[10px]">Delete Vehicle</Button>
-                  <Button type="button" variant="secondary" onClick={() => setEditingVehicle(null)} className="flex-1">Cancel</Button>
-                </>
-              )}
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base md:text-lg">
+                    গাড়ির তথ্য এডিট (Edit Vehicle)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    নম্বর: <span className="font-bold text-blue-600">{editingVehicle.vehicleNumber}</span>
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setEditingVehicle(null)}
+                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition-colors font-bold text-sm"
+              >
+                ✕
+              </button>
             </div>
-          </form>
-        </Card>
+
+            {/* Modal Body Form */}
+            <div className="overflow-y-auto p-6">
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Number (Plate)</label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none font-bold uppercase tracking-wider"
+                    value={editingVehicle.vehicleNumber}
+                    onChange={e => setEditingVehicle({ ...editingVehicle, vehicleNumber: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                      value={editingVehicle.type}
+                      onChange={e => setEditingVehicle({ ...editingVehicle, type: e.target.value as any })}
+                    >
+                      {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                      value={editingVehicle.status}
+                      onChange={e => setEditingVehicle({ ...editingVehicle, status: e.target.value as any })}
+                    >
+                      {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {editingVehicle.status === 'Maintenance' && (
+                  <div className="animate-in fade-in duration-200">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট</label>
+                    <textarea 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-100 focus:border-amber-400 transition-all outline-none text-xs"
+                      placeholder="আসলে গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                      value={editingVehicle.maintenanceNotes || ''}
+                      onChange={e => setEditingVehicle({ ...editingVehicle, maintenanceNotes: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                  {deletingId === editingVehicle.id ? (
+                    <div className="flex-1 flex gap-2">
+                      <Button type="button" variant="danger" onClick={() => handleDelete(editingVehicle.id)} className="flex-1">
+                        নিশ্চিত মুছুন (Confirm Delete)
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">
+                        বাতিল
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
+                        আপডেট করুন (Update)
+                      </Button>
+                      <Button type="button" variant="danger" onClick={() => setDeletingId(editingVehicle.id)} className="px-4 text-xs">
+                        মুছুন (Delete)
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setEditingVehicle(null)}>
+                        বাতিল
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       <Card>
@@ -393,13 +453,10 @@ const Vehicles: React.FC = () => {
               {filtered.map(vehicle => (
                 <tr key={vehicle.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 font-bold text-text-main">
-                    <div>{vehicle.vehicleNumber}</div>
-                    {vehicle.createdBy && (
-                      <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {vehicle.createdBy}</div>
-                    )}
-                    {vehicle.updatedBy && (
-                      <div className="text-[9px] text-slate-400 font-normal">এডিট: {vehicle.updatedBy}</div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span>{vehicle.vehicleNumber}</span>
+                      <AuditDetailsDropdown createdBy={vehicle.createdBy} updatedBy={vehicle.updatedBy} />
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-text-muted">{vehicle.type}</td>
                   <td className="px-5 py-3">

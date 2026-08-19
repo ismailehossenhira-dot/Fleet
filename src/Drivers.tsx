@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer } from 'lucide-react';
-import { Card, Button } from './components/Common';
+import { Card, Button, AuditDetailsDropdown } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -52,33 +52,20 @@ const Drivers: React.FC = () => {
   const canManage = isAdmin || isSubAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(() => {
-    const saved = localStorage.getItem('drivers_showAdd');
-    return saved ? JSON.parse(saved) : false;
-  });
+  const [showAdd, setShowAdd] = useState(false);
   const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setSearchTerm(searchQuery);
   }, [searchQuery]);
-  const [newDriver, setNewDriver] = useState(() => {
-    const saved = localStorage.getItem('drivers_newDriver');
-    return saved ? JSON.parse(saved) : {
-      driverId: 'DRV-',
-      name: '',
-      phoneNumber: '',
-      role: 'Driver'
-    };
+
+  const [newDriver, setNewDriver] = useState({
+    driverId: 'DRV-',
+    name: '',
+    phoneNumber: '',
+    role: 'Driver' as 'Driver' | 'Helper'
   });
-
-  useEffect(() => {
-    localStorage.setItem('drivers_showAdd', JSON.stringify(showAdd));
-  }, [showAdd]);
-
-  useEffect(() => {
-    localStorage.setItem('drivers_newDriver', JSON.stringify(newDriver));
-  }, [newDriver]);
 
   useEffect(() => {
     const unsubDrivers = subscribeToCollection('drivers', setDrivers);
@@ -240,17 +227,12 @@ const Drivers: React.FC = () => {
                    <span className="font-bold text-accent uppercase tracking-tight">{driver.driverId}</span>
                 </td>
                 <td className="px-5 py-3 font-bold text-slate-800">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span>{driver.name}</span>
+                    <AuditDetailsDropdown createdBy={driver.createdBy} updatedBy={driver.updatedBy} />
                   </div>
                   {driver.isSuspended && (
                     <SuspensionBadgeAndDetails driver={driver} />
-                  )}
-                  {driver.createdBy && (
-                    <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {driver.createdBy}</div>
-                  )}
-                  {driver.updatedBy && (
-                    <div className="text-[9px] text-slate-400 font-normal">এডিট: {driver.updatedBy}</div>
                   )}
                 </td>
                 <td className="px-5 py-3">
@@ -343,215 +325,299 @@ const Drivers: React.FC = () => {
         </div>
       </div>
 
+      {/* Add Staff Modal (Hidden by default, shown on demand) */}
       {showAdd && (
-        <Card title="New Driver Enrollment" className="max-w-xl">
-          <form onSubmit={handleAdd} className="space-y-4">
-             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {newDriver.role === 'Driver' ? 'Driver' : 'Helper'} Employee ID
-              </label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-bold"
-                placeholder="e.g. DRV-001"
-                value={newDriver.driverId}
-                onChange={e => setNewDriver({ ...newDriver, driverId: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                placeholder="e.g. John Doe"
-                value={newDriver.name}
-                onChange={e => setNewDriver({ ...newDriver, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Staff Role</label>
-              <select 
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                value={newDriver.role}
-                onChange={e => {
-                  const role = e.target.value;
-                  let defaultId = newDriver.driverId;
-                  if (role === 'Driver') {
-                    if (!defaultId || defaultId === 'HLP-' || defaultId === 'DRV-' || defaultId.trim() === '') {
-                      defaultId = 'DRV-';
-                    } else if (defaultId.startsWith('HLP-')) {
-                      defaultId = 'DRV-' + defaultId.slice(4);
-                    } else if (!defaultId.startsWith('DRV-')) {
-                      defaultId = 'DRV-' + defaultId;
-                    }
-                  } else if (role === 'Helper') {
-                    if (!defaultId || defaultId === 'DRV-' || defaultId === 'HLP-' || defaultId.trim() === '') {
-                      defaultId = 'HLP-';
-                    } else if (defaultId.startsWith('DRV-')) {
-                      defaultId = 'HLP-' + defaultId.slice(4);
-                    } else if (!defaultId.startsWith('HLP-')) {
-                      defaultId = 'HLP-' + defaultId;
-                    }
-                  }
-                  setNewDriver({ ...newDriver, role: role as any, driverId: defaultId });
-                }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base md:text-lg">
+                    নতুন স্টাফ এন্ট্রি (Register New Staff)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">ড্রাইভার বা হেলপার যোগ করার ফর্ম</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={handleCancel}
+                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition-colors font-bold text-sm"
               >
-                {STAFF_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-              </select>
+                ✕
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-              <input 
-                type="tel" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                placeholder="+880..."
-                value={newDriver.phoneNumber}
-                onChange={e => setNewDriver({ ...newDriver, phoneNumber: e.target.value })}
-              />
+
+            {/* Modal Body Form */}
+            <div className="overflow-y-auto p-6">
+              <form onSubmit={handleAdd} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    স্টাফ পদবি (Staff Role)
+                  </label>
+                  <select 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                    value={newDriver.role}
+                    onChange={e => {
+                      const role = e.target.value;
+                      let defaultId = newDriver.driverId;
+                      if (role === 'Driver') {
+                        if (!defaultId || defaultId === 'HLP-' || defaultId === 'DRV-' || defaultId.trim() === '') {
+                          defaultId = 'DRV-';
+                        } else if (defaultId.startsWith('HLP-')) {
+                          defaultId = 'DRV-' + defaultId.slice(4);
+                        } else if (!defaultId.startsWith('DRV-')) {
+                          defaultId = 'DRV-' + defaultId;
+                        }
+                      } else if (role === 'Helper') {
+                        if (!defaultId || defaultId === 'DRV-' || defaultId === 'HLP-' || defaultId.trim() === '') {
+                          defaultId = 'HLP-';
+                        } else if (defaultId.startsWith('DRV-')) {
+                          defaultId = 'HLP-' + defaultId.slice(4);
+                        } else if (!defaultId.startsWith('HLP-')) {
+                          defaultId = 'HLP-' + defaultId;
+                        }
+                      }
+                      setNewDriver({ ...newDriver, role: role as any, driverId: defaultId });
+                    }}
+                  >
+                    {STAFF_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {newDriver.role === 'Driver' ? 'Driver' : 'Helper'} Employee ID
+                  </label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-bold tracking-wide"
+                    placeholder="e.g. DRV-001"
+                    value={newDriver.driverId}
+                    onChange={e => setNewDriver({ ...newDriver, driverId: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম (Full Name)</label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                    placeholder="e.g. মোঃ করিম উদ্দিন"
+                    value={newDriver.name}
+                    onChange={e => setNewDriver({ ...newDriver, name: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                  <input 
+                    type="tel" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                    placeholder="017XXXXXXXX"
+                    value={newDriver.phoneNumber}
+                    onChange={e => setNewDriver({ ...newDriver, phoneNumber: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-slate-100">
+                  <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
+                    <Plus size={18} />
+                    <span>নতুন স্টাফ সংরক্ষণ করুন</span>
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={handleCancel}>
+                    বাতিল (Cancel)
+                  </Button>
+                </div>
+              </form>
             </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1">Enroll Driver</Button>
-              <Button type="button" variant="secondary" onClick={handleCancel}>Cancel</Button>
-            </div>
-          </form>
-        </Card>
+          </div>
+        </div>
       )}
 
+      {/* Edit Staff Modal (Hidden by default, shown on demand) */}
       {editingDriver && (
-        <Card title="Edit Staff Member" className="max-w-xl">
-          <form onSubmit={handleUpdate} className="space-y-4">
-             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Staff Employee ID</label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-bold bg-slate-50"
-                value={editingDriver.driverId}
-                onChange={e => setEditingDriver({ ...editingDriver, driverId: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-              <input 
-                type="text" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                value={editingDriver.name}
-                onChange={e => setEditingDriver({ ...editingDriver, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Staff Role</label>
-              <select 
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                value={editingDriver.role || 'Driver'}
-                onChange={e => setEditingDriver({ ...editingDriver, role: e.target.value as any })}
-              >
-                {STAFF_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-              <input 
-                type="tel" 
-                required
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                value={editingDriver.phoneNumber}
-                onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
-              />
-            </div>
-
-            {/* Suspension Control Section */}
-            <div className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    সাসপেনশন কন্ট্রোল (Suspension Control)
-                  </h4>
-                  <p className="text-[10px] text-slate-400">স্টাফ সাময়িকভাবে বরখাস্ত বা সাসপেন্ড করার জন্য</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-white rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Edit2 size={18} />
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="sr-only peer"
-                    checked={!!editingDriver.isSuspended}
-                    onChange={e => {
-                      const suspended = e.target.checked;
-                      setEditingDriver({
-                        ...editingDriver,
-                        isSuspended: suspended,
-                        suspensionDays: suspended ? (editingDriver.suspensionDays || 7) : null,
-                        suspensionReason: suspended ? (editingDriver.suspensionReason || '') : null,
-                        suspendedBy: suspended ? (editingDriver.suspendedBy || profile?.email || 'Admin') : null,
-                      });
-                    }}
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
-                </label>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base md:text-lg">
+                    স্টাফ তথ্য এডিট (Edit Staff)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {editingDriver.name} — <span className="font-bold text-blue-600">{editingDriver.driverId}</span>
+                  </p>
+                </div>
               </div>
+              <button 
+                type="button"
+                onClick={() => setEditingDriver(null)}
+                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition-colors font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
 
-              {editingDriver.isSuspended && (
-                <div className="space-y-3 pt-2 border-t border-slate-100 animate-in fade-in duration-200">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেনশন মেয়াদ (দিন) / Duration (Days)</label>
-                      <input 
-                        type="number" 
-                        min={1}
-                        required
-                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400"
-                        placeholder="e.g. 7"
-                        value={editingDriver.suspensionDays || ''}
-                        onChange={e => {
-                          const days = parseInt(e.target.value) || 0;
-                          setEditingDriver({ ...editingDriver, suspensionDays: days });
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডকারী / Suspended By</label>
-                      <input 
-                        type="text" 
-                        disabled
-                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-150 bg-slate-100 outline-none text-slate-500"
-                        value={editingDriver.suspendedBy || profile?.email || 'Admin'}
-                      />
-                    </div>
+            {/* Modal Body Form */}
+            <div className="overflow-y-auto p-6">
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">স্টাফ পদবি (Staff Role)</label>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                      value={editingDriver.role || 'Driver'}
+                      onChange={e => setEditingDriver({ ...editingDriver, role: e.target.value as any })}
+                    >
+                      {STAFF_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডের কারণ / Reason for Suspension</label>
-                    <textarea 
+                    <label className="block text-sm font-medium text-slate-700 mb-1">স্টাফ Employee ID</label>
+                    <input 
+                      type="text" 
                       required
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400 bg-white"
-                      placeholder="e.g. ডিউটি অবহেলা বা নিয়ম ভঙ্গ করা"
-                      rows={2}
-                      value={editingDriver.suspensionReason || ''}
-                      onChange={e => setEditingDriver({ ...editingDriver, suspensionReason: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-bold bg-slate-50"
+                      value={editingDriver.driverId}
+                      onChange={e => setEditingDriver({ ...editingDriver, driverId: e.target.value })}
                     />
                   </div>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 mt-4 pt-4">
-              {deletingId === editingDriver.id ? (
-                <div className="flex-1 flex gap-2">
-                  <Button type="button" variant="danger" onClick={() => handleDelete(editingDriver.id)} className="flex-1">Confirm Permanent Delete</Button>
-                  <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">Cancel</Button>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম (Full Name)</label>
+                  <input 
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                    value={editingDriver.name}
+                    onChange={e => setEditingDriver({ ...editingDriver, name: e.target.value })}
+                  />
                 </div>
-              ) : (
-                <>
-                  <Button type="submit" className="flex-1">Update Member</Button>
-                  <Button type="button" variant="danger" onClick={() => setDeletingId(editingDriver.id)} className="flex-1 text-[10px]">Delete Member</Button>
-                  <Button type="button" variant="secondary" onClick={() => setEditingDriver(null)} className="flex-1">Cancel</Button>
-                </>
-              )}
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                  <input 
+                    type="tel" 
+                    required
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                    value={editingDriver.phoneNumber}
+                    onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
+                  />
+                </div>
+
+                {/* Suspension Control Section */}
+                <div className="p-4 rounded-xl border border-slate-150 bg-slate-50/70 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        সাসপেনশন কন্ট্রোল (Suspension Control)
+                      </h4>
+                      <p className="text-[10px] text-slate-500">স্টাফ সাময়িকভাবে বরখাস্ত বা সাসপেন্ড করার জন্য</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={!!editingDriver.isSuspended}
+                        onChange={e => {
+                          const suspended = e.target.checked;
+                          setEditingDriver({
+                            ...editingDriver,
+                            isSuspended: suspended,
+                            suspensionDays: suspended ? (editingDriver.suspensionDays || 7) : null,
+                            suspensionReason: suspended ? (editingDriver.suspensionReason || '') : null,
+                            suspendedBy: suspended ? (editingDriver.suspendedBy || profile?.email || 'Admin') : null,
+                          });
+                        }}
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
+                    </label>
+                  </div>
+
+                  {editingDriver.isSuspended && (
+                    <div className="space-y-3 pt-2 border-t border-slate-200/60 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেনশন মেয়াদ (দিন)</label>
+                          <input 
+                            type="number" 
+                            min={1}
+                            required
+                            className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400"
+                            placeholder="e.g. 7"
+                            value={editingDriver.suspensionDays || ''}
+                            onChange={e => {
+                              const days = parseInt(e.target.value) || 0;
+                              setEditingDriver({ ...editingDriver, suspensionDays: days });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডকারী</label>
+                          <input 
+                            type="text" 
+                            disabled
+                            className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-100 outline-none text-slate-500 font-medium"
+                            value={editingDriver.suspendedBy || profile?.email || 'Admin'}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডের কারণ / Reason</label>
+                        <textarea 
+                          required
+                          className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400 bg-white"
+                          placeholder="e.g. ডিউটি অবহেলা বা নিয়ম ভঙ্গ করা"
+                          rows={2}
+                          value={editingDriver.suspensionReason || ''}
+                          onChange={e => setEditingDriver({ ...editingDriver, suspensionReason: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                  {deletingId === editingDriver.id ? (
+                    <div className="flex-1 flex gap-2">
+                      <Button type="button" variant="danger" onClick={() => handleDelete(editingDriver.id)} className="flex-1">
+                        নিশ্চিত মুছুন (Confirm Delete)
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">
+                        বাতিল
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
+                        আপডেট করুন (Update)
+                      </Button>
+                      <Button type="button" variant="danger" onClick={() => setDeletingId(editingDriver.id)} className="px-4 text-xs">
+                        মুছুন (Delete)
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setEditingDriver(null)}>
+                        বাতিল
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </form>
             </div>
-          </form>
-        </Card>
+          </div>
+        </div>
       )}
 
       <Card>

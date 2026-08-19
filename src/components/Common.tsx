@@ -16,7 +16,10 @@ import {
   ClipboardList,
   Sunrise,
   Bell,
-  Volume2
+  Volume2,
+  ChevronDown,
+  ChevronUp,
+  UserCheck
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -437,5 +440,98 @@ export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { 
     >
       {children}
     </button>
+  );
+};
+
+export const AuditDetailsDropdown: React.FC<{
+  createdBy?: string;
+  updatedBy?: string;
+  resolvedBy?: string;
+  className?: string;
+}> = ({ createdBy, updatedBy, resolvedBy, className }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  if (!createdBy && !updatedBy && !resolvedBy) return null;
+
+  return (
+    <div ref={containerRef} className={cn("relative inline-flex items-center", className)}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={cn(
+          "inline-flex items-center justify-center w-4 h-4 rounded transition-all duration-150 cursor-pointer",
+          isOpen
+            ? "bg-blue-100 text-blue-700 font-bold shadow-xs scale-105"
+            : "text-slate-400 hover:text-blue-600 hover:bg-slate-100 active:scale-95"
+        )}
+        title="এন্ট্রি ও এডিট তথ্য দেখতে ক্লিক করুন"
+        aria-label="এন্ট্রি ও এডিট তথ্য ড্রপডাউন"
+      >
+        {isOpen ? <ChevronUp size={13} strokeWidth={2.5} /> : <ChevronDown size={13} strokeWidth={2.5} />}
+      </button>
+
+      {isOpen && (
+        <div 
+          onClick={(e) => e.stopPropagation()} 
+          className="absolute left-0 top-full mt-1 bg-white border border-slate-200 p-2.5 rounded-xl shadow-xl space-y-1.5 text-[10px] text-slate-700 min-w-[200px] max-w-xs z-50 animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-100 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <UserCheck size={11} className="text-blue-600" />
+              <span>ইউজার হিস্ট্রি</span>
+            </span>
+            <button 
+              type="button" 
+              onClick={() => setIsOpen(false)}
+              className="text-slate-400 hover:text-slate-600 font-bold p-0.5"
+            >
+              ✕
+            </button>
+          </div>
+          {createdBy && (
+            <div className="flex items-start gap-1.5 pt-0.5">
+              <span className="font-semibold text-slate-500 min-w-[48px]">এন্ট্রি:</span>
+              <span className="font-medium text-slate-800 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all flex-1">
+                {createdBy}
+              </span>
+            </div>
+          )}
+          {updatedBy && (
+            <div className="flex items-start gap-1.5">
+              <span className="font-semibold text-slate-500 min-w-[48px]">এডিট:</span>
+              <span className="font-medium text-slate-800 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 break-all flex-1">
+                {updatedBy}
+              </span>
+            </div>
+          )}
+          {resolvedBy && (
+            <div className="flex items-start gap-1.5">
+              <span className="font-semibold text-emerald-600 min-w-[48px]">সমাধান:</span>
+              <span className="font-medium text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 break-all flex-1">
+                {resolvedBy}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

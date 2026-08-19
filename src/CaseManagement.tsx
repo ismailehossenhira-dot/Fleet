@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileWarning, Plus, Trash2, ShieldAlert, CheckCircle2, History, BarChart3, Edit2 } from 'lucide-react';
-import { Card, Button } from './components/Common';
+import { Card, Button, AuditDetailsDropdown } from './components/Common';
 import { addCase, resolveCase, subscribeToCollection, updateCase, deleteCase, findStaffById } from './db';
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -451,18 +451,15 @@ const CaseManagement: React.FC = () => {
                   {searchFilteredCases.filter(c => (c.status || 'Open') === 'Open').map(item => (
                     <tr key={item.id} className="hover:bg-red-50/20 transition-colors">
                       <td className="px-5 py-3 align-top">
-                         <div className="font-black text-slate-900 text-sm whitespace-nowrap">{item.vehicleId}</div>
+                         <div className="flex items-center gap-1.5 flex-wrap">
+                           <span className="font-black text-slate-900 text-sm whitespace-nowrap">{item.vehicleId}</span>
+                           <AuditDetailsDropdown createdBy={item.createdBy} updatedBy={item.updatedBy} resolvedBy={item.resolvedBy} />
+                         </div>
                          {item.driverName && (
                            <div className="mt-1">
                              <div className="text-[10px] font-bold text-slate-700 leading-none">{item.driverName}</div>
                              <div className="text-[9px] text-slate-400 mt-0.5">{item.driverId}</div>
                            </div>
-                         )}
-                         {item.createdBy && (
-                           <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {item.createdBy}</div>
-                         )}
-                         {item.updatedBy && (
-                           <div className="text-[9px] text-slate-400 font-normal">এডিট: {item.updatedBy}</div>
                          )}
                          <div className="text-[10px] font-mono text-slate-500 mt-1">#{item.caseId}</div>
                       </td>
@@ -640,20 +637,14 @@ const CaseManagement: React.FC = () => {
                                   {item.createdAt?.toDate?.().toLocaleDateString() || new Date(item.createdAt).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="font-bold text-slate-900">{item.vehicleId}</div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-900">{item.vehicleId}</span>
+                                    <AuditDetailsDropdown createdBy={item.createdBy} updatedBy={item.updatedBy} resolvedBy={item.resolvedBy} />
+                                  </div>
                                   {item.driverName && (
                                     <div className="text-[10px] text-slate-500 font-medium">
                                       {item.driverName} ({item.driverId})
                                     </div>
-                                  )}
-                                  {item.createdBy && (
-                                    <div className="text-[9px] text-slate-400 font-normal mt-0.5">এন্ট্রি: {item.createdBy}</div>
-                                  )}
-                                  {item.updatedBy && (
-                                    <div className="text-[9px] text-slate-400 font-normal">এডিট: {item.updatedBy}</div>
-                                  )}
-                                  {item.resolvedBy && (
-                                    <div className="text-[9px] text-emerald-600 font-semibold mt-0.5">সমাধান: {item.resolvedBy}</div>
                                   )}
                                   <div className="text-[10px] font-mono text-slate-400 mt-1">#{item.caseId}</div>
                                 </td>
