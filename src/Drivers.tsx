@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer } from 'lucide-react';
-import { Card, Button, AuditDetailsDropdown } from './components/Common';
+import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, Button, AuditDetailsDropdown, StaffProfileButton, StaffProfileModal } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -26,22 +27,32 @@ const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
         </button>
       </div>
 
-      {isOpen && (
-        <div className="mt-1 bg-red-50/40 border border-red-100/60 p-2.5 rounded-lg space-y-1 text-[10px] font-normal text-red-800 max-w-sm animate-in slide-in-from-top-1 duration-200">
-          <p>
-            <strong className="text-red-900 font-bold">কারণ (Reason):</strong>{' '}
-            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionReason || 'উল্লেখ নেই'}</span>
-          </p>
-          <p>
-            <strong className="text-red-900 font-bold">মেয়াদ (Period):</strong>{' '}
-            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionDays || '0'} দিন</span>
-          </p>
-          <p>
-            <strong className="text-red-900 font-bold">কে করেছে (Suspended By):</strong>{' '}
-            <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspendedBy || 'Admin'}</span>
-          </p>
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 bg-red-50/40 border border-red-100/60 p-2.5 rounded-lg space-y-1 text-[10px] font-normal text-red-800 max-w-sm">
+              <p>
+                <strong className="text-red-900 font-bold">কারণ (Reason):</strong>{' '}
+                <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionReason || 'উল্লেখ নেই'}</span>
+              </p>
+              <p>
+                <strong className="text-red-900 font-bold">মেয়াদ (Period):</strong>{' '}
+                <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionDays || '0'} দিন</span>
+              </p>
+              <p>
+                <strong className="text-red-900 font-bold">কে করেছে (Suspended By):</strong>{' '}
+                <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspendedBy || 'Admin'}</span>
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -64,6 +75,9 @@ const Drivers: React.FC = () => {
     driverId: 'DRV-',
     name: '',
     phoneNumber: '',
+    licenseNo: '',
+    address: '',
+    familyPhone: '',
     role: 'Driver' as 'Driver' | 'Helper'
   });
 
@@ -144,7 +158,15 @@ const Drivers: React.FC = () => {
 
   const handleCancel = () => {
     setShowAdd(false);
-    setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
+    setNewDriver({ 
+      driverId: 'DRV-', 
+      name: '', 
+      phoneNumber: '', 
+      licenseNo: '', 
+      address: '', 
+      familyPhone: '', 
+      role: 'Driver' 
+    });
     localStorage.removeItem('drivers_newDriver');
     localStorage.removeItem('drivers_showAdd');
   };
@@ -157,7 +179,15 @@ const Drivers: React.FC = () => {
       driverId: newDriver.driverId.trim().toUpperCase()
     };
     await addDriver(normalizedDriver, profile);
-    setNewDriver({ driverId: 'DRV-', name: '', phoneNumber: '', role: 'Driver' });
+    setNewDriver({ 
+      driverId: 'DRV-', 
+      name: '', 
+      phoneNumber: '', 
+      licenseNo: '', 
+      address: '', 
+      familyPhone: '', 
+      role: 'Driver' 
+    });
     setShowAdd(false);
     localStorage.removeItem('drivers_newDriver');
     localStorage.removeItem('drivers_showAdd');
@@ -229,6 +259,7 @@ const Drivers: React.FC = () => {
                 <td className="px-5 py-3 font-bold text-slate-800">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span>{driver.name}</span>
+                    <StaffProfileButton staff={driver} />
                     <AuditDetailsDropdown createdBy={driver.createdBy} updatedBy={driver.updatedBy} />
                   </div>
                   {driver.isSuspended && (
@@ -245,7 +276,11 @@ const Drivers: React.FC = () => {
                   {driver.createdAt?.toDate?.().toLocaleDateString() || 'N/A'}
                 </td>
                 <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <StaffProfileButton 
+                      staff={driver} 
+                      className="p-1.5 bg-white border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 hover:bg-blue-50 rounded-lg shadow-2xs" 
+                    />
                     {canManage && (
                       deletingId === driver.id ? (
                         <div className="flex items-center gap-1 animate-in slide-in-from-right-1 duration-300">
@@ -414,16 +449,51 @@ const Drivers: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
-                  <input 
-                    type="tel" 
-                    required
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                    placeholder="017XXXXXXXX"
-                    value={newDriver.phoneNumber}
-                    onChange={e => setNewDriver({ ...newDriver, phoneNumber: e.target.value })}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                    <input 
+                      type="tel" 
+                      required
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="017XXXXXXXX"
+                      value={newDriver.phoneNumber}
+                      onChange={e => setNewDriver({ ...newDriver, phoneNumber: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="DL-XXXX-XXXX"
+                      value={newDriver.licenseNo}
+                      onChange={e => setNewDriver({ ...newDriver, licenseNo: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                    <input 
+                      type="tel" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="018XXXXXXXX"
+                      value={newDriver.familyPhone}
+                      onChange={e => setNewDriver({ ...newDriver, familyPhone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা (Address)</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="গ্রাম, থানা, জেলা"
+                      value={newDriver.address}
+                      onChange={e => setNewDriver({ ...newDriver, address: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-slate-100">
@@ -506,15 +576,50 @@ const Drivers: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
-                  <input 
-                    type="tel" 
-                    required
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
-                    value={editingDriver.phoneNumber}
-                    onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                    <input 
+                      type="tel" 
+                      required
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      value={editingDriver.phoneNumber || ''}
+                      onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="DL-XXXX-XXXX"
+                      value={editingDriver.licenseNo || ''}
+                      onChange={e => setEditingDriver({ ...editingDriver, licenseNo: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                    <input 
+                      type="tel" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="018XXXXXXXX"
+                      value={editingDriver.familyPhone || ''}
+                      onChange={e => setEditingDriver({ ...editingDriver, familyPhone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা (Address)</label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      placeholder="গ্রাম, থানা, জেলা"
+                      value={editingDriver.address || ''}
+                      onChange={e => setEditingDriver({ ...editingDriver, address: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 {/* Suspension Control Section */}

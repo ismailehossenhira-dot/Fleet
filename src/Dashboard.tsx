@@ -57,7 +57,7 @@ const StatCard: React.FC<{
         </span>
       ) : (
         <span className="text-slate-400 hover:text-slate-600">
-          বিস্তারিত দেখতে ক্লিক করুন (Click for details) →
+          বিস্তারিত দেখতে ক্লিক করুন  →
         </span>
       )}
     </div>
@@ -725,13 +725,13 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2">
-          <Card title="Live Fleet Status">
-             <div className="overflow-x-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          <Card title="Live Fleet Status" className="h-full flex flex-col shadow-xs" bodyClassName="p-0 flex-1 flex flex-col overflow-hidden">
+             <div className="overflow-x-auto overflow-y-auto flex-1 max-h-[380px]">
               <table className="w-full text-xs text-left">
-                <thead>
-                  <tr className="bg-[#f8fafc] border-b border-border">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-[#f8fafc] border-b border-border shadow-2xs">
                     <th className="px-5 py-3 font-semibold text-text-muted">Vehicle Number (গাড়ির নাম্বার)</th>
                     <th className="px-5 py-3 font-semibold text-text-muted">Driver</th>
                     <th className="px-5 py-3 font-semibold text-text-muted">Destination</th>
@@ -742,9 +742,9 @@ const Dashboard: React.FC = () => {
                   {trips.filter(t => t.status === 'Running' || t.status === 'Pending').map(trip => {
                     const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
                     return (
-                      <tr key={trip.id}>
+                      <tr key={trip.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-5 py-3 font-bold text-accent">{vehicleNum}</td>
-                        <td className="px-5 py-3 text-text-muted">{trip.driverName}</td>
+                        <td className="px-5 py-3 text-text-muted font-medium">{trip.driverName}</td>
                         <td className="px-5 py-3">{trip.location}</td>
                         <td className="px-5 py-3 text-right">
                           {trip.status === 'Pending' ? (
@@ -775,7 +775,7 @@ const Dashboard: React.FC = () => {
                   })}
                   {trips.filter(t => t.status === 'Running' || t.status === 'Pending').length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-5 py-8 text-center text-text-muted italic">No active trips running.</td>
+                      <td colSpan={4} className="px-5 py-12 text-center text-text-muted italic">No active trips running.</td>
                     </tr>
                   )}
                 </tbody>
@@ -784,9 +784,9 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card title="Maintenance Alerts">
-            <div className="space-y-3">
+        <div className="flex flex-col">
+          <Card title="Maintenance Alerts" className="h-full flex flex-col shadow-xs" bodyClassName="p-4 flex-1 flex flex-col overflow-hidden">
+            <div className="space-y-3 flex-1 overflow-y-auto max-h-[380px] pr-1">
               {vehicles.filter(v => v.status === 'Maintenance').map(v => (
                 <div key={v.id} className="p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
                   <div className="flex items-start gap-3 justify-between">
@@ -850,7 +850,11 @@ const Dashboard: React.FC = () => {
                 </div>
               ))}
               {vehicles.filter(v => v.status === 'Maintenance').length === 0 && (
-                <div className="text-center py-4 text-text-muted text-xs">No active alerts.</div>
+                <div className="h-full flex flex-col items-center justify-center py-12 text-center text-text-muted text-xs italic">
+                  <CheckCircle size={28} className="text-emerald-500 mb-2 opacity-60" />
+                  <p>No active alerts.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">সব গাড়ি সচল রয়েছে</p>
+                </div>
               )}
             </div>
           </Card>

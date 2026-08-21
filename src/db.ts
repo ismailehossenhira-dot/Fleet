@@ -500,15 +500,29 @@ export const deleteTrip = async (tripId: string) => {
   }
 };
 
-export const cancelPendingTrip = async (tripId: string, vehicleId: string, profile?: any) => {
+export const cancelPendingTrip = async (tripId: string, vehicleId?: string, profile?: any) => {
   try {
     const tripRef = doc(db, 'trips', tripId);
-    
+    let targetVehicleId = vehicleId;
+    let targetVehiclePlate = '';
+
+    // Fetch trip details to ensure we have vehicleId and vehiclePlate
+    try {
+      const tripSnap = await getDoc(tripRef);
+      if (tripSnap.exists()) {
+        const tripData = tripSnap.data();
+        if (!targetVehicleId) targetVehicleId = tripData.vehicleId;
+        targetVehiclePlate = tripData.vehiclePlate || '';
+      }
+    } catch (e) {
+      console.warn("Could not read trip before cancelling:", e);
+    }
+
     // 1. Attempt to delete or fallback to marking as Cancelled
     try {
       await deleteDoc(tripRef);
     } catch (deleteErr) {
-      console.log("Not authorized to delete trip document. Falling back to marking as Cancelled:", deleteErr);
+      console.log("Could not delete trip document. Falling back to marking as Cancelled:", deleteErr);
       await updateDoc(tripRef, {
         status: 'Cancelled',
         updatedBy: getUserString(profile),
@@ -517,15 +531,67 @@ export const cancelPendingTrip = async (tripId: string, vehicleId: string, profi
     }
 
     // 2. Explicitly update the vehicle status back to 'Available'
-    const vehicleRef = doc(db, 'vehicles', vehicleId);
-    await updateDoc(vehicleRef, {
-      status: 'Available',
-      maintenanceNotes: '',
-      updatedAt: serverTimestamp(),
-      updatedBy: getUserString(profile)
-    });
+    let vehicleUpdated = false;
+    if (targetVehicleId) {
+      try {
+        const vehicleRef = doc(db, 'vehicles', targetVehicleId);
+        const vehicleSnap = await getDoc(vehicleRef);
+        if (vehicleSnap.exists()) {
+          await updateDoc(vehicleRef, {
+            status: 'Available',
+            maintenanceNotes: '',
+            updatedAt: serverTimestamp(),
+            updatedBy: getUserString(profile)
+          });
+          vehicleUpdated = true;
+        }
+      } catch (err) {
+        console.warn("Vehicle ID update warning:", err);
+      }
+    }
+
+    // If not updated by document ID, or if plate is known, query by vehicleNumber
+    const plateToSearch = targetVehiclePlate || targetVehicleId;
+    if (plateToSearch) {
+      try {
+        const qVeh = query(
+          collection(db, 'vehicles'),
+          where('vehicleNumber', '==', plateToSearch)
+        );
+        const vQuerySnap = await getDocs(qVeh);
+        for (const docObj of vQuerySnap.docs) {
+          await updateDoc(doc(db, 'vehicles', docObj.id), {
+            status: 'Available',
+            maintenanceNotes: '',
+            updatedAt: serverTimestamp(),
+            updatedBy: getUserString(profile)
+          });
+          vehicleUpdated = true;
+        }
+      } catch (err) {
+        console.warn("Vehicle query update warning:", err);
+      }
+    }
+
+    // 3. Log status transition in vehicle_status_logs
+    try {
+      await addDoc(collection(db, 'vehicle_status_logs'), {
+        vehicleId: targetVehicleId || 'N/A',
+        vehiclePlate: targetVehiclePlate || targetVehicleId || 'N/A',
+        oldStatus: 'Pending Out Scan',
+        newStatus: 'Available',
+        notes: 'পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করা হয়েছে',
+        createdBy: getUserString(profile),
+        createdAt: serverTimestamp()
+      });
+    } catch (logErr) {
+      console.warn("Could not log status transition:", logErr);
+    }
+
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `trips/${tripId}`);
+    throw error;
   }
 };
 

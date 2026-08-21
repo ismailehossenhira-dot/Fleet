@@ -17,9 +17,13 @@ import {
   Phone, 
   Navigation,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  XCircle,
+  Trash2,
+  Truck
 } from 'lucide-react';
-import { Card, Button } from './components/Common';
+import { Card, Button, StaffProfileButton, VehicleProfileButton } from './components/Common';
 import { 
   subscribeToCollection, 
   findStaffById, 
@@ -45,6 +49,33 @@ const Trips: React.FC = () => {
   const [logSearch, setLogSearch] = useState('');
   const [selectedDateFilter, setSelectedDateFilter] = useState('');
   const [expandedDates, setExpandedDates] = useState<{ [key: string]: boolean }>({});
+
+  // Cancellation State
+  const [tripToCancel, setTripToCancel] = useState<any | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelFeedback, setCancelFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleConfirmCancelPendingTrip = async () => {
+    if (!tripToCancel) return;
+    setIsCancelling(true);
+    setCancelFeedback(null);
+    try {
+      await cancelPendingTrip(tripToCancel.id, tripToCancel.vehicleId, profile);
+      setCancelFeedback({
+        type: 'success',
+        message: `গাড়ি ${tripToCancel.vehiclePlate || tripToCancel.vehicleId}-এর পেন্ডিং ট্রিপ বাতিল করা হয়েছে এবং গাড়িটিকে সফলভাবে Available করা হয়েছে।`
+      });
+      setTripToCancel(null);
+    } catch (err: any) {
+      console.error("Error cancelling pending trip:", err);
+      setCancelFeedback({
+        type: 'error',
+        message: err?.message || 'পেন্ডিং ট্রিপ বাতিল করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   useEffect(() => {
     setLogSearch(searchQuery);
@@ -209,6 +240,30 @@ const Trips: React.FC = () => {
           <>
             {activeTab === 'pending' && (
               <div className="grid grid-cols-1 gap-6">
+                {cancelFeedback && (
+                  <div className={cn(
+                    "p-4 rounded-xl text-xs font-semibold flex items-center justify-between animate-in fade-in duration-200 shadow-sm",
+                    cancelFeedback.type === 'success' 
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
+                      : "bg-rose-50 text-rose-800 border border-rose-200"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      {cancelFeedback.type === 'success' ? (
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                      ) : (
+                        <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                      )}
+                      <span>{cancelFeedback.message}</span>
+                    </div>
+                    <button 
+                      onClick={() => setCancelFeedback(null)} 
+                      className="text-slate-400 hover:text-slate-600 text-sm font-bold ml-3"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 <Card title="Pending Dispatch (ছাড়পত্র অপেক্ষায় - গেটে Out QR স্ক্যানের পর চালু হবে)">
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs text-left">
@@ -224,16 +279,27 @@ const Trips: React.FC = () => {
                       <tbody className="divide-y divide-border">
                         {filteredPendingTrips.map(trip => (
                           <tr key={trip.id} className="hover:bg-slate-50">
-                            <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
+                            <td className="px-5 py-3 font-bold text-text-main">
+                              <div className="flex items-center gap-1.5">
+                                <span>{trip.vehiclePlate || trip.vehicleId}</span>
+                                <VehicleProfileButton vehicleNumber={trip.vehiclePlate || trip.vehicleId} vehicleId={trip.vehicleId} />
+                              </div>
+                            </td>
                             <td className="px-5 py-3 text-text-muted">
-                              <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold text-text-main shrink-0">{trip.driverName}</span>
+                                <StaffProfileButton staffId={trip.driverId} staffName={trip.driverName} role="Driver" />
+                              </div>
                               <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
                               {trip.createdBy && (
                                 <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">এন্ট্রি: {trip.createdBy}</div>
                               )}
                               {trip.helperName && (
                                 <div className="mt-1 pt-1 border-t border-border border-dashed">
-                                   <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
+                                   <div className="flex items-center gap-1">
+                                     <span className="text-[10px] font-semibold text-text-main">{trip.helperName}</span>
+                                     <StaffProfileButton staffId={trip.helperId} staffName={trip.helperName} role="Helper" />
+                                   </div>
                                    <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
                                 </div>
                               )}
@@ -251,19 +317,16 @@ const Trips: React.FC = () => {
                             </td>
                             <td className="px-5 py-3 text-right">
                               <button
-                                onClick={async () => {
-                                  if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
-                                    try {
-                                      await cancelPendingTrip(trip.id, trip.vehicleId, profile);
-                                    } catch (err) {
-                                      console.error("Error cancelling pending trip and making vehicle available:", err);
-                                    }
-                                  }
+                                type="button"
+                                onClick={() => {
+                                  setCancelFeedback(null);
+                                  setTripToCancel(trip);
                                 }}
-                                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer inline-block"
+                                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-95"
                                 title="পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করুন"
                               >
-                                বাতিল ও Available করুন
+                                <Trash2 size={12} className="text-red-500" />
+                                <span>বাতিল ও Available করুন</span>
                               </button>
                             </td>
                           </tr>
@@ -299,20 +362,31 @@ const Trips: React.FC = () => {
                       <tbody className="divide-y divide-border">
                         {filteredActiveTrips.map(trip => (
                           <tr key={trip.id} className="hover:bg-slate-50">
-                            <td className="px-5 py-3 font-bold text-text-main">{trip.vehiclePlate || trip.vehicleId}</td>
-                      <td className="px-5 py-3 text-text-muted">
-                        <div className="font-semibold text-text-main shrink-0">{trip.driverName}</div>
-                        <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
-                        {trip.startedBy && (
-                          <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">রিলিজ: {trip.startedBy}</div>
-                        )}
-                        {trip.helperName && (
-                          <div className="mt-1 pt-1 border-t border-border border-dashed">
-                             <div className="text-[10px] font-semibold text-text-main">{trip.helperName}</div>
-                             <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
-                          </div>
-                        )}
-                      </td>
+                            <td className="px-5 py-3 font-bold text-text-main">
+                              <div className="flex items-center gap-1.5">
+                                <span>{trip.vehiclePlate || trip.vehicleId}</span>
+                                <VehicleProfileButton vehicleNumber={trip.vehiclePlate || trip.vehicleId} vehicleId={trip.vehicleId} />
+                              </div>
+                            </td>
+                            <td className="px-5 py-3 text-text-muted">
+                              <div className="flex items-center gap-1">
+                                <span className="font-semibold text-text-main shrink-0">{trip.driverName}</span>
+                                <StaffProfileButton staffId={trip.driverId} staffName={trip.driverName} role="Driver" />
+                              </div>
+                              <div className="text-[10px] uppercase font-bold">DRV: {trip.driverId}</div>
+                              {trip.startedBy && (
+                                <div className="text-[9px] text-slate-500 mt-1 bg-slate-100 px-1.5 py-0.5 rounded inline-block font-medium">রিলিজ: {trip.startedBy}</div>
+                              )}
+                              {trip.helperName && (
+                                <div className="mt-1 pt-1 border-t border-border border-dashed">
+                                   <div className="flex items-center gap-1">
+                                     <span className="text-[10px] font-semibold text-text-main">{trip.helperName}</span>
+                                     <StaffProfileButton staffId={trip.helperId} staffName={trip.helperName} role="Helper" />
+                                   </div>
+                                   <div className="text-[9px] uppercase font-bold">HLP: {trip.helperId}</div>
+                                </div>
+                              )}
+                            </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1">
                           <MapPin size={10} className="text-accent" />
@@ -524,8 +598,9 @@ const Trips: React.FC = () => {
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-xs font-bold text-slate-400">#{idx + 1}</span>
-                                  <span className="font-extrabold text-sm text-slate-900 bg-white border px-2.5 py-1 rounded-lg shadow-2xs">
-                                    {trip.vehiclePlate || 'N/A'}
+                                  <span className="font-extrabold text-sm text-slate-900 bg-white border px-2.5 py-1 rounded-lg shadow-2xs flex items-center gap-1.5">
+                                    <span>{trip.vehiclePlate || 'N/A'}</span>
+                                    <VehicleProfileButton vehicleNumber={trip.vehiclePlate || trip.vehicleId} vehicleId={trip.vehicleId} />
                                   </span>
                                   <span className={cn(
                                     "text-[10px] font-bold px-2 py-0.5 rounded-full",
@@ -569,6 +644,7 @@ const Trips: React.FC = () => {
                                         <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.2 rounded font-mono">
                                           {trip.driverId}
                                         </span>
+                                        <StaffProfileButton staffId={trip.driverId} staffName={trip.driverName} role="Driver" />
                                       </div>
                                       {trip.driverPhone && (
                                         <a href={`tel:${trip.driverPhone}`} className="text-[10px] text-blue-500 hover:underline flex items-center gap-1 mt-0.5 font-medium">
@@ -586,6 +662,7 @@ const Trips: React.FC = () => {
                                           <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.2 rounded font-mono">
                                             {trip.helperId}
                                           </span>
+                                          <StaffProfileButton staffId={trip.helperId} staffName={trip.helperName} role="Helper" />
                                         </div>
                                         {trip.helperPhone && (
                                           <a href={`tel:${trip.helperPhone}`} className="text-[10px] text-purple-500 hover:underline flex items-center gap-1 mt-0.5 font-medium">
@@ -798,6 +875,102 @@ const Trips: React.FC = () => {
                 );
               });
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Pending Trip Confirmation Modal */}
+      {tripToCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">পেন্ডিং ট্রিপ বাতিল</h3>
+                  <p className="text-[11px] text-rose-600 font-medium">গাড়ির স্ট্যাটাস Available করার অনুমতি</p>
+                </div>
+              </div>
+              <button 
+                disabled={isCancelling}
+                onClick={() => setTripToCancel(null)}
+                className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 flex items-center justify-center text-sm font-bold disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 text-xs text-slate-600">
+              <p className="leading-relaxed">
+                আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করতে চান? ট্রিপটি বাতিল করার সাথে সাথে সংশ্লিষ্ট গাড়িটির স্ট্যাটাস পুনরায় <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Available</span> হয়ে যাবে এবং নতুন ট্রিপের জন্য প্রস্তুত হবে।
+              </p>
+
+              {/* Trip Summary Card */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
+                  <span className="text-slate-400 font-medium">গাড়ির নম্বর:</span>
+                  <span className="font-bold text-slate-900 font-mono text-sm flex items-center gap-1.5">
+                    <Truck size={14} className="text-slate-500" />
+                    {tripToCancel.vehiclePlate || tripToCancel.vehicleId}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
+                  <span className="text-slate-400 font-medium">চালক:</span>
+                  <span className="font-bold text-slate-800">
+                    {tripToCancel.driverName} ({tripToCancel.driverId})
+                  </span>
+                </div>
+                {tripToCancel.helperName && (
+                  <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
+                    <span className="text-slate-400 font-medium">হেলপার:</span>
+                    <span className="font-bold text-slate-800">
+                      {tripToCancel.helperName} ({tripToCancel.helperId})
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-medium">গন্তব্য:</span>
+                  <span className="font-bold text-slate-800 flex items-center gap-1">
+                    <MapPin size={12} className="text-rose-500" />
+                    {tripToCancel.location}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={() => setTripToCancel(null)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              >
+                না, রাখুন
+              </button>
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={handleConfirmCancelPendingTrip}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>বাতিল হচ্ছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>হ্যাঁ, ট্রিপ বাতিল ও Available করুন</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

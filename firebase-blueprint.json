@@ -6,8 +6,28 @@
       "type": "object",
       "properties": {
         "vehicleNumber": { "type": "string" },
-        "type": { "type": "string", "enum": ["Small", "Medium", "Large"] },
-        "status": { "type": "string", "enum": ["Available", "On Trip", "Maintenance"] },
+        "type": { "type": "string" },
+        "status": { "type": "string", "enum": ["Available", "On Trip", "Maintenance", "Pending Out Scan"] },
+        "maintenanceNotes": { "type": "string" },
+        "tools": {
+          "type": "object",
+          "properties": {
+            "jack": { "type": "boolean" },
+            "lever": { "type": "boolean" },
+            "spareWheel": { "type": "boolean" },
+            "pipe": { "type": "boolean" }
+          }
+        },
+        "documents": {
+          "type": "object",
+          "properties": {
+            "TT": { "type": "boolean" },
+            "FC": { "type": "boolean" },
+            "RP": { "type": "boolean" },
+            "RC": { "type": "boolean" },
+            "Ads": { "type": "boolean" }
+          }
+        },
         "lastLatLng": {
           "type": "object",
           "properties": {
@@ -22,18 +42,23 @@
     },
     "Driver": {
       "title": "Driver",
-      "description": "Represents a driver in the system",
+      "description": "Represents a driver or helper in the system",
       "type": "object",
       "properties": {
         "driverId": { "type": "string" },
         "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["Driver", "Helper"] },
         "phoneNumber": { "type": "string" },
+        "licenseNo": { "type": "string" },
+        "address": { "type": "string" },
+        "familyPhone": { "type": "string" },
         "isSuspended": { "type": "boolean" },
         "suspensionEndDate": { "type": "string" },
         "suspensionReason": { "type": "string" },
         "suspendedBy": { "type": "string" },
         "suspensionDays": { "type": "integer" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["driverId", "name", "phoneNumber"]
     },

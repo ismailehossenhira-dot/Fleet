@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer } from 'lucide-react';
-import { Card, Button, AuditDetailsDropdown } from './components/Common';
+import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench } from 'lucide-react';
+import { Card, Button, AuditDetailsDropdown, VehicleProfileButton, VehicleProfileModal } from './components/Common';
 import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus } from './db';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -453,8 +453,9 @@ const Vehicles: React.FC = () => {
               {filtered.map(vehicle => (
                 <tr key={vehicle.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3 font-bold text-text-main">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span>{vehicle.vehicleNumber}</span>
+                      <VehicleProfileButton vehicle={vehicle} />
                       <AuditDetailsDropdown createdBy={vehicle.createdBy} updatedBy={vehicle.updatedBy} />
                     </div>
                   </td>
@@ -478,7 +479,11 @@ const Vehicles: React.FC = () => {
                     </div>
                   </td>
                    <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <VehicleProfileButton 
+                        vehicle={vehicle} 
+                        className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-colors" 
+                      />
                       <button 
                         onClick={() => setSelectedQRVehicle(vehicle)}
                         className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-indigo-500 hover:text-white transition-colors"

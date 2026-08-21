@@ -66,8 +66,8 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if canManage() && isValidVehicle(incoming());
       allow update: if isSignedIn() && (
-        // Action: Status Update (during Trip start/end or Maintenance)
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes'])) ||
+        // Action: Status Update (during Trip start/end, Maintenance, or making Available)
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes'])) ||
         // Action: Full Update
         (canManage() && isValidVehicle(incoming()))
       );
@@ -103,16 +103,19 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if canManage() || isLineSupervisor();
       allow update: if isSignedIn() && (
-        // Action: Complete Trip (Return Vehicle)
-        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'inspectionOnReturn'])) ||
+        // Action: Complete/Cancel Trip (Status change, return inspection, or cancellation)
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'inspectionOnReturn', 'updatedAt', 'updatedBy'])) ||
         // Action: Assign Case
         (incoming().diff(existing()).affectedKeys().hasOnly(['caseDetails'])) ||
         // Action: Generic Update
-        canManage()
+        canManage() || isLineSupervisor()
       );
-      allow delete: if canManage() 
-        && existing().status != 'Running'
-        && (existing().startTime == null || existing().startTime < request.time - duration.value(24, 'h'));
+      allow delete: if (canManage() || isLineSupervisor()) 
+        && (
+          existing().status == 'Pending' ||
+          existing().status == 'Cancelled' ||
+          (existing().status != 'Running' && (existing().startTime == null || existing().startTime < request.time - duration.value(24, 'h')))
+        );
     }
 
     match /cases/{caseId} {

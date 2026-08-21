@@ -218,18 +218,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 transform bg-primary text-white border-r border-white/10 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-68 transform bg-primary text-white border-r border-white/10 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-3 px-6 py-8">
-            <div className="flex items-center justify-center w-6 h-6 rounded bg-accent text-white shadow-lg">
-              <div className="w-3 h-3 bg-white/20 rounded-sm" />
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+            <div className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/30">
+              <Truck size={19} className="stroke-[2.5]" />
             </div>
-            <h1 className="font-bold tracking-tight text-lg">FleetManager</h1>
+            <div>
+              <h1 className="font-extrabold tracking-tight text-lg leading-tight">FleetManager</h1>
+              <p className="text-[11px] font-semibold text-slate-400">লজিস্টিকস ম্যানেজমেন্ট</p>
+            </div>
           </div>
 
-          <nav className="flex-1 px-3 space-y-1">
+          <nav className="flex-1 px-3.5 py-3 space-y-1.5 overflow-y-auto">
             {filteredNavItems.map((item) => {
               const isRequests = item.to === '/requests';
               const hasPending = isRequests && pendingCount > 0;
@@ -243,23 +246,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   to={item.to}
                   onClick={() => setIsSidebarOpen(false)}
                   className={({ isActive }) => cn(
-                    "flex items-center justify-between px-4 py-2.5 rounded-lg transition-all duration-200 group text-sm",
+                    "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15.5px] font-bold tracking-normal",
                     isActive 
-                      ? "bg-white/10 text-white font-semibold" 
-                      : "text-slate-400 hover:text-white hover:bg-white/5",
-                    hasPending && "bg-amber-500/10 text-amber-200 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)] animate-pulse",
-                    hasActiveReturns && "bg-rose-600 text-white border border-rose-500 hover:bg-rose-700 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-bold animate-pulse"
+                      ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-900/30" 
+                      : "text-slate-300 hover:text-white hover:bg-white/10 font-bold",
+                    hasPending && "bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse font-extrabold",
+                    hasActiveReturns && "bg-rose-600 text-white border border-rose-500 hover:bg-rose-700 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-black animate-pulse"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={18} className={cn(
-                      "transition-colors",
+                    <item.icon size={19} className={cn(
+                      "transition-colors stroke-[2.2]",
                       hasPending && "text-amber-400 animate-pulse",
                       hasActiveReturns && "text-white animate-bounce"
                     )} />
                     <span className={cn(
-                      "transition-all",
-                      hasPending && "font-bold text-amber-100",
+                      "transition-all leading-snug",
+                      hasPending && "font-black text-amber-100",
                       hasActiveReturns && "font-black text-white"
                     )}>
                       {item.label}
@@ -267,24 +270,24 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   </div>
 
                   {hasPending && (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                       </span>
-                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-md">
+                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[11px] font-black text-white shadow-sm">
                         {pendingCount}
                       </span>
                     </div>
                   )}
 
                   {hasActiveReturns && (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                       </span>
-                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-white text-[10px] font-black text-rose-600 shadow-md">
+                      <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-white text-[11px] font-black text-rose-600 shadow-sm">
                         {activeReturns.length}
                       </span>
                     </div>
@@ -294,16 +297,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             })}
           </nav>
 
-          <div className="p-4 mt-auto border-t border-white/10">
-            <div className="px-4 py-2 mb-4">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">V 2.4.0 • Build ID 9012</p>
+          <div className="p-3.5 mt-auto border-t border-white/10 bg-slate-950/20">
+            <div className="px-3 py-1 mb-1.5">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">FleetFlow Pro • v2.4</p>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all"
+              className="flex items-center gap-3 w-full px-3.5 py-2.5 text-[15px] font-bold text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-xl transition-all"
             >
-              <LogOut size={18} />
-              <span>Sign Out</span>
+              <LogOut size={19} className="stroke-[2.2]" />
+              <span>সাইন আউট (Sign Out)</span>
             </button>
           </div>
         </div>
@@ -313,12 +316,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg">
         {/* Desktop Header */}
         <header className="h-16 flex items-center justify-between px-8 bg-surface border-b border-border flex-shrink-0">
-          <div className="hidden lg:flex items-center bg-slate-50 border border-border px-4 py-2 rounded-lg w-80 gap-3">
-            <Menu size={16} className="text-text-muted" />
+          <div className="hidden lg:flex items-center bg-slate-50 border border-border px-4 py-2.5 rounded-xl w-84 gap-3 focus-within:border-blue-500 focus-within:bg-white transition-all">
+            <Menu size={18} className="text-text-muted" />
             <input 
               type="text" 
-              placeholder="Search vehicle, driver, or case ID..." 
-              className="bg-transparent border-none outline-none text-xs w-full text-text-main placeholder:text-text-muted"
+              placeholder="গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন..." 
+              className="bg-transparent border-none outline-none text-sm font-medium w-full text-text-main placeholder:text-text-muted"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -326,8 +329,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-text-main leading-none">{profile?.displayName || user?.displayName || 'Unknown User'}</p>
-              <p className="text-[11px] text-accent font-bold mt-1 leading-none uppercase tracking-wider">{profile?.role || 'Guest'}</p>
+              <p className="text-base font-bold text-text-main leading-tight">{profile?.displayName || user?.displayName || 'Unknown User'}</p>
+              <span className="inline-block text-[11px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-0.5 uppercase tracking-wider">{profile?.role || 'Guest'}</span>
             </div>
             <div className="w-8 h-8 rounded-full bg-slate-200 border border-border overflow-hidden">
                {user?.photoURL ? (
@@ -402,7 +405,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode, title?: React.ReactNode, className?: string }> = ({ children, title, className }) => (
+export const Card: React.FC<{ children: React.ReactNode, title?: React.ReactNode, className?: string, bodyClassName?: string }> = ({ children, title, className, bodyClassName }) => (
   <div className={cn("bg-surface rounded-xl shadow-sm border border-border overflow-hidden", className)}>
     {title && (
       <div className="px-5 py-4 border-b border-border bg-[#f8fafc]">
@@ -413,7 +416,7 @@ export const Card: React.FC<{ children: React.ReactNode, title?: React.ReactNode
         )}
       </div>
     )}
-    <div className="p-5">
+    <div className={cn("p-5", bodyClassName)}>
       {children}
     </div>
   </div>
@@ -535,3 +538,6 @@ export const AuditDetailsDropdown: React.FC<{
     </div>
   );
 };
+
+export * from './ProfileModals';
+
