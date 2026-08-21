@@ -20,7 +20,7 @@ import QRScanner from './QRScanner';
 import UsersManagement from './UsersManagement';
 import Requests from './Requests';
 import { loginWithUsernameAndPassword } from './db';
-import { Truck, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
+import { Compass, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -57,8 +57,8 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="max-w-md w-full space-y-8">
         <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xl shadow-blue-200 mb-6">
-            <Truck size={32} />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-xl shadow-blue-300 mb-6">
+            <Compass size={34} className="stroke-[2.2]" />
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">FleetFlow Pro</h1>
           <p className="mt-2 text-slate-500">Logistics & Fleet Management Redefined</p>

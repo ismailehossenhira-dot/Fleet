@@ -19,7 +19,8 @@ import {
   Volume2,
   ChevronDown,
   ChevronUp,
-  UserCheck
+  UserCheck,
+  Compass
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -222,9 +223,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-            <div className="flex items-center justify-center w-7.5 h-7.5 rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/30">
-              <Truck size={19} className="stroke-[2.5]" />
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+            <div className="flex items-center justify-center w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30">
+              <Compass size={21} className="stroke-[2.4]" />
             </div>
             <div>
               <h1 className="font-extrabold tracking-tight text-lg leading-tight">FleetManager</h1>
@@ -232,7 +233,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </div>
           </div>
 
-          <nav className="flex-1 px-3.5 py-3 space-y-1.5 overflow-y-auto">
+          <nav className="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto">
             {filteredNavItems.map((item) => {
               const isRequests = item.to === '/requests';
               const hasPending = isRequests && pendingCount > 0;
@@ -246,23 +247,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   to={item.to}
                   onClick={() => setIsSidebarOpen(false)}
                   className={({ isActive }) => cn(
-                    "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15.5px] font-bold tracking-normal",
+                    "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15px] font-bold tracking-normal",
                     isActive 
                       ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-900/30" 
-                      : "text-slate-300 hover:text-white hover:bg-white/10 font-bold",
+                      : "text-slate-200 hover:text-white hover:bg-white/10 font-bold",
                     hasPending && "bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse font-extrabold",
                     hasActiveReturns && "bg-rose-600 text-white border border-rose-500 hover:bg-rose-700 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-black animate-pulse"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={19} className={cn(
-                      "transition-colors stroke-[2.2]",
+                    <item.icon size={20} className={cn(
+                      "transition-colors stroke-[2.3]",
                       hasPending && "text-amber-400 animate-pulse",
                       hasActiveReturns && "text-white animate-bounce"
                     )} />
                     <span className={cn(
-                      "transition-all leading-snug",
-                      hasPending && "font-black text-amber-100",
+                      "transition-all leading-snug font-bold",
+                      hasPending && "font-extrabold text-amber-100",
                       hasActiveReturns && "font-black text-white"
                     )}>
                       {item.label}
@@ -297,15 +298,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             })}
           </nav>
 
-          <div className="p-3.5 mt-auto border-t border-white/10 bg-slate-950/20">
-            <div className="px-3 py-1 mb-1.5">
+          <div className="p-3 mt-auto border-t border-white/10 bg-slate-950/20">
+            <div className="px-3 py-1 mb-1">
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">FleetFlow Pro • v2.4</p>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-3.5 py-2.5 text-[15px] font-bold text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-xl transition-all"
+              className="flex items-center gap-3 w-full px-3.5 py-2.5 text-[14.5px] font-bold text-slate-200 hover:text-red-400 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
             >
-              <LogOut size={19} className="stroke-[2.2]" />
+              <LogOut size={20} className="stroke-[2.3]" />
               <span>সাইন আউট (Sign Out)</span>
             </button>
           </div>
