@@ -19,6 +19,7 @@ import Reports from './Reports';
 import QRScanner from './QRScanner';
 import UsersManagement from './UsersManagement';
 import Requests from './Requests';
+import { AppPreloader } from './components/AppPreloader';
 import { loginWithUsernameAndPassword } from './db';
 import { Compass, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -29,8 +30,12 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  if (authLoading) {
+    return <AppPreloader message="লগইন সেশন যাচাই করা হচ্ছে..." subMessage="নিরাপদ সংযোগ স্থাপন করা হচ্ছে" />;
+  }
+
   // If user is already authenticated, redirect to dashboard automatically
-  if (user && !authLoading) {
+  if (user) {
     return <Navigate to="/" replace />;
   }
 
@@ -132,9 +137,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { user, loading } = useAuth();
   
   if (loading) return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>
+    <AppPreloader message="FleetFlow Pro লোড হচ্ছে..." subMessage="লজিস্টিকস ও ফ্লিট সিস্টেম প্রস্তুত করা হচ্ছে" />
   );
   
   if (!user) return <Navigate to="/login" />;
