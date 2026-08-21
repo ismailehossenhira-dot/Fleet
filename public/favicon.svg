@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="fleetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="needleNorth" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="needleSouth" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#3b82f6" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Rounded Background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#fleetGrad)" filter="url(#glow)"/>
+
+  <!-- Inner Dark Frame -->
+  <rect x="5" y="5" width="54" height="54" rx="11" fill="#090d16" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+
+  <!-- Compass Outer Circle Dial -->
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.6"/>
+  <circle cx="32" cy="32" r="23" fill="none" stroke="#60a5fa" stroke-width="1" stroke-dasharray="2 4" opacity="0.4"/>
+
+  <!-- North/South/East/West Dial Markers -->
+  <circle cx="32" cy="12" r="1.5" fill="#60a5fa"/>
+  <circle cx="32" cy="52" r="1.5" fill="#3b82f6"/>
+  <circle cx="12" cy="32" r="1.5" fill="#3b82f6"/>
+  <circle cx="52" cy="32" r="1.5" fill="#3b82f6"/>
+
+  <!-- Compass Needle Points -->
+  <!-- Top-Right Point (North-East) -->
+  <polygon points="32,32 44,20 32,24" fill="url(#needleNorth)"/>
+  <polygon points="32,32 44,20 40,32" fill="#93c5fd"/>
+  
+  <!-- Bottom-Left Point (South-West) -->
+  <polygon points="32,32 20,44 32,40" fill="url(#needleSouth)"/>
+  <polygon points="32,32 20,44 24,32" fill="#1d4ed8"/>
+
+  <!-- Center Pivot Core -->
+  <circle cx="32" cy="32" r="4.5" fill="#0f172a" stroke="#60a5fa" stroke-width="2"/>
+  <circle cx="32" cy="32" r="2" fill="#ffffff"/>
+</svg>
