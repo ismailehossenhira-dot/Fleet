@@ -224,11 +224,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       )}>
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-            <div className="flex items-center justify-center w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30">
-              <Compass size={21} className="stroke-[2.4]" />
+            {/* Animated Brand Logo matching Preloader */}
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-0.5 shadow-md shadow-blue-500/30 flex items-center justify-center group flex-shrink-0">
+              <div className="w-full h-full bg-slate-900/70 rounded-[10px] flex items-center justify-center backdrop-blur-xs relative overflow-hidden">
+                {/* Rotating glowing sweep */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
+                <Compass 
+                  size={19} 
+                  className="text-white drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-[spin_10s_linear_infinite]" 
+                />
+              </div>
             </div>
             <div>
-              <h1 className="font-extrabold tracking-tight text-lg leading-tight">FleetManager</h1>
+              <h1 className="font-extrabold tracking-tight text-lg leading-tight flex items-center gap-1">
+                <span>FleetManager</span>
+                <span className="text-[10px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-400 font-black border border-blue-400/30">PRO</span>
+              </h1>
               <p className="text-[11px] font-semibold text-slate-400">লজিস্টিকস ম্যানেজমেন্ট</p>
             </div>
           </div>
@@ -300,7 +311,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
           <div className="p-3 mt-auto border-t border-white/10 bg-slate-950/20">
             <div className="px-3 py-1 mb-1">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">FleetFlow Pro • v2.4</p>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Manager • v2.4</p>
             </div>
             <button
               onClick={handleLogout}

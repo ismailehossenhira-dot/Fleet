@@ -22,6 +22,7 @@ import Requests from './Requests';
 import { AppPreloader } from './components/AppPreloader';
 import { loginWithUsernameAndPassword } from './db';
 import { Compass, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const Login: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -30,12 +31,8 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (authLoading) {
-    return <AppPreloader message="লগইন সেশন যাচাই করা হচ্ছে..." subMessage="নিরাপদ সংযোগ স্থাপন করা হচ্ছে" />;
-  }
-
   // If user is already authenticated, redirect to dashboard automatically
-  if (user) {
+  if (user && !authLoading) {
     return <Navigate to="/" replace />;
   }
 
@@ -59,90 +56,127 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full space-y-8">
-        <div className="flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-xl shadow-blue-300 mb-6">
-            <Compass size={34} className="stroke-[2.2]" />
+    <>
+      <AnimatePresence>
+        {authLoading && (
+          <AppPreloader
+            key="login-auth-preloader"
+            message="লগইন সেশন যাচাই করা হচ্ছে..."
+            subMessage="নিরাপদ সংযোগ স্থাপন করা হচ্ছে"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full space-y-8">
+          <div className="flex flex-col items-center text-center">
+            {/* Animated Brand Logo matching Preloader */}
+            <div className="relative w-18 h-18 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-0.5 shadow-xl shadow-blue-500/30 flex items-center justify-center group mb-6">
+              <div className="w-full h-full bg-slate-900/80 rounded-[14px] flex items-center justify-center backdrop-blur-xs relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2.5s_infinite]" />
+                <Compass 
+                  size={36} 
+                  className="text-white drop-shadow-[0_0_12px_rgba(59,130,246,0.9)] animate-[spin_8s_linear_infinite]" 
+                />
+              </div>
+            </div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Fleet Manager</h1>
+            <p className="mt-2 text-slate-500">লজিস্টিকস ও ফ্লিট ম্যানেজমেন্ট সিস্টেম</p>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">FleetFlow Pro</h1>
-          <p className="mt-2 text-slate-500">Logistics & Fleet Management Redefined</p>
-        </div>
-        
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-          <p className="text-slate-600 mb-6 text-center font-medium">ইউজারনেম এবং পাসওয়ার্ড দিয়ে লগইন করুন</p>
           
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-start gap-2 animate-in fade-in">
-              <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Username</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <User size={16} />
-                </span>
-                <input
-                  type="text"
-                  placeholder="যেমন: admin"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm transition-all text-slate-800"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={loading}
-                />
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+            <p className="text-slate-600 mb-6 text-center font-medium">ইউজারনেম এবং পাসওয়ার্ড দিয়ে লগইন করুন</p>
+            
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-start gap-2 animate-in fade-in">
+                <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
-            </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Password</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <KeyRound size={16} />
-                </span>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm transition-all text-slate-800"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
-                />
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Username</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <User size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="যেমন: admin"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm transition-all text-slate-800"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Button type="submit" disabled={loading} className="w-full py-3.5 text-sm font-semibold gap-2">
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>যাচাই করা হচ্ছে...</span>
-                </>
-              ) : (
-                <span>লগইন করুন</span>
-              )}
-            </Button>
-          </form>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Password</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <KeyRound size={16} />
+                  </span>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm transition-all text-slate-800"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full py-3.5 text-sm font-semibold gap-2">
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>যাচাই করা হচ্ছে...</span>
+                  </>
+                ) : (
+                  <span>লগইন করুন</span>
+                )}
+              </Button>
+            </form>
+          </div>
+          
+          <p className="text-xs text-center text-slate-400">Secure entry for authorized transport personnel only.</p>
         </div>
-        
-        <p className="text-xs text-center text-slate-400">Secure entry for authorized transport personnel only.</p>
       </div>
-    </div>
+    </>
   );
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   
-  if (loading) return (
-    <AppPreloader message="FleetFlow Pro লোড হচ্ছে..." subMessage="লজিস্টিকস ও ফ্লিট সিস্টেম প্রস্তুত করা হচ্ছে" />
+  return (
+    <>
+      <AnimatePresence>
+        {loading && (
+          <AppPreloader
+            key="app-protected-preloader"
+            message="Fleet Manager লোড হচ্ছে..."
+            subMessage="লজিস্টিকস ও ফ্লিট সিস্টেম প্রস্তুত করা হচ্ছে"
+          />
+        )}
+      </AnimatePresence>
+
+      {!loading && !user && <Navigate to="/login" replace />}
+      {!loading && user && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="min-h-screen w-full"
+        >
+          <Layout>{children}</Layout>
+        </motion.div>
+      )}
+    </>
   );
-  
-  if (!user) return <Navigate to="/login" />;
-  
-  return <Layout>{children}</Layout>;
 };
 
 export default function App() {
