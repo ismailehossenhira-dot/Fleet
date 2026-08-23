@@ -22,13 +22,24 @@ import {
   TrendingUp,
   History,
   Eye,
-  Info
+  Info,
+  Printer,
+  Download,
+  Star,
+  Award,
+  ShieldCheck,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  Users,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown } from './Common';
 import { subscribeToCollection, updateVehicle, updateDriver, findStaffById } from '../db';
 import { useAuth } from '../AuthContext';
-import { cn } from '../lib/utils';
+import { cn, FAMILY_RELATIONS, FamilyRelation } from '../lib/utils';
+import { exportStaffProfilePrint, downloadStaffBiodataFile } from '../utils/exportUtils';
 
 // Standard Tools list
 export const STANDARD_VEHICLE_TOOLS = [
@@ -47,6 +58,12 @@ export const STANDARD_VEHICLE_DOCS = [
   { key: 'RC', label: 'RC (রেজিস্ট্রেশন সার্টিফিকেট / Registration Certificate)', code: 'RC' },
   { key: 'Ads', label: 'Ads (অগ্রিম আয়কর / বিজ্ঞাপন / বীমা)', code: 'Ads' },
 ] as const;
+
+// Helper to translate family relation value to Bangla readable string
+export const getFamilyRelationLabel = (relationVal?: string) => {
+  const match = FAMILY_RELATIONS.find(r => r.value === relationVal);
+  return match ? match.label : (relationVal || 'পারিবারিক সম্পর্ক উল্লেখ নেই');
+};
 
 // Default tool state
 export const getDefaultVehicleTools = (existing?: any) => {
@@ -81,13 +98,18 @@ export const StaffProfileModal: React.FC<{
   const { isAdmin, isSubAdmin } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [trips, setTrips] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'trips' | 'biodata'>('overview');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isEditingInline, setIsEditingInline] = useState(false);
+  const [tripSearch, setTripSearch] = useState('');
+  
   const [editForm, setEditForm] = useState({
     name: staff?.name || '',
     phoneNumber: staff?.phoneNumber || '',
     licenseNo: staff?.licenseNo || '',
     address: staff?.address || '',
     familyPhone: staff?.familyPhone || '',
+    familyPhoneRelation: staff?.familyPhoneRelation || 'Father',
     role: staff?.role || 'Driver',
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -132,6 +154,39 @@ export const StaffProfileModal: React.FC<{
   const activeRunningTrip = staffTrips.find(t => t.status === 'Running');
   const pendingTrip = staffTrips.find(t => t.status === 'Pending');
 
+  // Performance calculations
+  const totalCount = totalCompletedTrips.length;
+  let baseRating = 4.0;
+  if (totalCount >= 50) baseRating = 5.0;
+  else if (totalCount >= 25) baseRating = 4.9;
+  else if (totalCount >= 15) baseRating = 4.8;
+  else if (totalCount >= 8) baseRating = 4.6;
+  else if (totalCount >= 3) baseRating = 4.4;
+  else if (totalCount >= 1) baseRating = 4.2;
+
+  if (staff.isSuspended) {
+    baseRating = Math.max(1.0, baseRating - 1.2);
+  }
+
+  let grade = 'A+ (টপ স্টার পারফরমার)';
+  if (baseRating < 3.0) grade = 'D (সতর্কবার্তা প্রয়োজন)';
+  else if (baseRating < 3.8) grade = 'C (উন্নতি দরকার)';
+  else if (baseRating < 4.4) grade = 'B+ (ভালো পারফরম্যান্স)';
+  else if (baseRating < 4.8) grade = 'A (চমৎকার রেকর্ড)';
+
+  const statusText = staff.isSuspended 
+    ? `সাসপেন্ডেড (${staff.suspensionDays || 0} দিন)` 
+    : (activeRunningTrip ? 'ট্রিপে নিয়োজিত' : (pendingTrip ? 'পেন্ডিং ট্রিপ' : 'উপলব্ধ (Free)'));
+
+  const performanceData = {
+    rating: baseRating,
+    grade,
+    totalTrips: totalCompletedTrips.length,
+    monthlyTrips: monthlyCompletedTrips.length,
+    activeTrip: activeRunningTrip,
+    statusText
+  };
+
   const handleSaveInline = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -145,41 +200,86 @@ export const StaffProfileModal: React.FC<{
     }
   };
 
+  // Filtered trips for history tab
+  const filteredTrips = staffTrips.filter(t => {
+    if (!tripSearch.trim()) return true;
+    const q = tripSearch.toLowerCase();
+    return (
+      (t.vehiclePlate && t.vehiclePlate.toLowerCase().includes(q)) ||
+      (t.location && t.location.toLowerCase().includes(q)) ||
+      (t.status && t.status.toLowerCase().includes(q))
+    );
+  });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-sm overflow-hidden">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 15 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 340 }}
         onClick={e => e.stopPropagation()} 
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className={cn(
+          "relative bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col transition-all duration-300",
+          isFullscreen 
+            ? "w-full h-[96vh] max-w-none rounded-2xl" 
+            : "w-full max-w-4xl lg:max-w-5xl max-h-[92vh]"
+        )}
       >
-        {/* Header with Role Banner */}
+        {/* Header with Role Banner & Action Controls */}
         <div className={cn(
-          "px-6 py-5 text-white flex items-center justify-between",
+          "px-5 sm:px-8 py-5 text-white flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm",
           staff.role === 'Helper' 
-            ? "bg-gradient-to-r from-emerald-600 to-teal-700" 
-            : "bg-gradient-to-r from-blue-600 to-indigo-700"
+            ? "bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800" 
+            : "bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900"
         )}>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-xl shadow-inner">
-              <User size={26} />
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-black text-2xl shadow-inner border border-white/20">
+              {staff.name ? staff.name.charAt(0).toUpperCase() : <User size={28} />}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-black uppercase tracking-wider border border-white/20">
                   {staff.role === 'Helper' ? 'হেলপার (Helper)' : 'ড্রাইভার (Driver)'}
                 </span>
-                <span className="text-white/80 text-xs font-mono font-bold">#{staff.driverId}</span>
+                <span className="text-white/90 text-xs font-mono font-bold bg-black/20 px-2 py-0.5 rounded-md">
+                  #{staff.driverId}
+                </span>
+                <span className="flex items-center gap-1 text-amber-300 bg-amber-950/40 border border-amber-400/30 px-2 py-0.5 rounded-md text-xs font-black">
+                  <Star size={12} className="fill-amber-400 text-amber-400" />
+                  {baseRating.toFixed(1)}
+                </span>
               </div>
-              <h3 className="text-xl font-bold text-white tracking-tight mt-0.5">
+              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
                 {staff.name}
               </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Action buttons (Print, Download, Edit, Fullscreen, Close) */}
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
+            {/* Quick Print Button */}
+            <button
+              type="button"
+              onClick={() => exportStaffProfilePrint(staff, performanceData, staffTrips)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+              title="প্রোফাইল সরাসরি প্রিন্ট করুন"
+            >
+              <Printer size={15} />
+              <span className="hidden sm:inline">প্রিন্ট</span>
+            </button>
+
+            {/* Quick Download Button */}
+            <button
+              type="button"
+              onClick={() => downloadStaffBiodataFile(staff, performanceData, staffTrips)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+              title="বায়োডাটা ফাইল ডাউনলোড করুন"
+            >
+              <Download size={15} />
+              <span className="hidden sm:inline">ডাউনলোড</span>
+            </button>
+
             {canManage && !isEditingInline && (
               <button
                 type="button"
@@ -191,303 +291,782 @@ export const StaffProfileModal: React.FC<{
                     setIsEditingInline(true);
                   }
                 }}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                title="তথ্য সম্পাদন করুন"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+                title="তথ্য পরিবর্তন বা সম্পাদন"
               >
-                <Edit3 size={17} />
+                <Edit3 size={15} />
+                <span className="hidden sm:inline">এডিট</span>
               </button>
             )}
+
+            {/* Toggle Fullscreen / Expand */}
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/20"
+              title={isFullscreen ? "আগের আকারে ফিরুন" : "বড় ভিউ / ফুলস্ক্রিন করুন"}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+
+            {/* Close */}
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white/15 hover:bg-red-500/80 text-white transition-colors cursor-pointer border border-white/20"
+              title="বন্ধ করুন"
             >
-              <X size={18} />
+              <X size={17} />
             </button>
           </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="overflow-y-auto p-6 space-y-6">
+        {/* Tab Navigation Bar */}
+        <div className="px-6 border-b border-slate-200 bg-slate-50 flex items-center justify-between overflow-x-auto gap-2 py-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                activeTab === 'overview'
+                  ? "bg-white text-blue-700 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              )}
+            >
+              <User size={15} className={activeTab === 'overview' ? "text-blue-600" : "text-slate-400"} />
+              <span>১. প্রোফাইল ও পরিচিতি</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('performance')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                activeTab === 'performance'
+                  ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              )}
+            >
+              <Award size={15} className={activeTab === 'performance' ? "text-amber-500" : "text-slate-400"} />
+              <span>২. পারফরম্যান্স স্কোরকার্ড</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">
+                {baseRating.toFixed(1)} ★
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('trips')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                activeTab === 'trips'
+                  ? "bg-white text-blue-700 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              )}
+            >
+              <History size={15} className={activeTab === 'trips' ? "text-blue-600" : "text-slate-400"} />
+              <span>৩. ট্রিপ হিস্ট্রি</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
+                {staffTrips.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('biodata')}
+              className={cn(
+                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                activeTab === 'biodata'
+                  ? "bg-white text-teal-700 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              )}
+            >
+              <FileText size={15} className={activeTab === 'biodata' ? "text-teal-600" : "text-slate-400"} />
+              <span>৪. প্রিন্ট ও বায়োডাটা</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-500 hidden md:block">
+            {staff.role === 'Helper' ? 'হেলপার ডাটাবেজ' : 'ড্রাইভার ডাটাবেজ'} • আইডি: <strong className="text-slate-800 font-mono">{staff.driverId}</strong>
+          </div>
+        </div>
+
+        {/* Modal Body - Tabbed Content */}
+        <div className="overflow-y-auto p-5 sm:p-7 space-y-6 grow">
           {/* Suspension Alert if applicable */}
           {staff.isSuspended && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 shadow-xs">
               <Ban className="text-red-600 shrink-0 mt-0.5" size={20} />
               <div className="text-xs text-red-800">
-                <div className="font-bold text-sm text-red-900">বর্তমানে সাময়িক বরখাস্ত (Suspended)</div>
-                <p className="mt-1 font-medium">কারণ: {staff.suspensionReason || 'উল্লেখ নেই'}</p>
-                <div className="flex gap-4 mt-2 text-[11px] font-semibold text-red-700">
-                  <span>মেয়াদ: {staff.suspensionDays || '০'} দিন</span>
-                  {staff.suspendedBy && <span>দ্বারা: {staff.suspendedBy}</span>}
+                <div className="font-bold text-sm text-red-900 flex items-center gap-2">
+                  <span>বর্তমানে সাময়িক বরখাস্ত (Suspended)</span>
+                  <span className="px-2 py-0.5 bg-red-200 text-red-900 rounded-md font-bold text-[11px]">মেয়াদ: {staff.suspensionDays || '০'} দিন</span>
                 </div>
+                <p className="mt-1 font-medium text-red-700">কারণ: {staff.suspensionReason || 'উল্লেখ নেই'}</p>
+                {staff.suspendedBy && (
+                  <div className="mt-1.5 text-[11px] font-semibold text-red-800">
+                    আদেশকারী: {staff.suspendedBy}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Active Trip Banner if running */}
+          {/* Active Running Trip Banner */}
           {activeRunningTrip && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between">
+            <div className="p-4 bg-blue-50/90 border border-blue-200 rounded-2xl flex items-center justify-between gap-4 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
-                  <Truck size={18} />
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                  <Truck size={20} />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-blue-900 uppercase">বর্তমানে চলমান ট্রিপে আছেন</div>
-                  <div className="text-xs text-blue-700 font-medium mt-0.5">
-                    গাড়ি: <span className="font-bold text-blue-900">{activeRunningTrip.vehiclePlate}</span> • গন্তব্য: <span className="font-bold">{activeRunningTrip.location}</span>
+                  <div className="text-xs font-bold text-blue-900 uppercase tracking-wide">বর্তমানে চলমান ট্রিপে নিয়োজিত আছেন</div>
+                  <div className="text-xs text-blue-700 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span>গাড়ি: <strong className="text-blue-950 font-mono">{activeRunningTrip.vehiclePlate}</strong></span>
+                    <span>•</span>
+                    <span>গন্তব্য: <strong className="text-blue-950">{activeRunningTrip.location}</strong></span>
                   </div>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                Running
+              <span className="px-3 py-1 rounded-full bg-blue-600 text-white text-[11px] font-black uppercase tracking-wider animate-pulse shadow-xs">
+                Active Trip
               </span>
             </div>
           )}
 
-          {/* Monthly & Lifetime Performance Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100">
-              <div className="flex items-center justify-between text-blue-600 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">চলতি মাসের ট্রিপ</span>
-                <TrendingUp size={16} />
-              </div>
-              <div className="text-2xl font-black text-blue-950">
-                {monthlyCompletedTrips.length}
-                <span className="text-xs font-semibold text-blue-700 ml-1">টি</span>
-              </div>
-              <p className="text-[10px] text-blue-600 mt-1 font-medium">বর্তমান ক্যালেন্ডার মাসে সম্পন্ন</p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/50 border border-emerald-100">
-              <div className="flex items-center justify-between text-emerald-600 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">সর্বমোট ট্রিপ</span>
-                <CheckCircle2 size={16} />
-              </div>
-              <div className="text-2xl font-black text-emerald-950">
-                {totalCompletedTrips.length}
-                <span className="text-xs font-semibold text-emerald-700 ml-1">টি</span>
-              </div>
-              <p className="text-[10px] text-emerald-600 mt-1 font-medium">নিবন্ধন থেকে শুরু করে মোট সমাপ্ত</p>
-            </div>
-
-            <div className="col-span-2 sm:col-span-1 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
-              <div className="flex items-center justify-between text-slate-600 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">বর্তমান স্ট্যাটাস</span>
-                <User size={16} />
-              </div>
-              <div className="text-sm font-black text-slate-900 mt-1">
-                {staff.isSuspended ? (
-                  <span className="text-red-600 font-bold">সাসপেন্ডেড</span>
-                ) : activeRunningTrip ? (
-                  <span className="text-blue-600 font-bold">ট্রিপে নিয়োজিত</span>
-                ) : pendingTrip ? (
-                  <span className="text-amber-600 font-bold">পেন্ডিং ট্রিপ</span>
-                ) : (
-                  <span className="text-emerald-600 font-bold">উপলব্ধ (Free)</span>
-                )}
-              </div>
-              <p className="text-[10px] text-slate-500 mt-1 font-medium">ডিউটি প্রস্তুত অবস্থা</p>
-            </div>
-          </div>
-
-          {/* Profile Details Form or View */}
-          <AnimatePresence mode="wait">
-            {isEditingInline ? (
-              <motion.form 
-                key="edit-form"
-                initial={{ opacity: 0, height: 0, y: -8 }}
-                animate={{ opacity: 1, height: 'auto', y: 0 }}
-                exit={{ opacity: 0, height: 0, y: -8 }}
-                transition={{ duration: 0.25, ease: [0.04, 0.62, 0.23, 0.98] }}
-                onSubmit={handleSaveInline} 
-                className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 overflow-hidden"
-              >
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200 pb-2">
-                  প্রোফাইল তথ্য সম্পাদন
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">পূর্ণ নাম</label>
-                    <input 
-                      type="text" 
-                      required
-                      className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium"
-                      value={editForm.name}
-                      onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    />
+          {/* ================= TAB 1: OVERVIEW ================= */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Quick 4-box metrics banner */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/60 border border-blue-100">
+                  <div className="flex items-center justify-between text-blue-600 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">চলতি মাসের ট্রিপ</span>
+                    <TrendingUp size={16} />
                   </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">মোবাইল নম্বর</label>
-                    <input 
-                      type="tel" 
-                      required
-                      className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium"
-                      value={editForm.phoneNumber}
-                      onChange={e => setEditForm({ ...editForm, phoneNumber: e.target.value })}
-                    />
+                  <div className="text-2xl font-black text-blue-950">
+                    {monthlyCompletedTrips.length}
+                    <span className="text-xs font-semibold text-blue-700 ml-1">টি</span>
                   </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">ড্রাইভিং লাইসেন্স নং</label>
-                    <input 
-                      type="text" 
-                      placeholder="DL-XXXX-XXXX"
-                      className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium"
-                      value={editForm.licenseNo}
-                      onChange={e => setEditForm({ ...editForm, licenseNo: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">পরিবারের নাম্বার / জরুরী যোগাযোগ</label>
-                    <input 
-                      type="tel" 
-                      placeholder="01XXXXXXXXX"
-                      className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium"
-                      value={editForm.familyPhone}
-                      onChange={e => setEditForm({ ...editForm, familyPhone: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-700 font-semibold mb-1">বর্তমান / স্থায়ী ঠিকানা</label>
-                    <textarea 
-                      rows={2}
-                      placeholder="গ্রাম, থানা, জেলা..."
-                      className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium"
-                      value={editForm.address}
-                      onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                    />
-                  </div>
+                  <p className="text-[10px] text-blue-600 mt-1 font-medium">বর্তমান মাসে সম্পন্ন ট্রিপ</p>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-                  <Button type="button" variant="secondary" className="text-xs px-3 py-1.5" onClick={() => setIsEditingInline(false)}>
-                    বাতিল
-                  </Button>
-                  <Button type="submit" className="text-xs px-3 py-1.5" disabled={isSaving}>
-                    {isSaving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
-                  </Button>
-                </div>
-              </motion.form>
-            ) : (
-              <motion.div 
-                key="view-details"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              >
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 text-xs">
-                  <div className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
-                    <CreditCard size={16} className="text-blue-600" />
-                    <span>ব্যক্তিগত ও লাইসেন্স তথ্য</span>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100">
+                  <div className="flex items-center justify-between text-emerald-600 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">মোট সম্পন্ন ট্রিপ</span>
+                    <CheckCircle2 size={16} />
                   </div>
-
-                  <div className="flex items-start justify-between">
-                    <span className="text-slate-500 font-medium">মোবাইল নম্বর:</span>
-                    <a 
-                      href={`tel:${staff.phoneNumber}`}
-                      className="font-bold text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100"
-                    >
-                      <Phone size={12} />
-                      <span>{staff.phoneNumber || 'উল্লেখ নেই'}</span>
-                    </a>
+                  <div className="text-2xl font-black text-emerald-950">
+                    {totalCompletedTrips.length}
+                    <span className="text-xs font-semibold text-emerald-700 ml-1">টি</span>
                   </div>
-
-                  <div className="flex items-start justify-between">
-                    <span className="text-slate-500 font-medium">লাইসেন্স নম্বর:</span>
-                    <span className="font-bold text-slate-800 font-mono">
-                      {staff.licenseNo || 'দেওয়া হয়নি'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-start justify-between">
-                    <span className="text-slate-500 font-medium">যোগদানের তারিখ:</span>
-                    <span className="font-medium text-slate-700">
-                      {staff.createdAt?.toDate?.().toLocaleDateString('bn-BD') || 'N/A'}
-                    </span>
-                  </div>
+                  <p className="text-[10px] text-emerald-600 mt-1 font-medium">নিবন্ধন পরবর্তী সর্বমোট</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 text-xs">
-                  <div className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
-                    <HeartHandshake size={16} className="text-emerald-600" />
-                    <span>পরিবার ও ঠিকানা</span>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200">
+                  <div className="flex items-center justify-between text-amber-600 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">পারফরম্যান্স রেটিং</span>
+                    <Star size={16} className="fill-amber-500 text-amber-500" />
                   </div>
+                  <div className="text-2xl font-black text-amber-950 flex items-baseline gap-1">
+                    {baseRating.toFixed(1)}
+                    <span className="text-xs font-bold text-amber-700">/ 5.0</span>
+                  </div>
+                  <p className="text-[10px] text-amber-700 mt-1 font-semibold">{grade.split(' ')[0]}</p>
+                </div>
 
-                  <div className="flex items-start justify-between">
-                    <span className="text-slate-500 font-medium">পরিবারের নাম্বার:</span>
-                    {staff.familyPhone ? (
-                      <a 
-                        href={`tel:${staff.familyPhone}`}
-                        className="font-bold text-emerald-600 hover:underline flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100"
-                      >
-                        <Phone size={12} />
-                        <span>{staff.familyPhone}</span>
-                      </a>
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/70 border border-slate-200">
+                  <div className="flex items-center justify-between text-slate-600 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">ডিউটি স্ট্যাটাস</span>
+                    <User size={16} />
+                  </div>
+                  <div className="text-sm font-black text-slate-900 mt-1">
+                    {staff.isSuspended ? (
+                      <span className="text-red-600 font-bold">সাসপেন্ডেড</span>
+                    ) : activeRunningTrip ? (
+                      <span className="text-blue-600 font-bold">ট্রিপে নিয়োজিত</span>
+                    ) : pendingTrip ? (
+                      <span className="text-amber-600 font-bold">পেন্ডিং ট্রিপ</span>
                     ) : (
-                      <span className="text-slate-400 font-medium">দেওয়া হয়নি</span>
+                      <span className="text-emerald-600 font-bold">উপলব্ধ (Free)</span>
                     )}
                   </div>
-
-                  <div className="flex flex-col gap-1">
-                    <span className="text-slate-500 font-medium">ঠিকানা:</span>
-                    <p className="text-slate-800 font-medium bg-white p-2 rounded-xl border border-slate-100 italic">
-                      {staff.address || 'কোনো ঠিকানা এন্ট্রি করা হয়নি।'}
-                    </p>
-                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 font-medium">বর্তমানে প্রস্তুত</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Recent Trips Record */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <History size={16} className="text-slate-500" />
-                <span>সাম্প্রতিক ট্রিপ হিস্ট্রি (Recent Trips)</span>
-              </h4>
-              <span className="text-xs text-slate-400 font-semibold">{staffTrips.length} টি ট্রিপ</span>
-            </div>
-
-            {staffTrips.length === 0 ? (
-              <div className="p-6 text-center bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-400">
-                এই স্টাফের কোনো ট্রিপ রেকর্ড পাওয়া যায়নি।
               </div>
-            ) : (
-              <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden text-xs max-h-48 overflow-y-auto">
-                {staffTrips.slice(0, 6).map((trip, idx) => (
-                  <div key={trip.id || idx} className="p-3 bg-white hover:bg-slate-50 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <Truck size={13} className="text-slate-400" />
-                        <span>{trip.vehiclePlate}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">({trip.location})</span>
+
+              {/* Edit Mode vs View Mode */}
+              <AnimatePresence mode="wait">
+                {isEditingInline ? (
+                  <motion.form 
+                    key="edit-form"
+                    initial={{ opacity: 0, height: 0, y: -8 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -8 }}
+                    transition={{ duration: 0.25 }}
+                    onSubmit={handleSaveInline} 
+                    className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 overflow-hidden shadow-xs"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                      <div className="text-sm font-black text-slate-800 flex items-center gap-2">
+                        <Edit3 size={17} className="text-blue-600" />
+                        <span>স্টাফ ও পারিবারিক তথ্য পরিবর্তন / সম্পাদন</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
-                        {trip.createdAt?.toDate?.().toLocaleDateString('bn-BD') || 'তারিখ নেই'}
+                      <span className="text-xs text-slate-500 font-medium">আইডি: {staff.driverId}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-700 font-bold mb-1">পূর্ণ নাম (Full Name) *</label>
+                        <input 
+                          type="text" 
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                          value={editForm.name}
+                          onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 font-bold mb-1">নিজস্ব মোবাইল নম্বর (Staff Phone) *</label>
+                        <input 
+                          type="tel" 
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                          value={editForm.phoneNumber}
+                          onChange={e => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-700 font-bold mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                        <input 
+                          type="text" 
+                          placeholder="DL-XXXX-XXXX"
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                          value={editForm.licenseNo}
+                          onChange={e => setEditForm({ ...editForm, licenseNo: e.target.value })}
+                        />
+                      </div>
+
+                      {/* Family Phone & Relation Selector */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-700 font-bold mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                          <input 
+                            type="tel" 
+                            placeholder="01XXXXXXXXX"
+                            className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                            value={editForm.familyPhone}
+                            onChange={e => setEditForm({ ...editForm, familyPhone: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-700 font-bold mb-1 text-emerald-800">নাম্বারটি কার? (Relation) *</label>
+                          <select
+                            value={editForm.familyPhoneRelation}
+                            onChange={e => setEditForm({ ...editForm, familyPhoneRelation: e.target.value })}
+                            className="w-full px-3 py-2.5 bg-emerald-50 rounded-xl border border-emerald-300 outline-none focus:border-emerald-600 font-bold text-slate-800 text-xs cursor-pointer"
+                          >
+                            {FAMILY_RELATIONS.map(rel => (
+                              <option key={rel.value} value={rel.value}>
+                                {rel.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-slate-700 font-bold mb-1">বর্তমান ও স্থায়ী ঠিকানা (Address)</label>
+                        <textarea 
+                          rows={2}
+                          placeholder="গ্রাম/বাড়ি, থানা, জেলা..."
+                          className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                          value={editForm.address}
+                          onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                        />
                       </div>
                     </div>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                      trip.status === 'Completed' ? "bg-emerald-100 text-emerald-700" :
-                      trip.status === 'Running' ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                    )}>
-                      {trip.status}
+
+                    <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+                      <Button type="button" variant="secondary" className="text-xs px-4 py-2" onClick={() => setIsEditingInline(false)}>
+                        বাতিল
+                      </Button>
+                      <Button type="submit" className="text-xs px-5 py-2 font-bold" disabled={isSaving}>
+                        {isSaving ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                      </Button>
+                    </div>
+                  </motion.form>
+                ) : (
+                  <motion.div 
+                    key="view-details"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                  >
+                    {/* Card 1: Personal & License */}
+                    <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3.5 text-xs shadow-2xs">
+                      <div className="font-bold text-slate-900 text-sm flex items-center justify-between border-b border-slate-200/70 pb-2.5">
+                        <div className="flex items-center gap-2 text-blue-700">
+                          <CreditCard size={17} />
+                          <span>ব্যক্তিগত ও লাইসেন্স তথ্য</span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
+                          {staff.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                        <span className="text-slate-500 font-medium">পূর্ণ নাম:</span>
+                        <span className="font-bold text-slate-900 text-sm">{staff.name}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                        <span className="text-slate-500 font-medium">মোবাইল নম্বর:</span>
+                        <a 
+                          href={`tel:${staff.phoneNumber}`}
+                          className="font-bold text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+                        >
+                          <Phone size={12} />
+                          <span>{staff.phoneNumber || 'উল্লেখ নেই'}</span>
+                        </a>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                        <span className="text-slate-500 font-medium">লাইসেন্স নম্বর:</span>
+                        <span className="font-bold text-slate-800 font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
+                          {staff.licenseNo || 'দেওয়া হয়নি'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-slate-500 font-medium">যোগদানের তারিখ:</span>
+                        <span className="font-semibold text-slate-700 flex items-center gap-1">
+                          <Calendar size={13} className="text-slate-400" />
+                          {staff.createdAt?.toDate ? staff.createdAt.toDate().toLocaleDateString('bn-BD') : (staff.createdAt ? new Date(staff.createdAt).toLocaleDateString('bn-BD') : 'N/A')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Family & Emergency Contact */}
+                    <div className="p-5 bg-slate-50/70 rounded-2xl border border-slate-200/80 space-y-3.5 text-xs shadow-2xs">
+                      <div className="font-bold text-slate-900 text-sm flex items-center justify-between border-b border-slate-200/70 pb-2.5">
+                        <div className="flex items-center gap-2 text-emerald-700">
+                          <HeartHandshake size={17} />
+                          <span>পারিবারিক ও জরুরী যোগাযোগ</span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                          জরুরী কন্টাক্ট
+                        </span>
+                      </div>
+
+                      {/* Family Phone with Explicit Relation */}
+                      <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-emerald-900 font-bold text-[11px] flex items-center gap-1">
+                            <Phone size={13} />
+                            <span>পারিবারিক নম্বর:</span>
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[11px] font-black tracking-wide">
+                            সম্পর্ক: {getFamilyRelationLabel(staff.familyPhoneRelation)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          {staff.familyPhone ? (
+                            <a 
+                              href={`tel:${staff.familyPhone}`}
+                              className="font-black text-sm text-emerald-800 hover:underline flex items-center gap-1.5"
+                            >
+                              <span>{staff.familyPhone}</span>
+                              <span className="text-[10px] font-normal text-emerald-600">(কল করতে ক্লিক করুন)</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 font-medium italic">কোনো পারিবারিক নম্বর এন্ট্রি করা হয়নি</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1 pt-1">
+                        <span className="text-slate-500 font-medium flex items-center gap-1">
+                          <MapPin size={13} className="text-slate-400" />
+                          <span>বর্তমান ও স্থায়ী ঠিকানা:</span>
+                        </span>
+                        <p className="text-slate-800 font-medium bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed text-xs">
+                          {staff.address || 'কোনো স্থায়ী ঠিকানা এন্ট্রি করা হয়নি।'}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Mini Recent Trips Widget */}
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <History size={16} className="text-blue-600" />
+                    <span className="text-xs font-bold text-slate-800">সাম্প্রতিক ট্রিপ সমূহ (সর্বশেষ ৪টি)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('trips')}
+                    className="text-xs text-blue-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <span>সব ট্রিপ দেখুন ({staffTrips.length})</span>
+                    <ExternalLink size={11} />
+                  </button>
+                </div>
+
+                {staffTrips.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    কোনো পূর্ববর্তী ট্রিপ রেকর্ড পাওয়া যায়নি।
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {staffTrips.slice(0, 4).map((trip, idx) => (
+                      <div key={trip.id || idx} className="p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-slate-200/70 flex items-center justify-between gap-3 text-xs transition-colors">
+                        <div>
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <Truck size={13} className="text-slate-500" />
+                            <span>{trip.vehiclePlate}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            {trip.location || 'গন্তব্য উল্লেখ নেই'}
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0",
+                          trip.status === 'Completed' ? "bg-emerald-100 text-emerald-800" :
+                          trip.status === 'Running' ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                        )}>
+                          {trip.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 2: PERFORMANCE & RATING ================= */}
+          {activeTab === 'performance' && (
+            <div className="space-y-6">
+              {/* Scorecard Hero Banner */}
+              <div className="p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles size={11} />
+                        অফিসিয়াল পারফরম্যান্স গ্রেড
+                      </span>
+                      <span className="text-xs text-slate-400">লাইফটাইম মূল্যায়ন</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-black text-white mt-2">
+                      {grade}
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1 max-w-lg leading-relaxed">
+                      সম্পন্ন ট্রিপের সংখ্যা, নিয়মিত উপস্থিতি, সময়ানুবর্তিতা এবং শৃঙ্খলা বজায় রাখার রেকর্ডের ভিত্তিতে এই স্কোর স্বয়ংক্রিয়ভাবে পরিগণিত হয়।
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-center shrink-0 min-w-[170px]">
+                    <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">ওভারঅল রেটিং</div>
+                    <div className="text-4xl font-black text-white my-1 flex items-center justify-center gap-1">
+                      <span>{baseRating.toFixed(1)}</span>
+                      <span className="text-sm font-normal text-slate-400">/ 5</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1 text-amber-400">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <Star 
+                          key={star} 
+                          size={15} 
+                          className={star <= Math.round(baseRating) ? "fill-amber-400 text-amber-400" : "text-slate-600"} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                    <TrendingUp size={16} className="text-blue-600" />
+                    <span>চলতি মাসের সক্রিয়তা</span>
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-2">
+                    {monthlyCompletedTrips.length} <span className="text-xs font-bold text-slate-500">টি ট্রিপ</span>
+                  </div>
+                  <div className="mt-2 w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-blue-600 h-full rounded-full transition-all" 
+                      style={{ width: `${Math.min(100, (monthlyCompletedTrips.length / 20) * 100)}%` }} 
+                    />
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-1.5 flex justify-between">
+                    <span>টার্গেট: ২০টি</span>
+                    <span>{Math.round(Math.min(100, (monthlyCompletedTrips.length / 20) * 100))}% সম্পন্ন</span>
+                  </div>
+                </div>
+
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <span>সেফটি ও শৃঙ্খলা ইনডেক্স</span>
+                  </div>
+                  <div className="text-3xl font-black text-emerald-950 mt-2">
+                    {staff.isSuspended ? '70%' : '100%'} <span className="text-xs font-bold text-emerald-700">মামলামুক্ত</span>
+                  </div>
+                  <div className="mt-2 w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full transition-all" 
+                      style={{ width: staff.isSuspended ? '70%' : '100%' }} 
+                    />
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-semibold mt-1.5">
+                    {staff.isSuspended ? 'বর্তমানে পেনাল্টি কার্যকর' : 'ক্লিন সেফটি রেকর্ড সংরক্ষিত'}
+                  </div>
+                </div>
+
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                    <Award size={16} className="text-amber-600" />
+                    <span>সর্বমোট অর্জন</span>
+                  </div>
+                  <div className="text-3xl font-black text-slate-900 mt-2">
+                    {totalCompletedTrips.length} <span className="text-xs font-bold text-slate-500">মোট ট্রিপ</span>
+                  </div>
+                  <div className="mt-2 text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px]">
+                      {totalCount > 30 ? '🏆 অভিজ্ঞ সিনিয়র স্টাফ' : (totalCount > 10 ? '⭐ নিয়মিত পারফরমার' : '🔰 ট্রেইনি স্টাফ')}
                     </span>
                   </div>
-                ))}
+                  <div className="text-[10px] text-slate-500 font-semibold mt-1">
+                    মোট সক্রিয় ট্রিপ রেকর্ড
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Performance Badges and Recognition */}
+              <div className="p-5 bg-white rounded-2xl border border-slate-200 space-y-3">
+                <div className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <Award size={16} className="text-blue-600" />
+                  <span>অর্জিত ব্যাজ ও যোগ্যতা (Recognition & Badges)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black">
+                      ⭐
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-blue-950">রেগুলার রানার</div>
+                      <div className="text-[10px] text-blue-700">ধারাবাহিক ট্রিপ পরিচালনায় সক্রিয়</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black">
+                      🛡️
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-emerald-950">নিরাপদ চালক</div>
+                      <div className="text-[10px] text-emerald-700">মামলামুক্ত ও ঝুঁকিমুক্ত ড্রাইভিং</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center font-black">
+                      ⚡
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-amber-950">দ্রুত দায়িত্ব পালন</div>
+                      <div className="text-[10px] text-amber-700">ডিউটিতে সময়ানুবর্তিতা বজায় রাখা</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 3: TRIPS HISTORY ================= */}
+          {activeTab === 'trips' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <History size={17} className="text-blue-600" />
+                    <span>সম্পূর্ণ ট্রিপ হিস্ট্রি ও ডিটেইল লগ</span>
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    এই স্টাফের নামের সাথে যুক্ত সকল পূর্ববর্তী ও বর্তমান ট্রিপের তালিকা
+                  </p>
+                </div>
+
+                {/* Search in trips */}
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    type="text"
+                    placeholder="গাড়ি বা গন্তব্য খুঁজুন..."
+                    value={tripSearch}
+                    onChange={e => setTripSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs outline-none focus:border-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {filteredTrips.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500">
+                  {tripSearch ? 'অনুসন্ধান অনুযায়ী কোনো ট্রিপ পাওয়া যায়নি।' : 'কোনো ট্রিপ record পাওয়া যায়নি।'}
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-900 text-white font-bold sticky top-0 z-10 text-[11px]">
+                        <tr>
+                          <th className="p-3 text-center w-12">#</th>
+                          <th className="p-3">গাড়ির নম্বর</th>
+                          <th className="p-3">গন্তব্য / রুট</th>
+                          <th className="p-3">শুরুর সময়</th>
+                          <th className="p-3">সমাপ্তির সময়</th>
+                          <th className="p-3 text-center">স্ট্যাটাস</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {filteredTrips.map((trip, idx) => (
+                          <tr key={trip.id || idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="p-3 font-bold text-slate-900">
+                              <div className="flex items-center gap-1.5">
+                                <Truck size={14} className="text-slate-400" />
+                                <span>{trip.vehiclePlate || 'N/A'}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-slate-700 font-medium">{trip.location || '-'}</td>
+                            <td className="p-3 text-slate-500">
+                              {trip.startTime?.toDate ? trip.startTime.toDate().toLocaleString('bn-BD') : (trip.startTime || (trip.createdAt?.toDate ? trip.createdAt.toDate().toLocaleDateString('bn-BD') : '-'))}
+                            </td>
+                            <td className="p-3 text-slate-500">
+                              {trip.endTime?.toDate ? trip.endTime.toDate().toLocaleString('bn-BD') : (trip.endTime || '-')}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-block",
+                                trip.status === 'Completed' ? "bg-emerald-100 text-emerald-800 border border-emerald-200" :
+                                trip.status === 'Running' ? "bg-blue-100 text-blue-800 border border-blue-200 animate-pulse" : 
+                                "bg-amber-100 text-amber-800 border border-amber-200"
+                              )}>
+                                {trip.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================= TAB 4: BIODATA & PRINT PREVIEW ================= */}
+          {activeTab === 'biodata' && (
+            <div className="space-y-5">
+              <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-bold text-teal-950 flex items-center gap-2">
+                    <Printer size={16} className="text-teal-700" />
+                    <span>অফিসিয়াল বায়োডাটা ডাউনলোড ও প্রিন্ট প্রিভিউ</span>
+                  </h4>
+                  <p className="text-xs text-teal-800 mt-0.5">
+                    ড্রাইভার/হেলপারের পূর্ণাঙ্গ জীবনবৃত্তান্ত, জরুরি পারিবারিক যোগাযোগ ও পারফরম্যান্স সহ প্রিন্ট-রেডি কার্ড
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => exportStaffProfilePrint(staff, performanceData, staffTrips)}
+                    className="text-xs px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Printer size={14} />
+                    <span>প্রিন্ট করুন (Print)</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => downloadStaffBiodataFile(staff, performanceData, staffTrips)}
+                    variant="secondary"
+                    className="text-xs px-4 py-2 font-bold flex items-center gap-1.5"
+                  >
+                    <Download size={14} />
+                    <span>ডাউনলোড (Save)</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Visual Card Preview */}
+              <div className="p-6 bg-white rounded-2xl border-2 border-dashed border-slate-300 space-y-4">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="text-sm font-black text-slate-800 uppercase">
+                    Fleet Logistics System • Staff Biodata Card
+                  </div>
+                  <div className="text-xs text-slate-500 font-mono">
+                    ID: BIO-{staff.driverId}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-2">
+                    <div><strong>নাম:</strong> {staff.name}</div>
+                    <div><strong>পদবি:</strong> {staff.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার'}</div>
+                    <div><strong>মোবাইল:</strong> {staff.phoneNumber || 'N/A'}</div>
+                    <div><strong>লাইসেন্স নং:</strong> {staff.licenseNo || 'N/A'}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <strong>পারিবারিক নম্বর:</strong> {staff.familyPhone || 'N/A'}{' '}
+                      <span className="text-emerald-700 font-bold">({getFamilyRelationLabel(staff.familyPhoneRelation)})</span>
+                    </div>
+                    <div><strong>ঠিকানা:</strong> {staff.address || 'N/A'}</div>
+                    <div><strong>পারফরম্যান্স:</strong> {baseRating.toFixed(1)} / 5.0 ({grade})</div>
+                    <div><strong>মোট সম্পন্ন ট্রিপ:</strong> {totalCompletedTrips.length} টি</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
           <AuditDetailsDropdown createdBy={staff.createdBy} updatedBy={staff.updatedBy} />
-          <Button variant="secondary" className="text-xs px-3 py-1.5" onClick={onClose}>
-            বন্ধ করুন (Close)
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="text-xs px-3 py-1.5 flex items-center gap-1"
+              onClick={() => exportStaffProfilePrint(staff, performanceData, staffTrips)}
+            >
+              <Printer size={13} />
+              <span>প্রিন্ট</span>
+            </Button>
+            
+            <Button variant="secondary" className="text-xs px-4 py-1.5" onClick={onClose}>
+              বন্ধ করুন (Close)
+            </Button>
+          </div>
         </div>
       </motion.div>
     </div>

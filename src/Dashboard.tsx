@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import { useSearch } from './SearchContext';
 import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useTheme } from './ThemeContext';
 
 const StatCard: React.FC<{ 
   label: string, 
@@ -66,6 +67,7 @@ const StatCard: React.FC<{
 
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
+  const { isEmerald, isCrimson, isAmber, currentThemeOption } = useTheme();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -319,13 +321,36 @@ const Dashboard: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
-            {/* Bengali Rotating Quote Banner */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-2xs overflow-hidden relative">
-              <div className="p-3 bg-blue-100/80 rounded-xl text-blue-600 shrink-0">
+            {/* Theme-Adaptive Bengali Rotating Quote Banner */}
+            <div className={cn(
+              "border rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-2xs overflow-hidden relative",
+              isEmerald 
+                ? "bg-gradient-to-r from-[#e8f7f2] to-[#d3f1e7] border-[#b5e7d8]"
+                : isCrimson
+                  ? "bg-gradient-to-r from-[#fff1f2] to-[#ffe4e6] border-[#fecdd3]"
+                  : isAmber
+                    ? "bg-gradient-to-r from-[#fef3c7] to-[#fde68a] border-[#fcd34d]"
+                    : "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100"
+            )}>
+              <div className={cn(
+                "p-3 rounded-xl shrink-0",
+                isEmerald ? "bg-[#d0f0e4] text-[#1b6b54]" :
+                isCrimson ? "bg-[#fed7dd] text-[#be123c]" :
+                isAmber ? "bg-[#fde68a] text-[#92400e]" :
+                "bg-blue-100/80 text-blue-600"
+              )}>
                 <Sparkles size={20} className="animate-pulse" />
               </div>
               <div className="space-y-0.5">
-                <div className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">আজকের উক্তি ও সচেতনতা বার্তা (Daily Quote & Safety Message)</div>
+                <div className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider",
+                  isEmerald ? "text-[#1b6b54]" :
+                  isCrimson ? "text-[#be123c]" :
+                  isAmber ? "text-[#92400e]" :
+                  "text-blue-500"
+                )}>
+                  আজকের উক্তি ও সচেতনতা বার্তা (Daily Safety & Motivational Message)
+                </div>
                 <AnimatePresence mode="wait">
                   <motion.p
                     key={quoteIndex}

@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
+import { ThemeProvider } from './ThemeContext';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
 import Dashboard from './Dashboard';
@@ -181,26 +182,28 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SearchProvider>
-        <HashRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
-            <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-            <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
-            <Route path="/new-trip" element={<ProtectedRoute><NewTrip /></ProtectedRoute>} />
-            <Route path="/morning-prep" element={<ProtectedRoute><MorningPrep /></ProtectedRoute>} />
-            <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
-            <Route path="/cases" element={<ProtectedRoute><CaseManagement /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/qr-scanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </HashRouter>
-      </SearchProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <SearchProvider>
+          <HashRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
+              <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+              <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
+              <Route path="/new-trip" element={<ProtectedRoute><NewTrip /></ProtectedRoute>} />
+              <Route path="/morning-prep" element={<ProtectedRoute><MorningPrep /></ProtectedRoute>} />
+              <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
+              <Route path="/cases" element={<ProtectedRoute><CaseManagement /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/qr-scanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </HashRouter>
+        </SearchProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

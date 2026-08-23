@@ -49,6 +49,11 @@ export const subscribeToCollection = (collName: string, callback: (data: any[]) 
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(data);
   }, (error) => {
+    const msg = error?.message || String(error);
+    if (msg.includes('aborted') || msg.includes('cancelled') || error?.code === 'cancelled') {
+      console.warn(`Firestore subscription aborted/cancelled for ${collName}`);
+      return;
+    }
     handleFirestoreError(error, OperationType.LIST, collName);
   });
 };
@@ -972,6 +977,61 @@ export const deleteMorningPrep = async (prepId: string) => {
     await deleteDoc(doc(db, 'morning_preps', prepId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `morning_preps/${prepId}`);
+  }
+};
+
+// --- Staff Notes & Rating History Collection (Immutable) ---
+export const addStaffNote = async (noteData: {
+  staffId: string;
+  staffName: string;
+  staffRole?: 'Driver' | 'Helper';
+  authorName?: string;
+  authorRole?: string;
+  authorUid?: string;
+  vehiclePlate?: string;
+  rating?: number;
+  category?: string;
+  noteText: string;
+  dayOfWeek?: string;
+  dateString?: string;
+  timeString?: string;
+}, profile?: any) => {
+  try {
+    const now = new Date();
+    const daysBn = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+    const currentDay = daysBn[now.getDay()];
+    const currentDate = now.toLocaleDateString('bn-BD', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const currentTime = now.toLocaleTimeString('bn-BD', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const authorName = noteData.authorName || profile?.displayName || profile?.name || 'অ্যাডমিন / ম্যানেজার';
+    const authorRole = noteData.authorRole || profile?.role || 'Admin';
+
+    return await addDoc(collection(db, 'staff_notes'), {
+      staffId: noteData.staffId.trim().toUpperCase(),
+      staffName: noteData.staffName || 'স্টাফ',
+      staffRole: noteData.staffRole || 'Driver',
+      authorName,
+      authorRole,
+      authorUid: noteData.authorUid || profile?.uid || 'system',
+      vehiclePlate: (noteData.vehiclePlate || 'N/A').trim(),
+      rating: Number(noteData.rating || 5),
+      category: noteData.category || 'সাধারণ মন্তব্য',
+      noteText: noteData.noteText.trim(),
+      dayOfWeek: noteData.dayOfWeek || currentDay,
+      dateString: noteData.dateString || currentDate,
+      timeString: noteData.timeString || currentTime,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'staff_notes');
   }
 };
 

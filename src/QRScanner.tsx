@@ -24,9 +24,11 @@ import {
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from './AuthContext';
+import { useTheme } from './ThemeContext';
 
 const QRScanner: React.FC = () => {
   const { profile, isAdmin, isSubAdmin, isLineSupervisor } = useAuth();
+  const { isEmerald, isCrimson, isAmber, isOcean, currentThemeOption } = useTheme();
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
@@ -627,19 +629,26 @@ const QRScanner: React.FC = () => {
 
     const vehicleSummaryHeader = (
       <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
-        {/* Header containing the toggle button */}
-        <button
-          type="button"
+        {/* Header containing the toggle */}
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setIsLiveInfoExpanded(!isLiveInfoExpanded)}
-          className="w-full flex items-center justify-between px-5 py-4 bg-[#f8fafc] border-b border-border hover:bg-slate-100/60 transition-colors cursor-pointer text-left"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsLiveInfoExpanded(!isLiveInfoExpanded);
+            }
+          }}
+          className="w-full flex items-center justify-between px-5 py-4 bg-[#f8fafc] border-b border-border hover:bg-slate-100/60 transition-colors cursor-pointer text-left select-none"
         >
           <div className="flex items-center gap-2.5 text-text-main font-bold text-sm">
-            <Info size={16} className="text-blue-600 shrink-0" />
+            <Info size={16} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
             <span>স্ক্যানকৃত গাড়ির লাইভ তথ্য (Live Vehicle Info): {vehicle.vehicleNumber}</span>
             <span className={cn(
               "text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ml-1",
               vehicle.status === 'Available' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-              vehicle.status === 'On Trip' ? "bg-blue-50 text-blue-700 border-blue-200" :
+              vehicle.status === 'On Trip' ? (isEmerald ? "bg-[#e8f7f2] text-[#1b6b54] border-[#a7e3d1]" : isCrimson ? "bg-[#fff1f2] text-[#be123c] border-[#fecdd3]" : isAmber ? "bg-[#fef3c7] text-[#92400e] border-[#fde68a]" : "bg-blue-50 text-blue-700 border-blue-200") :
               vehicle.status === 'Maintenance' ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"
             )}>
               {vehicle.status}
@@ -655,15 +664,21 @@ const QRScanner: React.FC = () => {
               <ChevronDown size={16} className="text-slate-500 shrink-0" />
             )}
           </div>
-        </button>
+        </div>
 
         {isLiveInfoExpanded && (
           <div className="p-5 space-y-6 text-xs border-t border-slate-100">
             
             {/* 1. Vehicle Core Profile Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">গাড়ির ধরণ (Type)</span>
+              <div className={cn(
+                "p-3 rounded-xl space-y-1 border",
+                isEmerald ? "bg-[#e8f7f2]/60 border-[#a7e3d1]" : isCrimson ? "bg-[#fff1f2]/60 border-[#fecdd3]" : isAmber ? "bg-[#fef3c7]/60 border-[#fde68a]" : "bg-blue-50/60 border-blue-100"
+              )}>
+                <span className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider block",
+                  isEmerald ? "text-[#1b6b54]" : isCrimson ? "text-[#be123c]" : isAmber ? "text-[#92400e]" : "text-blue-600"
+                )}>গাড়ির ধরণ (Type)</span>
                 <span className="font-black text-slate-800 text-sm">{vehicle.type || 'Standard'}</span>
               </div>
               <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1">
@@ -671,13 +686,13 @@ const QRScanner: React.FC = () => {
                 <span className={cn(
                   "font-black text-sm flex items-center gap-1",
                   vehicle.status === 'Available' ? "text-emerald-700" :
-                  vehicle.status === 'On Trip' ? "text-blue-700" :
+                  vehicle.status === 'On Trip' ? (isEmerald ? "text-[#1b6b54]" : isCrimson ? "text-[#be123c]" : isAmber ? "text-[#92400e]" : "text-blue-700") :
                   vehicle.status === 'Maintenance' ? "text-amber-700" : "text-slate-700"
                 )}>
                   <span className={cn(
                     "w-2 h-2 rounded-full",
                     vehicle.status === 'Available' ? "bg-emerald-500 animate-pulse" :
-                    vehicle.status === 'On Trip' ? "bg-blue-500 animate-pulse" :
+                    vehicle.status === 'On Trip' ? (isEmerald ? "bg-[#2ea884] animate-pulse" : isCrimson ? "bg-[#ea2340] animate-pulse" : isAmber ? "bg-[#f59e0b] animate-pulse" : "bg-blue-500 animate-pulse") :
                     vehicle.status === 'Maintenance' ? "bg-amber-500" : "bg-slate-400"
                   )} />
                   {vehicle.status === 'Available' ? 'Available (স্টকে)' : 
@@ -712,7 +727,7 @@ const QRScanner: React.FC = () => {
             <div>
               <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                  <Wrench size={14} className="text-blue-600" />
+                  <Wrench size={14} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
                   <span>টুলস অপশন (Vehicle Tools)</span>
                 </h4>
                 <span className="text-[10px] text-slate-400 font-medium">প্রোফাইল থেকে লাইভ সিঙ্ক</span>
@@ -738,7 +753,7 @@ const QRScanner: React.FC = () => {
                           "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold",
                           !isAvailable || isReportedMissing
                             ? "bg-red-100 text-red-600" 
-                            : "bg-blue-100 text-blue-600"
+                            : isEmerald ? "bg-emerald-100 text-[#1b6b54]" : isCrimson ? "bg-rose-100 text-[#be123c]" : isAmber ? "bg-amber-100 text-[#92400e]" : "bg-blue-100 text-blue-600"
                         )}>
                           <ToolIcon size={14} />
                         </div>
@@ -1284,7 +1299,7 @@ const QRScanner: React.FC = () => {
                   <div className="space-y-2 border-t pt-4">
                     <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                       <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
-                        <Wrench size={15} className="text-blue-600" />
+                        <Wrench size={15} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
                         <span>১. গাড়ির টুলস অপশন (Vehicle Tools from Profile)</span>
                       </h4>
                       <span className="text-[11px] text-slate-500 font-medium">প্রোফাইল থেকে সরাসরি সিঙ্ককৃত</span>
@@ -1310,7 +1325,7 @@ const QRScanner: React.FC = () => {
                                 "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold",
                                 !isAvailable || isReportedMissing
                                   ? "bg-red-100 text-red-600 border border-red-200" 
-                                  : "bg-blue-100 text-blue-700 border border-blue-200"
+                                  : isEmerald ? "bg-emerald-100 text-[#1b6b54] border border-emerald-200" : isCrimson ? "bg-rose-100 text-[#be123c] border border-rose-200" : isAmber ? "bg-amber-100 text-[#92400e] border border-amber-200" : "bg-blue-100 text-blue-700 border border-blue-200"
                               )}>
                                 <ToolIcon size={14} />
                               </div>
@@ -1534,12 +1549,20 @@ const QRScanner: React.FC = () => {
           ) : (
             <form onSubmit={handleReturnSubmit} className="space-y-6">
               {/* Alert info about trip */}
-              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-xs text-blue-900 space-y-1">
+              <div className={cn(
+                "p-4 rounded-xl text-xs space-y-1 border",
+                isEmerald ? "bg-[#e8f7f2] border-[#a7e3d1] text-[#134e3f]" :
+                isCrimson ? "bg-[#fff1f2] border-[#fecdd3] text-[#881337]" :
+                isAmber ? "bg-[#fef3c7] border-[#fde68a] text-[#78350f]" :
+                "bg-blue-50 border-blue-100 text-blue-900"
+              )}>
                 <p><strong>চলমান ট্রিপের সারাংশ (Active Trip Info):</strong></p>
                 <div className="grid grid-cols-2 gap-3 mt-2 text-slate-700">
                   <div className="flex items-center gap-1">
                     <span>• ড্রাইভার: </span>
-                    <strong className="text-blue-900">{activeTrip.driverName} ({activeTrip.driverId})</strong>
+                    <strong className={isEmerald ? "text-[#134e3f]" : isCrimson ? "text-[#881337]" : isAmber ? "text-[#78350f]" : "text-blue-900"}>
+                      {activeTrip.driverName} ({activeTrip.driverId})
+                    </strong>
                     <StaffProfileButton staffId={activeTrip.driverId} staffName={activeTrip.driverName} role="Driver" />
                   </div>
                   <div className="flex items-center gap-1">
@@ -1652,7 +1675,13 @@ const QRScanner: React.FC = () => {
                 <label className="text-xs font-bold text-slate-700 block">শারীরিক পরীক্ষা ও অতিরিক্ত মন্তব্য (Inspection & Return Notes)</label>
                 <textarea 
                   placeholder="যেমন: গাড়ির কোনো নতুন স্ক্র্যাচ নেই, টায়ার প্রেসার ঠিক আছে..."
-                  className="w-full px-3 py-2 text-xs rounded-xl border outline-none focus:border-blue-500 h-20 resize-none"
+                  className={cn(
+                    "w-full px-3 py-2 text-xs rounded-xl border outline-none h-20 resize-none transition-all",
+                    isEmerald ? "focus:border-[#2ea884] focus:ring-2 focus:ring-emerald-100" :
+                    isCrimson ? "focus:border-[#ea2340] focus:ring-2 focus:ring-rose-100" :
+                    isAmber ? "focus:border-[#f59e0b] focus:ring-2 focus:ring-amber-100" :
+                    "focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  )}
                   value={returnForm.notes}
                   onChange={e => setReturnForm({ ...returnForm, notes: e.target.value })}
                 />
@@ -1682,14 +1711,49 @@ const QRScanner: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-          <QrCode className="text-accent" />
-          <span>QR Code Smart Scanner (কিউআর কোড স্ক্যানার)</span>
-        </h2>
-        <p className="text-sm text-slate-500">
-          মোবাইল বা ল্যাপটপের ক্যামেরা ব্যবহার করে গাড়ির IN বা OUT কিউআর কোড স্ক্যান করুন।
-        </p>
+      <div className={cn(
+        "p-5 rounded-2xl border shadow-xs flex items-center justify-between gap-4 flex-wrap",
+        isEmerald 
+          ? "bg-gradient-to-r from-[#e8f7f2] via-[#d3f1e7] to-white border-[#b5e7d8]"
+          : isCrimson
+            ? "bg-gradient-to-r from-[#fff1f2] via-[#ffe4e6] to-white border-[#fecdd3]"
+            : isAmber
+              ? "bg-gradient-to-r from-[#fef3c7] via-[#fde68a] to-white border-[#fcd34d]"
+              : "bg-gradient-to-r from-blue-50 via-indigo-50/50 to-white border-blue-100"
+      )}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md font-bold shrink-0 bg-gradient-to-br",
+            currentThemeOption.previewGradient
+          )}>
+            <QrCode size={24} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                কিউআর কোড স্মার্ট স্ক্যানার (QR Scanner)
+              </h2>
+              <span className={cn(
+                "text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border shadow-2xs",
+                isEmerald ? "bg-[#d5f3e8] text-[#0f513f] border-[#a1dec9]" :
+                isCrimson ? "bg-[#ffe4e6] text-[#9f1239] border-[#fecdd3]" :
+                isAmber ? "bg-[#fef3c7] text-[#78350f] border-[#fde68a]" :
+                "bg-blue-50 text-blue-700 border-blue-200"
+              )}>
+                {currentThemeOption.name}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 font-medium mt-0.5">
+              ক্যামেরা বা গাড়ির রেজিস্ট্রেশন নম্বর ব্যবহার করে দ্রুত IN / OUT ট্রিপ ও ইন্সপেকশন পরিচালনা করুন।
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+            সক্রিয় ফ্লিট: <strong className="text-slate-800 font-mono">{vehicles.length}</strong> টি গাড়ি
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1703,11 +1767,18 @@ const QRScanner: React.FC = () => {
               className={cn(
                 "flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer",
                 activeScanMode === 'manual'
-                  ? "bg-white text-blue-700 shadow-xs border border-slate-200/60"
+                  ? (isEmerald ? "bg-white text-[#1b6b54] shadow-xs border border-emerald-200" :
+                     isCrimson ? "bg-white text-[#be123c] shadow-xs border border-rose-200" :
+                     isAmber ? "bg-white text-[#92400e] shadow-xs border border-amber-200" :
+                     "bg-white text-blue-700 shadow-xs border border-blue-200")
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              <Search size={14} className={activeScanMode === 'manual' ? "text-blue-600" : "text-slate-400"} />
+              <Search size={14} className={
+                activeScanMode === 'manual'
+                  ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
+                  : "text-slate-400"
+              } />
               <span>নম্বর দিয়ে সার্চ (Manual)</span>
             </button>
             <button
@@ -1716,11 +1787,18 @@ const QRScanner: React.FC = () => {
               className={cn(
                 "flex-1 py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer",
                 activeScanMode === 'camera'
-                  ? "bg-white text-blue-700 shadow-xs border border-slate-200/60"
+                  ? (isEmerald ? "bg-white text-[#1b6b54] shadow-xs border border-emerald-200" :
+                     isCrimson ? "bg-white text-[#be123c] shadow-xs border border-rose-200" :
+                     isAmber ? "bg-white text-[#92400e] shadow-xs border border-amber-200" :
+                     "bg-white text-blue-700 shadow-xs border border-blue-200")
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              <Camera size={14} className={activeScanMode === 'camera' ? "text-blue-600" : "text-slate-400"} />
+              <Camera size={14} className={
+                activeScanMode === 'camera'
+                  ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
+                  : "text-slate-400"
+              } />
               <span>ক্যামেরা স্ক্যান (Live)</span>
             </button>
           </div>
@@ -1730,7 +1808,13 @@ const QRScanner: React.FC = () => {
               <div className="space-y-4">
                 {!scannerActive ? (
                   <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-slate-50 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto text-blue-600">
+                    <div className={cn(
+                      "w-16 h-16 rounded-full flex items-center justify-center mx-auto",
+                      isEmerald ? "bg-[#e8f7f2] text-[#2ea884]" :
+                      isCrimson ? "bg-[#fff1f2] text-[#ea2340]" :
+                      isAmber ? "bg-[#fef3c7] text-[#d97706]" :
+                      "bg-blue-50 text-blue-600"
+                    )}>
                       <Camera size={32} />
                     </div>
                     <div>
@@ -1759,7 +1843,16 @@ const QRScanner: React.FC = () => {
             </Card>
           ) : (
             /* Manual Vehicle Search & Select Card */
-            <Card title="গাড়ির নম্বর লিখে সিলেক্ট করুন (Manual Entry)" className="border-2 border-blue-100 shadow-sm">
+            <Card 
+              title="গাড়ির নম্বর লিখে সিলেক্ট করুন (Manual Entry)" 
+              className={cn(
+                "border-2 shadow-sm",
+                isEmerald ? "border-emerald-200" :
+                isCrimson ? "border-rose-200" :
+                isAmber ? "border-amber-200" :
+                "border-blue-100"
+              )}
+            >
               <div className="space-y-4 text-xs">
                 {/* Search Box */}
                 <div className="space-y-1">
@@ -1769,7 +1862,13 @@ const QRScanner: React.FC = () => {
                   <div className="relative">
                     <input 
                       type="text" 
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl border-2 border-blue-300/90 bg-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 font-mono text-sm font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal"
+                      className={cn(
+                        "w-full pl-9 pr-8 py-2.5 rounded-xl border-2 bg-white outline-none font-mono text-sm font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal",
+                        isEmerald ? "border-emerald-300 focus:border-[#2ea884] focus:ring-2 focus:ring-emerald-100" :
+                        isCrimson ? "border-rose-300 focus:border-[#ea2340] focus:ring-2 focus:ring-rose-100" :
+                        isAmber ? "border-amber-300 focus:border-[#f59e0b] focus:ring-2 focus:ring-amber-100" :
+                        "border-blue-300/90 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      )}
                       placeholder="যেমন: 5821 বা ঢাকা মেট্রো..."
                       value={manualVehicleSearch}
                       onChange={e => {
@@ -1810,7 +1909,13 @@ const QRScanner: React.FC = () => {
                         }
                       }}
                     />
-                    <Search size={16} className="absolute left-3 top-3 text-blue-500" />
+                    <Search size={16} className={cn(
+                      "absolute left-3 top-3",
+                      isEmerald ? "text-[#2ea884]" :
+                      isCrimson ? "text-[#ea2340]" :
+                      isAmber ? "text-[#d97706]" :
+                      "text-blue-500"
+                    )} />
                     {manualVehicleSearch && (
                       <button
                         type="button"
@@ -1862,13 +1967,20 @@ const QRScanner: React.FC = () => {
                               className={cn(
                                 "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-2",
                                 isSelected
-                                  ? "bg-blue-50 border-blue-500 shadow-xs"
-                                  : "bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50/80"
+                                  ? (isEmerald ? "bg-emerald-50 border-[#2ea884] shadow-xs" :
+                                     isCrimson ? "bg-rose-50 border-[#ea2340] shadow-xs" :
+                                     isAmber ? "bg-amber-50 border-[#f59e0b] shadow-xs" :
+                                     "bg-blue-50 border-blue-500 shadow-xs")
+                                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
                               )}
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5">
-                                  <Truck size={14} className={isSelected ? "text-blue-600" : "text-slate-400"} />
+                                  <Truck size={14} className={
+                                    isSelected 
+                                      ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
+                                      : "text-slate-400"
+                                  } />
                                   <span className="font-bold text-slate-900 font-mono text-xs truncate">
                                     {v.vehicleNumber}
                                   </span>
@@ -1880,7 +1992,7 @@ const QRScanner: React.FC = () => {
                               <span className={cn(
                                 "text-[9px] font-black px-2 py-0.5 rounded-full uppercase border shrink-0",
                                 v.status === 'Available' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                                v.status === 'On Trip' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                v.status === 'On Trip' ? (isEmerald ? "bg-[#e8f7f2] text-[#1b6b54] border-[#a7e3d1]" : isCrimson ? "bg-[#fff1f2] text-[#be123c] border-[#fecdd3]" : isAmber ? "bg-[#fef3c7] text-[#92400e] border-[#fde68a]" : "bg-blue-50 text-blue-700 border-blue-200") :
                                 v.status === 'Pending Out Scan' ? "bg-amber-50 text-amber-700 border-amber-200" :
                                 v.status === 'Maintenance' ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-700 border-slate-200"
                               )}>
@@ -1908,7 +2020,13 @@ const QRScanner: React.FC = () => {
                     অথবা ড্রপডাউন থেকে নির্বাচন করুন (Or Select from List)
                   </label>
                   <select 
-                    className="w-full px-3 py-2.5 text-xs rounded-xl border-2 border-slate-300 outline-none bg-white font-semibold focus:border-blue-500 cursor-pointer"
+                    className={cn(
+                      "w-full px-3 py-2.5 text-xs rounded-xl border-2 border-slate-300 outline-none bg-white font-semibold cursor-pointer transition-all",
+                      isEmerald ? "focus:border-[#2ea884]" :
+                      isCrimson ? "focus:border-[#ea2340]" :
+                      isAmber ? "focus:border-[#f59e0b]" :
+                      "focus:border-blue-500"
+                    )}
                     value={selectedSimVehicleId}
                     onChange={e => {
                       const vId = e.target.value;
@@ -1957,11 +2075,20 @@ const QRScanner: React.FC = () => {
                       className={cn(
                         "py-2.5 px-3 rounded-xl border-2 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs",
                         selectedSimAction === 'IN' 
-                          ? "bg-blue-50 border-blue-500 text-blue-800 ring-2 ring-blue-100" 
+                          ? (isEmerald ? "bg-[#e8f7f2] border-[#2ea884] text-[#1b6b54] ring-2 ring-emerald-100" :
+                             isCrimson ? "bg-[#fff1f2] border-[#ea2340] text-[#be123c] ring-2 ring-rose-100" :
+                             isAmber ? "bg-[#fef3c7] border-[#f59e0b] text-[#92400e] ring-2 ring-amber-100" :
+                             "bg-blue-50 border-blue-500 text-blue-800 ring-2 ring-blue-100")
                           : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                       )}
                     >
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                      <span className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        isEmerald ? "bg-[#2ea884]" :
+                        isCrimson ? "bg-[#ea2340]" :
+                        isAmber ? "bg-[#f59e0b]" :
+                        "bg-blue-500"
+                      )}></span>
                       <span>IN (ফেরত এন্ট্রি স্ক্যান)</span>
                     </button>
                   </div>
@@ -1977,7 +2104,13 @@ const QRScanner: React.FC = () => {
                     }
                     triggerScanResult(selectedSimAction, selectedSimVehicleId);
                   }} 
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className={cn(
+                    "w-full py-2.5 text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2",
+                    isEmerald ? "bg-[#2ea884] hover:bg-[#258b6d] text-white" :
+                    isCrimson ? "bg-[#ea2340] hover:bg-[#c91832] text-white" :
+                    isAmber ? "bg-[#f59e0b] hover:bg-[#d97706] text-slate-950 font-black" :
+                    "bg-blue-600 hover:bg-blue-700 text-white"
+                  )}
                 >
                   <CheckCircle2 size={16} />
                   <span>গাড়ি লোড ও প্রসেস করুন</span>

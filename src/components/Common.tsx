@@ -20,12 +20,16 @@ import {
   ChevronDown,
   ChevronUp,
   UserCheck,
-  Compass
+  Compass,
+  Palette,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
 import { useAuth, UserRole } from '../AuthContext';
 import { useSearch } from '../SearchContext';
+import { useTheme, THEME_OPTIONS, ThemeMode } from '../ThemeContext';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToCollection } from '../db';
@@ -61,7 +65,9 @@ interface ReturnNotification {
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
+  const { theme, setTheme, toggleTheme, isEmerald, isOcean, isCrimson, isAmber, currentThemeOption } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
   const [activeReturns, setActiveReturns] = React.useState<ReturnNotification[]>([]);
   const [vehicles, setVehicles] = React.useState<any[]>([]);
@@ -71,6 +77,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const prevComputedStatusesRef = React.useRef<Record<string, string>>({});
   const isFirstLoadRef = React.useRef(true);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
+
+  // Close profile dropdown on outside click
+  React.useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isProfileMenuOpen]);
 
   React.useEffect(() => {
     const unsub = subscribeToCollection('requests', (items: any[]) => {
@@ -219,26 +241,62 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-68 transform bg-primary text-white border-r border-white/10 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
+        "fixed inset-y-0 left-0 z-50 w-68 transform text-white transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
+        isEmerald 
+          ? "bg-[#071f18] border-r border-emerald-900/40" 
+          : isCrimson
+            ? "bg-[#160507] border-r border-rose-950/40"
+            : isAmber
+              ? "bg-[#18150f] border-r border-amber-950/50"
+              : "bg-primary border-r border-white/10",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
             {/* Animated Brand Logo matching Preloader */}
-            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-0.5 shadow-md shadow-blue-500/30 flex items-center justify-center group flex-shrink-0">
+            <div className={cn(
+              "relative w-9 h-9 rounded-xl p-0.5 shadow-md flex items-center justify-center group flex-shrink-0 bg-gradient-to-br",
+              isEmerald 
+                ? "from-[#3ebd97] via-[#2ea884] to-[#155341] shadow-emerald-500/30" 
+                : isCrimson
+                  ? "from-[#ff385c] via-[#ea2340] to-[#881337] shadow-rose-500/35"
+                  : isAmber
+                    ? "from-[#fbbf24] via-[#f59e0b] to-[#78350f] shadow-amber-500/35"
+                    : "from-blue-500 via-blue-600 to-indigo-700 shadow-blue-500/30"
+            )}>
               <div className="w-full h-full bg-slate-900/70 rounded-[10px] flex items-center justify-center backdrop-blur-xs relative overflow-hidden">
                 {/* Rotating glowing sweep */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
                 <Compass 
                   size={19} 
-                  className="text-white drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-[spin_10s_linear_infinite]" 
+                  className={cn(
+                    "text-white animate-[spin_10s_linear_infinite]",
+                    isEmerald 
+                      ? "drop-shadow-[0_0_8px_rgba(46,168,132,0.8)]" 
+                      : isCrimson
+                        ? "drop-shadow-[0_0_8px_rgba(234,35,64,0.85)]"
+                        : isAmber
+                          ? "drop-shadow-[0_0_8px_rgba(245,158,11,0.85)]"
+                          : "drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+                  )} 
                 />
               </div>
             </div>
             <div>
               <h1 className="font-extrabold tracking-tight text-lg leading-tight flex items-center gap-1">
                 <span>FleetManager</span>
-                <span className="text-[10px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-400 font-black border border-blue-400/30">PRO</span>
+                <span className={cn(
+                  "text-[10px] px-1 py-0.2 rounded font-black border",
+                  isEmerald 
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30" 
+                    : isCrimson
+                      ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                      : isAmber
+                        ? "bg-amber-500/20 text-amber-300 border-amber-400/30"
+                        : "bg-blue-500/20 text-blue-400 border-blue-400/30"
+                )}>
+                  PRO
+                </span>
               </h1>
               <p className="text-[11px] font-semibold text-slate-400">লজিস্টিকস ম্যানেজমেন্ট</p>
             </div>
@@ -260,7 +318,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   className={({ isActive }) => cn(
                     "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15px] font-bold tracking-normal",
                     isActive 
-                      ? "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-900/30" 
+                      ? isEmerald 
+                        ? "bg-[#2ea884] text-white font-extrabold shadow-md shadow-emerald-950/40"
+                        : isCrimson
+                          ? "bg-[#ea2340] text-white font-extrabold shadow-md shadow-rose-950/50"
+                          : isAmber
+                            ? "bg-[#f59e0b] text-slate-950 font-black shadow-md shadow-amber-950/50"
+                            : "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-900/30" 
                       : "text-slate-200 hover:text-white hover:bg-white/10 font-bold",
                     hasPending && "bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.3)] animate-pulse font-extrabold",
                     hasActiveReturns && "bg-rose-600 text-white border border-rose-500 hover:bg-rose-700 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-black animate-pulse"
@@ -309,17 +373,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             })}
           </nav>
 
-          <div className="p-3 mt-auto border-t border-white/10 bg-slate-950/20">
-            <div className="px-3 py-1 mb-1">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fleet Manager • v2.4</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-3.5 py-2.5 text-[14.5px] font-bold text-slate-200 hover:text-red-400 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
-            >
-              <LogOut size={20} className="stroke-[2.3]" />
-              <span>সাইন আউট (Sign Out)</span>
-            </button>
+          {/* Sidebar Footer */}
+          <div className="p-3.5 mt-auto border-t border-white/10 bg-black/15 flex items-center justify-between text-slate-400">
+            <p className="text-[11px] font-bold tracking-wide text-slate-300">FleetFlow Pro</p>
+            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-slate-300">v2.4</span>
           </div>
         </div>
       </aside>
@@ -328,7 +385,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg">
         {/* Desktop Header */}
         <header className="h-16 flex items-center justify-between px-8 bg-surface border-b border-border flex-shrink-0">
-          <div className="hidden lg:flex items-center bg-slate-50 border border-border px-4 py-2.5 rounded-xl w-84 gap-3 focus-within:border-blue-500 focus-within:bg-white transition-all">
+          <div className={cn(
+            "hidden lg:flex items-center bg-slate-50 border border-border px-4 py-2.5 rounded-xl w-84 gap-3 transition-all",
+            isEmerald 
+              ? "focus-within:border-[#2ea884] focus-within:ring-2 focus-within:ring-[#2ea884]/20 focus-within:bg-white" 
+              : isCrimson
+                ? "focus-within:border-[#ea2340] focus-within:ring-2 focus-within:ring-[#ea2340]/20 focus-within:bg-white"
+                : isAmber
+                  ? "focus-within:border-[#f59e0b] focus-within:ring-2 focus-within:ring-[#f59e0b]/20 focus-within:bg-white"
+                  : "focus-within:border-blue-500 focus-within:bg-white"
+          )}>
             <Menu size={18} className="text-text-muted" />
             <input 
               type="text" 
@@ -339,20 +405,222 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-base font-bold text-text-main leading-tight">{profile?.displayName || user?.displayName || 'Unknown User'}</p>
-              <span className="inline-block text-[11px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-0.5 uppercase tracking-wider">{profile?.role || 'Guest'}</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-200 border border-border overflow-hidden">
-               {user?.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-accent/10 flex items-center justify-center text-accent">
-                    <Users size={16} />
-                  </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* User Profile Trigger & Dropdown Menu */}
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className={cn(
+                  "flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border transition-all cursor-pointer",
+                  isProfileMenuOpen 
+                    ? isEmerald
+                      ? "bg-[#e8f7f2] border-[#a7e3d1] shadow-xs" 
+                      : isCrimson
+                        ? "bg-[#fff1f2] border-[#fecdd3] shadow-xs"
+                        : isAmber
+                          ? "bg-[#fef3c7] border-[#fde68a] shadow-xs"
+                          : "bg-blue-50/80 border-blue-200 shadow-xs"
+                    : "border-transparent hover:bg-slate-100/80 hover:border-slate-200"
                 )}
+                title="প্রোফাইল ও থিম সেটিংস"
+              >
+                {/* Refined user identity widget (Ismaile / Admin) */}
+                <div className="text-right hidden sm:flex flex-col items-end justify-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-black text-slate-900 leading-tight tracking-tight">
+                      {profile?.displayName || user?.displayName || 'User'}
+                    </span>
+                    <span 
+                      className="w-2 h-2 rounded-full inline-block ring-2 ring-white shadow-xs" 
+                      style={{ backgroundColor: currentThemeOption.primaryColor }}
+                      title={`Theme: ${currentThemeOption.englishName}`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className={cn(
+                      "text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider border shadow-2xs inline-flex items-center gap-1.5",
+                      isEmerald 
+                        ? "text-[#0f513f] bg-[#e2f7ef] border-[#a1dec9]" 
+                        : isCrimson
+                          ? "text-[#9f1239] bg-[#ffe4e6] border-[#fecdd3]"
+                          : isAmber
+                            ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
+                            : "text-blue-700 bg-blue-50 border-blue-200"
+                    )}>
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full animate-pulse",
+                        isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
+                      )} />
+                      <span>{profile?.role === 'Admin' ? 'অ্যাডমিন (Admin)' : (profile?.role === 'Sub Admin' ? 'সাব-অ্যাডমিন' : (profile?.role || 'Guest'))}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Avatar */}
+                <div className={cn(
+                  "w-8.5 h-8.5 rounded-full border overflow-hidden relative shadow-xs flex items-center justify-center flex-shrink-0",
+                  isEmerald ? "border-[#2ea884]" : isCrimson ? "border-[#ea2340]" : isAmber ? "border-[#f59e0b]" : "border-blue-500"
+                )}>
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={cn(
+                      "w-full h-full flex items-center justify-center font-bold text-sm",
+                      isEmerald 
+                        ? "bg-[#e8f7f2] text-[#2ea884]" 
+                        : isCrimson 
+                          ? "bg-[#fff1f2] text-[#ea2340]" 
+                          : isAmber
+                            ? "bg-[#fef3c7] text-[#b45309]"
+                            : "bg-blue-50 text-blue-600"
+                    )}>
+                      {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                <ChevronDown 
+                  size={14} 
+                  className={cn(
+                    "text-slate-400 transition-transform duration-200 hidden sm:block",
+                    isProfileMenuOpen && "rotate-180 text-text-main"
+                  )} 
+                />
+              </button>
+
+              {/* Profile & Theme Popover Menu */}
+              <AnimatePresence>
+                {isProfileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.16, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-slate-800 space-y-3.5"
+                  >
+                    {/* User Identity Header */}
+                    <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                      <div className={cn(
+                        "w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-base shadow-md flex-shrink-0 bg-gradient-to-br",
+                        isEmerald 
+                          ? "from-[#3ebd97] via-[#2ea884] to-[#165a44] shadow-emerald-500/25" 
+                          : isCrimson
+                            ? "from-[#ff385c] via-[#ea2340] to-[#991b1b] shadow-rose-500/30"
+                            : isAmber
+                              ? "from-[#fbbf24] via-[#f59e0b] to-[#78350f] shadow-amber-500/30 text-slate-950 font-black"
+                              : "from-blue-500 via-blue-600 to-indigo-700 shadow-blue-500/25"
+                      )}>
+                        {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-extrabold text-sm text-slate-900 truncate">
+                            {profile?.displayName || user?.displayName || 'User'}
+                          </h4>
+                          <span className={cn(
+                            "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border shadow-2xs inline-flex items-center gap-1",
+                            isEmerald 
+                              ? "text-[#0f513f] bg-[#d5f3e8] border-[#a1dec9]" 
+                              : isCrimson
+                                ? "text-[#9f1239] bg-[#ffe4e6] border-[#fecdd3]"
+                                : isAmber
+                                  ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
+                                  : "text-blue-700 bg-blue-50 border-blue-200"
+                          )}>
+                            <span className={cn(
+                              "w-1 h-1 rounded-full",
+                              isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
+                            )} />
+                            {profile?.role || 'User'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                          {user?.email || (profile?.username ? `@${profile.username}` : '')}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Theme Selector Section - Clean with English Names Only */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Palette size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
+                          <span>Theme</span>
+                        </label>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {THEME_OPTIONS.map((opt) => {
+                          const isSelected = theme === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setTheme(opt.id)}
+                              className={cn(
+                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-all cursor-pointer group",
+                                isSelected
+                                  ? opt.id === 'emerald-teal'
+                                    ? "bg-[#e8f7f2] border-[#2ea884] ring-1 ring-[#2ea884]"
+                                    : opt.id === 'crimson-red'
+                                      ? "bg-[#fff1f2] border-[#ea2340] ring-1 ring-[#ea2340]"
+                                      : opt.id === 'carrybee-amber'
+                                        ? "bg-[#fef3c7] border-[#f59e0b] ring-1 ring-[#f59e0b]"
+                                        : "bg-blue-50 border-blue-600 ring-1 ring-blue-600"
+                                  : "bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span 
+                                  className="w-3.5 h-3.5 rounded-full shadow-xs flex-shrink-0"
+                                  style={{ backgroundColor: opt.primaryColor }}
+                                />
+                                <span className={cn(
+                                  "text-xs font-bold",
+                                  isSelected ? "text-slate-900 font-extrabold" : "text-slate-700"
+                                )}>
+                                  {opt.englishName}
+                                </span>
+                              </div>
+
+                              {isSelected && (
+                                <Check size={14} className={cn(
+                                  "stroke-[3]",
+                                  opt.id === 'emerald-teal' 
+                                    ? "text-[#2ea884]" 
+                                    : opt.id === 'crimson-red' 
+                                      ? "text-[#ea2340]" 
+                                      : opt.id === 'carrybee-amber'
+                                        ? "text-[#d97706]"
+                                        : "text-blue-600"
+                                )} />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Sign Out Button in Profile Popover */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="flex items-center justify-center gap-2 w-full py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 rounded-xl transition-all border border-rose-200/80 cursor-pointer shadow-xs"
+                      >
+                        <LogOut size={14} className="stroke-[2.2]" />
+                        <span>সাইন আউট (Sign Out)</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"

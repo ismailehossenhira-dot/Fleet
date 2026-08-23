@@ -215,6 +215,28 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["vehicleId", "vehiclePlate", "driverId", "driverName", "overallStatus"]
+    },
+    "StaffNote": {
+      "title": "Staff Note",
+      "description": "Immutable rating history and manager/admin notes for drivers and helpers",
+      "type": "object",
+      "properties": {
+        "staffId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "staffRole": { "type": "string", "enum": ["Driver", "Helper"] },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "authorUid": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "rating": { "type": "number" },
+        "category": { "type": "string" },
+        "noteText": { "type": "string" },
+        "dayOfWeek": { "type": "string" },
+        "dateString": { "type": "string" },
+        "timeString": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["staffId", "staffName", "authorName", "authorRole", "noteText"]
     }
   },
   "firestore": {
@@ -253,6 +275,10 @@
     "morning_preps": {
       "schema": "MorningPrep",
       "description": "Collection of morning inspection and preparations"
+    },
+    "staff_notes": {
+      "schema": "StaffNote",
+      "description": "Collection of permanent rating history and manager/admin notes for drivers and helpers"
     }
   }
 }
