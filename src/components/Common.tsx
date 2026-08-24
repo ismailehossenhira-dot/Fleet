@@ -944,10 +944,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 </NavLink>
                 
                 <span className={cn(
-                  "text-[10px] font-black tracking-tight mt-1 px-2 py-0.5 rounded-full bg-slate-900 text-white shadow-xs",
+                  "text-[10px] font-black tracking-tight mt-1 px-2.5 py-0.5 rounded-full bg-slate-900 text-white shadow-xs",
                   isAmber && "bg-amber-950 text-amber-200"
                 )}>
-                  QR স্ক্যান
+                  QR
                 </span>
               </div>
             </div>

@@ -321,9 +321,9 @@ const Dashboard: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
-            {/* Theme-Adaptive Bengali Rotating Quote Banner */}
+            {/* Theme-Adaptive Bengali Rotating Quote Banner (Hidden on Mobile) */}
             <div className={cn(
-              "border rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-2xs overflow-hidden relative",
+              "hidden md:flex border rounded-2xl p-4 sm:p-5 items-center gap-4 shadow-2xs overflow-hidden relative",
               isEmerald 
                 ? "bg-gradient-to-r from-[#e8f7f2] to-[#d3f1e7] border-[#b5e7d8]"
                 : isCrimson
