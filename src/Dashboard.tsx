@@ -753,7 +753,63 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-stretch">
         <div className="lg:col-span-2 flex flex-col">
           <Card title="Live Fleet Status" className="h-full flex flex-col shadow-xs" bodyClassName="p-0 flex-1 flex flex-col overflow-hidden">
-             <div className="overflow-x-auto overflow-y-auto flex-1 max-h-[380px]">
+             {/* Mobile-First List View (Visible on Mobile) */}
+             <div className="block md:hidden divide-y divide-border p-2">
+               {trips.filter(t => t.status === 'Running' || t.status === 'Pending').map(trip => {
+                 const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
+                 return (
+                   <div key={trip.id} className="p-3 rounded-xl hover:bg-slate-50 space-y-2">
+                     <div className="flex items-start justify-between gap-2">
+                       <div>
+                         <span className="font-extrabold text-slate-900 text-xs">{vehicleNum}</span>
+                         <p className="text-[11px] text-slate-500 mt-0.5">চালক: <span className="font-semibold text-slate-700">{trip.driverName}</span></p>
+                       </div>
+                       {trip.status === 'Pending' ? (
+                         <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase animate-pulse">
+                           Pending Out
+                         </span>
+                       ) : (
+                         <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-extrabold text-[10px] uppercase">
+                           On Trip
+                         </span>
+                       )}
+                     </div>
+
+                     <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                       <div className="flex items-center gap-1">
+                         <MapPin size={12} className="text-red-500 shrink-0" />
+                         <span className="font-bold text-slate-800">{trip.location}</span>
+                       </div>
+
+                       {trip.status === 'Pending' && (
+                         <button
+                           onClick={async () => {
+                             if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
+                               try {
+                                 await cancelPendingTrip(trip.id, trip.vehicleId, profile);
+                               } catch (err) {
+                                 console.error("Error cancelling pending trip and making vehicle available:", err);
+                               }
+                             }
+                           }}
+                           className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-[10px] font-bold transition-all cursor-pointer active:scale-95"
+                         >
+                           বাতিল
+                         </button>
+                       )}
+                     </div>
+                   </div>
+                 );
+               })}
+               {trips.filter(t => t.status === 'Running' || t.status === 'Pending').length === 0 && (
+                 <div className="p-6 text-center text-slate-400 text-xs italic">
+                   কোনো চলমান বা পেন্ডিং ট্রিপ নেই।
+                 </div>
+               )}
+             </div>
+
+             {/* Desktop Table View */}
+             <div className="hidden md:block overflow-x-auto overflow-y-auto flex-1 max-h-[380px]">
               <table className="w-full text-xs text-left">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-[#f8fafc] border-b border-border shadow-2xs">

@@ -169,43 +169,43 @@ const Trips: React.FC = () => {
 
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 mt-2 bg-white rounded-t-2xl px-2 pt-2 flex-wrap gap-y-2">
+      {/* Tab Switcher - Mobile-First Segmented Pill Tabs */}
+      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1.5 overflow-x-auto overscroll-contain">
         <button
           onClick={() => setActiveTab('pending')}
           className={cn(
-            "px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer",
+            "flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap select-none",
             activeTab === 'pending'
-              ? "border-amber-500 text-amber-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-amber-700 shadow-sm border border-amber-200"
+              : "text-slate-600 hover:text-slate-900"
           )}
         >
-          <AlertCircle size={16} />
-          <span>Pending Dispatch (ছাড়পত্র অপেক্ষায় - {trips.filter(t => t.status === 'Pending').length})</span>
+          <AlertCircle size={15} className="text-amber-500 shrink-0" />
+          <span>পেন্ডিং ({trips.filter(t => t.status === 'Pending').length})</span>
         </button>
         <button
           onClick={() => setActiveTab('active')}
           className={cn(
-            "px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer",
+            "flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap select-none",
             activeTab === 'active'
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-blue-700 shadow-sm border border-blue-200"
+              : "text-slate-600 hover:text-slate-900"
           )}
         >
-          <Clock size={16} />
-          <span>Active Transports (চলমান ট্রিপস - {trips.filter(t => t.status === 'Running').length})</span>
+          <Clock size={15} className="text-blue-500 shrink-0" />
+          <span>চলমান ট্রিপস ({trips.filter(t => t.status === 'Running').length})</span>
         </button>
         <button
           onClick={() => setActiveTab('log')}
           className={cn(
-            "px-6 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer",
+            "flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap select-none",
             activeTab === 'log'
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "bg-white text-emerald-700 shadow-sm border border-emerald-200"
+              : "text-slate-600 hover:text-slate-900"
           )}
         >
-          <Calendar size={16} />
-          <span>Daily Trip Log (প্রতিদিনের ট্রিপ হিস্ট্রি - {trips.length})</span>
+          <Calendar size={15} className="text-emerald-500 shrink-0" />
+          <span>লগ হিস্ট্রি ({trips.length})</span>
         </button>
       </div>
 
@@ -265,7 +265,76 @@ const Trips: React.FC = () => {
                 )}
 
                 <Card title="Pending Dispatch (ছাড়পত্র অপেক্ষায় - গেটে Out QR স্ক্যানের পর চালু হবে)">
-                  <div className="overflow-x-auto">
+                  {/* Mobile-First Pending Cards */}
+                  <div className="block md:hidden divide-y divide-border p-2">
+                    {filteredPendingTrips.map(trip => (
+                      <div key={trip.id} className="p-3.5 rounded-2xl hover:bg-slate-50 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-slate-900 text-sm">{trip.vehiclePlate || trip.vehicleId}</span>
+                              <VehicleProfileButton vehicleNumber={trip.vehiclePlate || trip.vehicleId} vehicleId={trip.vehicleId} />
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                              <MapPin size={12} className="text-amber-500" />
+                              <span className="font-bold text-slate-700">{trip.location}</span>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-50 border border-amber-200 text-amber-800">
+                            Pending Out
+                          </span>
+                        </div>
+
+                        {/* Driver & Staff Details */}
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 text-[11px]">ড্রাইভার:</span>
+                            <div className="flex items-center gap-1 font-bold text-slate-800">
+                              <span>{trip.driverName}</span>
+                              <StaffProfileButton staffId={trip.driverId} staffName={trip.driverName} role="Driver" />
+                            </div>
+                          </div>
+                          {trip.helperName && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                              <span className="text-slate-500 text-[11px]">হেল্পার:</span>
+                              <div className="flex items-center gap-1 font-bold text-slate-800">
+                                <span>{trip.helperName}</span>
+                                <StaffProfileButton staffId={trip.helperId} staffName={trip.helperName} role="Helper" />
+                              </div>
+                            </div>
+                          )}
+                          {trip.createdBy && (
+                            <div className="text-[10px] text-slate-400 pt-0.5">
+                              এন্ট্রি করেছেন: {trip.createdBy}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancelFeedback(null);
+                              setTripToCancel(trip);
+                            }}
+                            className="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                          >
+                            <Trash2 size={13} className="text-red-500" />
+                            <span>বাতিল ও Available করুন</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredPendingTrips.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 italic text-xs">
+                        ছাড়পত্র অপেক্ষায় থাকা কোনো ট্রিপ নেই।
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop Table */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
                         <tr className="bg-[#f8fafc] border-b border-border">
@@ -348,7 +417,85 @@ const Trips: React.FC = () => {
             {activeTab === 'active' && (
               <div className="grid grid-cols-1 gap-6">
                 <Card title="Active Transports">
-                  <div className="overflow-x-auto">
+                  {/* Mobile-First Active Cards */}
+                  <div className="block md:hidden divide-y divide-border p-2">
+                    {filteredActiveTrips.map(trip => (
+                      <div key={trip.id} className="p-3.5 rounded-2xl hover:bg-slate-50 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-black text-slate-900 text-sm">{trip.vehiclePlate || trip.vehicleId}</span>
+                              <VehicleProfileButton vehicleNumber={trip.vehiclePlate || trip.vehicleId} vehicleId={trip.vehicleId} />
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                              <MapPin size={12} className="text-blue-500" />
+                              <span className="font-bold text-slate-700">{trip.location}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {trip.destinationLatLng && (
+                              <button 
+                                type="button"
+                                onClick={() => setViewingTripMap(trip)}
+                                className="p-1.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
+                                title="View Route Map"
+                              >
+                                <MapPin size={14} />
+                              </button>
+                            )}
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-blue-100 text-blue-800">
+                              In Progress
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Driver & Helper summary */}
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-500 text-[11px]">চালকের তথ্য:</span>
+                            <div className="flex items-center gap-1 font-bold text-slate-800">
+                              <span>{trip.driverName}</span>
+                              <StaffProfileButton staffId={trip.driverId} staffName={trip.driverName} role="Driver" />
+                            </div>
+                          </div>
+                          {trip.helperName && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                              <span className="text-slate-500 text-[11px]">হেল্পার:</span>
+                              <div className="flex items-center gap-1 font-bold text-slate-800">
+                                <span>{trip.helperName}</span>
+                                <StaffProfileButton staffId={trip.helperId} staffName={trip.helperName} role="Helper" />
+                              </div>
+                            </div>
+                          )}
+                          {trip.startedBy && (
+                            <div className="text-[10px] text-slate-400 pt-0.5">
+                              রিলিজ করেছেন: {trip.startedBy}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Documents & Tools Chips */}
+                        {(trip.documentsGiven?.length > 0 || trip.toolsGiven?.length > 0) && (
+                          <div className="flex flex-wrap gap-1">
+                            {trip.documentsGiven?.map((d: string) => (
+                              <span key={d} className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 text-[10px] font-bold">{d}</span>
+                            ))}
+                            {trip.toolsGiven?.map((t: string) => (
+                              <span key={t} className="px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-bold">{t}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {filteredActiveTrips.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 italic text-xs">
+                        চলমান কোনো ট্রিপ নেই।
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-xs text-left">
                       <thead>
                         <tr className="bg-[#f8fafc] border-b border-border">

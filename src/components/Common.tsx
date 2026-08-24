@@ -23,7 +23,8 @@ import {
   Compass,
   Palette,
   Check,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { signOut } from '../firebase';
@@ -68,6 +69,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { theme, setTheme, toggleTheme, isEmerald, isOcean, isCrimson, isAmber, currentThemeOption } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
   const [pendingCount, setPendingCount] = React.useState(0);
   const [activeReturns, setActiveReturns] = React.useState<ReturnNotification[]>([]);
   const [vehicles, setVehicles] = React.useState<any[]>([]);
@@ -78,6 +80,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const prevComputedStatusesRef = React.useRef<Record<string, string>>({});
   const isFirstLoadRef = React.useRef(true);
   const profileMenuRef = React.useRef<HTMLDivElement>(null);
+  const mobileSearchInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Focus mobile search input when opened
+  React.useEffect(() => {
+    if (isMobileSearchOpen) {
+      setTimeout(() => {
+        mobileSearchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isMobileSearchOpen]);
 
   // Close profile dropdown on outside click
   React.useEffect(() => {
@@ -225,35 +237,188 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   });
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Mobile Sidebar Overlay */}
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      {/* Mobile Drawer / Full Sheet Menu */}
       <AnimatePresence>
         {isSidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
-          />
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs lg:hidden"
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className={cn(
+                "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] text-white shadow-2xl lg:hidden flex flex-col justify-between",
+                isEmerald 
+                  ? "bg-[#071f18] border-r border-emerald-900/40" 
+                  : isCrimson
+                    ? "bg-[#160507] border-r border-rose-950/40"
+                    : isAmber
+                      ? "bg-[#18150f] border-r border-amber-950/50"
+                      : "bg-primary border-r border-white/10"
+              )}
+            >
+              <div className="flex flex-col h-full overflow-hidden">
+                {/* Mobile Drawer Header */}
+                <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "relative w-9 h-9 rounded-xl p-0.5 shadow-md flex items-center justify-center group flex-shrink-0 bg-gradient-to-br",
+                      isEmerald 
+                        ? "from-[#3ebd97] via-[#2ea884] to-[#155341]" 
+                        : isCrimson
+                          ? "from-[#ff385c] via-[#ea2340] to-[#881337]"
+                          : isAmber
+                            ? "from-[#fbbf24] via-[#f59e0b] to-[#78350f]"
+                            : "from-blue-500 via-blue-600 to-indigo-700"
+                    )}>
+                      <div className="w-full h-full bg-slate-900/70 rounded-[10px] flex items-center justify-center">
+                        <Compass size={18} className="text-white animate-[spin_10s_linear_infinite]" />
+                      </div>
+                    </div>
+                    <div>
+                      <h2 className="font-extrabold text-base leading-tight flex items-center gap-1.5">
+                        <span>FleetManager</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-white/20 text-white">
+                          PRO
+                        </span>
+                      </h2>
+                      <p className="text-[10px] text-slate-400 font-medium">মোবাইল লজিস্টিকস পোর্টাল</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center transition-colors active:scale-95"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Mobile User Profile Summary in Drawer */}
+                <div className="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner flex-shrink-0",
+                    isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b] text-slate-950" : "bg-blue-600"
+                  )}>
+                    {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate">{profile?.displayName || user?.displayName || 'User'}</p>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 font-semibold mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      {profile?.role === 'Admin' ? 'অ্যাডমিন' : (profile?.role || 'User')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mobile Drawer Navigation List */}
+                <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto overscroll-contain">
+                  <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">সবগুলো অপশন (Menu)</p>
+                  {filteredNavItems.map((item) => {
+                    const isRequests = item.to === '/requests';
+                    const hasPending = isRequests && pendingCount > 0;
+                    
+                    const isVehicles = item.to === '/vehicles';
+                    const hasActiveReturns = isVehicles && activeReturns.length > 0;
+
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setIsSidebarOpen(false)}
+                        className={({ isActive }) => cn(
+                          "flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-150 text-[14px] font-bold active:scale-[0.98]",
+                          isActive 
+                            ? isEmerald 
+                              ? "bg-[#2ea884] text-white shadow-md"
+                              : isCrimson
+                                ? "bg-[#ea2340] text-white shadow-md"
+                                : isAmber
+                                  ? "bg-[#f59e0b] text-slate-950 shadow-md"
+                                  : "bg-blue-600 text-white shadow-md" 
+                            : "text-slate-200 hover:bg-white/10",
+                          hasPending && "bg-amber-500/20 text-amber-200 border border-amber-500/40",
+                          hasActiveReturns && "bg-rose-600 text-white border border-rose-500"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <item.icon size={19} className="stroke-[2.3]" />
+                          <span>{item.label}</span>
+                        </div>
+
+                        {hasPending && (
+                          <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[11px] font-black text-white">
+                            {pendingCount}
+                          </span>
+                        )}
+
+                        {hasActiveReturns && (
+                          <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-white text-[11px] font-black text-rose-600">
+                            {activeReturns.length}
+                          </span>
+                        )}
+                      </NavLink>
+                    );
+                  })}
+                </nav>
+
+                {/* Mobile Drawer Footer with Signout & Theme Quick Toggle */}
+                <div className="p-3 border-t border-white/10 bg-black/20 space-y-2">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[11px] font-bold text-slate-400">থিম (Theme)</span>
+                    <div className="flex items-center gap-1.5">
+                      {THEME_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setTheme(opt.id)}
+                          className={cn(
+                            "w-6 h-6 rounded-full border transition-all active:scale-90",
+                            theme === opt.id ? "ring-2 ring-white scale-110 border-transparent" : "opacity-60 border-white/40"
+                          )}
+                          style={{ backgroundColor: opt.primaryColor }}
+                          title={opt.englishName}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-transform"
+                  >
+                    <LogOut size={15} />
+                    <span>সাইন আউট (Sign Out)</span>
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Desktop Sidebar (Only visible on lg+ screens) */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-68 transform text-white transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
+        "hidden lg:flex flex-col w-68 text-white flex-shrink-0",
         isEmerald 
           ? "bg-[#071f18] border-r border-emerald-900/40" 
           : isCrimson
             ? "bg-[#160507] border-r border-rose-950/40"
             : isAmber
               ? "bg-[#18150f] border-r border-amber-950/50"
-              : "bg-primary border-r border-white/10",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+              : "bg-primary border-r border-white/10"
       )}>
         <div className="flex flex-col h-full">
           <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
-            {/* Animated Brand Logo matching Preloader */}
             <div className={cn(
               "relative w-9 h-9 rounded-xl p-0.5 shadow-md flex items-center justify-center group flex-shrink-0 bg-gradient-to-br",
               isEmerald 
@@ -265,7 +430,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     : "from-blue-500 via-blue-600 to-indigo-700 shadow-blue-500/30"
             )}>
               <div className="w-full h-full bg-slate-900/70 rounded-[10px] flex items-center justify-center backdrop-blur-xs relative overflow-hidden">
-                {/* Rotating glowing sweep */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
                 <Compass 
                   size={19} 
@@ -314,7 +478,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  onClick={() => setIsSidebarOpen(false)}
                   className={({ isActive }) => cn(
                     "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15px] font-bold tracking-normal",
                     isActive 
@@ -331,26 +494,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={20} className={cn(
-                      "transition-colors stroke-[2.3]",
-                      hasPending && "text-amber-400 animate-pulse",
-                      hasActiveReturns && "text-white animate-bounce"
-                    )} />
-                    <span className={cn(
-                      "transition-all leading-snug font-bold",
-                      hasPending && "font-extrabold text-amber-100",
-                      hasActiveReturns && "font-black text-white"
-                    )}>
-                      {item.label}
-                    </span>
+                    <item.icon size={20} className="stroke-[2.3]" />
+                    <span>{item.label}</span>
                   </div>
 
                   {hasPending && (
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                      </span>
                       <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-red-500 text-[11px] font-black text-white shadow-sm">
                         {pendingCount}
                       </span>
@@ -359,10 +508,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
                   {hasActiveReturns && (
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                      </span>
                       <span className="flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-white text-[11px] font-black text-rose-600 shadow-sm">
                         {activeReturns.length}
                       </span>
@@ -373,7 +518,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             })}
           </nav>
 
-          {/* Sidebar Footer */}
           <div className="p-3.5 mt-auto border-t border-white/10 bg-black/15 flex items-center justify-between text-slate-400">
             <p className="text-[11px] font-bold tracking-wide text-slate-300">FleetFlow Pro</p>
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-slate-300">v2.4</span>
@@ -381,10 +525,42 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg">
-        {/* Desktop Header */}
-        <header className="h-16 flex items-center justify-between px-8 bg-surface border-b border-border flex-shrink-0">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg relative">
+        {/* Top Header Bar (Adaptive for Mobile & Desktop) */}
+        <header className="h-14 sm:h-16 flex items-center justify-between px-3.5 sm:px-6 md:px-8 bg-surface border-b border-border flex-shrink-0 z-30 shadow-2xs">
+          {/* Mobile Header Left Brand */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-1 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors active:scale-95"
+              aria-label="Open Menu"
+            >
+              <Menu size={22} className="stroke-[2.4]" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "w-7 h-7 rounded-lg p-0.5 shadow-xs flex items-center justify-center bg-gradient-to-br",
+                isEmerald 
+                  ? "from-[#3ebd97] to-[#155341]" 
+                  : isCrimson
+                    ? "from-[#ff385c] to-[#881337]"
+                    : isAmber
+                      ? "from-[#fbbf24] to-[#78350f]"
+                      : "from-blue-500 to-indigo-700"
+              )}>
+                <div className="w-full h-full bg-slate-950 rounded-[6px] flex items-center justify-center">
+                  <Compass size={14} className="text-white" />
+                </div>
+              </div>
+              <span className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight leading-tight">
+                FleetManager
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop Search Bar */}
           <div className={cn(
             "hidden lg:flex items-center bg-slate-50 border border-border px-4 py-2.5 rounded-xl w-84 gap-3 transition-all",
             isEmerald 
@@ -395,7 +571,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   ? "focus-within:border-[#f59e0b] focus-within:ring-2 focus-within:ring-[#f59e0b]/20 focus-within:bg-white"
                   : "focus-within:border-blue-500 focus-within:bg-white"
           )}>
-            <Menu size={18} className="text-text-muted" />
+            <Search size={18} className="text-text-muted" />
             <input 
               type="text" 
               placeholder="গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন..." 
@@ -405,14 +581,44 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             />
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Top Header Right Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Mobile Quick Search Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className={cn(
+                "p-2 rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden transition-colors active:scale-95",
+                (isMobileSearchOpen || searchQuery) && (
+                  isEmerald ? "bg-emerald-50 text-[#2ea884]" : isCrimson ? "bg-rose-50 text-[#ea2340]" : isAmber ? "bg-amber-50 text-[#d97706]" : "bg-blue-50 text-blue-600"
+                )
+              )}
+              aria-label="Search"
+            >
+              <Search size={19} className="stroke-[2.3]" />
+            </button>
+
+            {/* Quick QR Scanner Link for Mobile Phone Top Bar */}
+            <NavLink
+              to="/qr-scanner"
+              className={({ isActive }) => cn(
+                "p-2 rounded-xl lg:hidden transition-all active:scale-95 flex items-center justify-center",
+                isActive 
+                  ? isEmerald ? "bg-[#2ea884] text-white" : isCrimson ? "bg-[#ea2340] text-white" : isAmber ? "bg-[#f59e0b] text-slate-950" : "bg-blue-600 text-white"
+                  : "text-slate-600 hover:bg-slate-100"
+              )}
+              title="QR Scanner"
+            >
+              <QrCode size={19} className="stroke-[2.3]" />
+            </NavLink>
+
             {/* User Profile Trigger & Dropdown Menu */}
             <div className="relative" ref={profileMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 className={cn(
-                  "flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border transition-all cursor-pointer",
+                  "flex items-center gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl border transition-all cursor-pointer select-none active:scale-95",
                   isProfileMenuOpen 
                     ? isEmerald
                       ? "bg-[#e8f7f2] border-[#a7e3d1] shadow-xs" 
@@ -421,25 +627,22 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         : isAmber
                           ? "bg-[#fef3c7] border-[#fde68a] shadow-xs"
                           : "bg-blue-50/80 border-blue-200 shadow-xs"
-                    : "border-transparent hover:bg-slate-100/80 hover:border-slate-200"
+                    : "border-transparent hover:bg-slate-100 hover:border-slate-200"
                 )}
-                title="প্রোফাইল ও থিম সেটিংস"
               >
-                {/* Refined user identity widget (Ismaile / Admin) */}
                 <div className="text-right hidden sm:flex flex-col items-end justify-center">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-black text-slate-900 leading-tight tracking-tight">
+                    <span className="text-[13px] font-black text-slate-900 leading-tight">
                       {profile?.displayName || user?.displayName || 'User'}
                     </span>
                     <span 
-                      className="w-2 h-2 rounded-full inline-block ring-2 ring-white shadow-xs" 
+                      className="w-2 h-2 rounded-full inline-block ring-2 ring-white" 
                       style={{ backgroundColor: currentThemeOption.primaryColor }}
-                      title={`Theme: ${currentThemeOption.englishName}`}
                     />
                   </div>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-0.5">
                     <span className={cn(
-                      "text-[10px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider border shadow-2xs inline-flex items-center gap-1.5",
+                      "text-[10px] font-extrabold px-2 py-0.2 rounded uppercase border",
                       isEmerald 
                         ? "text-[#0f513f] bg-[#e2f7ef] border-[#a1dec9]" 
                         : isCrimson
@@ -448,36 +651,23 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
                             : "text-blue-700 bg-blue-50 border-blue-200"
                     )}>
-                      <span className={cn(
-                        "w-1.5 h-1.5 rounded-full animate-pulse",
-                        isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
-                      )} />
-                      <span>{profile?.role === 'Admin' ? 'অ্যাডমিন (Admin)' : (profile?.role === 'Sub Admin' ? 'সাব-অ্যাডমিন' : (profile?.role || 'Guest'))}</span>
+                      {profile?.role || 'User'}
                     </span>
                   </div>
                 </div>
 
-                {/* Avatar */}
+                {/* Avatar Icon */}
                 <div className={cn(
-                  "w-8.5 h-8.5 rounded-full border overflow-hidden relative shadow-xs flex items-center justify-center flex-shrink-0",
-                  isEmerald ? "border-[#2ea884]" : isCrimson ? "border-[#ea2340]" : isAmber ? "border-[#f59e0b]" : "border-blue-500"
+                  "w-8 h-8 rounded-full border overflow-hidden relative shadow-xs flex items-center justify-center flex-shrink-0 font-extrabold text-xs",
+                  isEmerald 
+                    ? "border-[#2ea884] bg-[#e8f7f2] text-[#2ea884]" 
+                    : isCrimson 
+                      ? "border-[#ea2340] bg-[#fff1f2] text-[#ea2340]" 
+                      : isAmber
+                        ? "border-[#f59e0b] bg-[#fef3c7] text-[#b45309]"
+                        : "border-blue-500 bg-blue-50 text-blue-600"
                 )}>
-                  {user?.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className={cn(
-                      "w-full h-full flex items-center justify-center font-bold text-sm",
-                      isEmerald 
-                        ? "bg-[#e8f7f2] text-[#2ea884]" 
-                        : isCrimson 
-                          ? "bg-[#fff1f2] text-[#ea2340]" 
-                          : isAmber
-                            ? "bg-[#fef3c7] text-[#b45309]"
-                            : "bg-blue-50 text-blue-600"
-                    )}>
-                      {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                  {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
                 </div>
 
                 <ChevronDown 
@@ -497,59 +687,37 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.16, ease: "easeOut" }}
-                    className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-slate-800 space-y-3.5"
+                    className="absolute right-0 top-full mt-2 w-72 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-slate-800 space-y-3.5"
                   >
-                    {/* User Identity Header */}
                     <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                       <div className={cn(
                         "w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-base shadow-md flex-shrink-0 bg-gradient-to-br",
                         isEmerald 
-                          ? "from-[#3ebd97] via-[#2ea884] to-[#165a44] shadow-emerald-500/25" 
+                          ? "from-[#3ebd97] via-[#2ea884] to-[#165a44]" 
                           : isCrimson
-                            ? "from-[#ff385c] via-[#ea2340] to-[#991b1b] shadow-rose-500/30"
+                            ? "from-[#ff385c] via-[#ea2340] to-[#991b1b]"
                             : isAmber
-                              ? "from-[#fbbf24] via-[#f59e0b] to-[#78350f] shadow-amber-500/30 text-slate-950 font-black"
-                              : "from-blue-500 via-blue-600 to-indigo-700 shadow-blue-500/25"
+                              ? "from-[#fbbf24] via-[#f59e0b] to-[#78350f] text-slate-950"
+                              : "from-blue-500 via-blue-600 to-indigo-700"
                       )}>
                         {(profile?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="font-extrabold text-sm text-slate-900 truncate">
-                            {profile?.displayName || user?.displayName || 'User'}
-                          </h4>
-                          <span className={cn(
-                            "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border shadow-2xs inline-flex items-center gap-1",
-                            isEmerald 
-                              ? "text-[#0f513f] bg-[#d5f3e8] border-[#a1dec9]" 
-                              : isCrimson
-                                ? "text-[#9f1239] bg-[#ffe4e6] border-[#fecdd3]"
-                                : isAmber
-                                  ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
-                                  : "text-blue-700 bg-blue-50 border-blue-200"
-                          )}>
-                            <span className={cn(
-                              "w-1 h-1 rounded-full",
-                              isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
-                            )} />
-                            {profile?.role || 'User'}
-                          </span>
-                        </div>
+                        <h4 className="font-extrabold text-sm text-slate-900 truncate">
+                          {profile?.displayName || user?.displayName || 'User'}
+                        </h4>
                         <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                          {user?.email || (profile?.username ? `@${profile.username}` : '')}
+                          {profile?.role === 'Admin' ? 'অ্যাডমিন' : profile?.role}
                         </p>
                       </div>
                     </div>
 
-                    {/* Theme Selector Section - Clean with English Names Only */}
+                    {/* Theme Selector */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                          <Palette size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-                          <span>Theme</span>
-                        </label>
-                      </div>
-
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2">
+                        <Palette size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
+                        <span>থিম পরিবর্তন (Theme)</span>
+                      </label>
                       <div className="space-y-1.5">
                         {THEME_OPTIONS.map((opt) => {
                           const isSelected = theme === opt.id;
@@ -559,7 +727,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                               type="button"
                               onClick={() => setTheme(opt.id)}
                               className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-all cursor-pointer group",
+                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-all cursor-pointer active:scale-98",
                                 isSelected
                                   ? opt.id === 'emerald-teal'
                                     ? "bg-[#e8f7f2] border-[#2ea884] ring-1 ring-[#2ea884]"
@@ -568,7 +736,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                                       : opt.id === 'carrybee-amber'
                                         ? "bg-[#fef3c7] border-[#f59e0b] ring-1 ring-[#f59e0b]"
                                         : "bg-blue-50 border-blue-600 ring-1 ring-blue-600"
-                                  : "bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
+                                  : "bg-slate-50 border-slate-200 hover:bg-slate-100"
                               )}
                             >
                               <div className="flex items-center gap-2.5">
@@ -583,18 +751,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                                   {opt.englishName}
                                 </span>
                               </div>
-
                               {isSelected && (
-                                <Check size={14} className={cn(
-                                  "stroke-[3]",
-                                  opt.id === 'emerald-teal' 
-                                    ? "text-[#2ea884]" 
-                                    : opt.id === 'crimson-red' 
-                                      ? "text-[#ea2340]" 
-                                      : opt.id === 'carrybee-amber'
-                                        ? "text-[#d97706]"
-                                        : "text-blue-600"
-                                )} />
+                                <Check size={14} className="stroke-[3] text-slate-900" />
                               )}
                             </button>
                           );
@@ -602,7 +760,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       </div>
                     </div>
 
-                    {/* Sign Out Button in Profile Popover */}
                     <div className="pt-2 border-t border-slate-100">
                       <button
                         type="button"
@@ -610,7 +767,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           setIsProfileMenuOpen(false);
                           handleLogout();
                         }}
-                        className="flex items-center justify-center gap-2 w-full py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/90 rounded-xl transition-all border border-rose-200/80 cursor-pointer shadow-xs"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 active:scale-98"
                       >
                         <LogOut size={14} className="stroke-[2.2]" />
                         <span>সাইন আউট (Sign Out)</span>
@@ -620,59 +777,265 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 )}
               </AnimatePresence>
             </div>
-
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"
-            >
-              <Menu size={24} />
-            </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        {/* Mobile Slide-down Search Bar */}
+        <AnimatePresence>
+          {isMobileSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden bg-white border-b border-border px-3.5 py-2.5 shadow-sm overflow-hidden z-20"
+            >
+              <div className={cn(
+                "flex items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl gap-2",
+                isEmerald ? "focus-within:border-[#2ea884]" : isCrimson ? "focus-within:border-[#ea2340]" : isAmber ? "focus-within:border-[#f59e0b]" : "focus-within:border-blue-500"
+              )}>
+                <Search size={16} className="text-slate-400 flex-shrink-0" />
+                <input
+                  ref={mobileSearchInputRef}
+                  type="text"
+                  placeholder="গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন..."
+                  className="bg-transparent border-none outline-none text-xs font-medium w-full text-slate-800 placeholder:text-slate-400"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content Viewport with Phone-Optimized Padding */}
+        <div className="flex-1 overflow-y-auto px-3 py-3.5 sm:px-6 sm:py-6 pb-28 lg:pb-8 overscroll-contain">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
+            className="max-w-7xl mx-auto w-full"
           >
             {children}
           </motion.div>
         </div>
+
+        {/* ============================================================== */}
+        {/* ULTRA ERGONOMIC MOBILE PHONE BOTTOM NAVIGATION BAR (lg:hidden) */}
+        {/* ============================================================== */}
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden pointer-events-none">
+          <nav 
+            className="relative pointer-events-auto bg-white/95 backdrop-blur-lg border-t border-slate-200/80 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] flex items-center justify-between px-2 pt-1.5 select-none"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+          >
+            {/* 1. Dashboard (Left 1) */}
+            <NavLink
+              to="/"
+              className={({ isActive }) => cn(
+                "flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all duration-150 relative active:scale-95",
+                isActive 
+                  ? isEmerald 
+                    ? "text-[#2ea884] font-black" 
+                    : isCrimson 
+                      ? "text-[#ea2340] font-black" 
+                      : isAmber 
+                        ? "text-[#d97706] font-black" 
+                        : "text-blue-600 font-black"
+                  : "text-slate-500 font-bold hover:text-slate-800"
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <LayoutDashboard size={20} className={cn("transition-transform", isActive ? "scale-110 stroke-[2.6]" : "stroke-[2]")} />
+                  <span className="text-[10px] mt-0.5 tracking-tight font-semibold">হোম</span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobileNavIndicator"
+                      className={cn(
+                        "w-4 h-1 rounded-full mt-0.5",
+                        isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
+                      )}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+
+            {/* 2. Vehicles (Left 2) */}
+            <NavLink
+              to="/vehicles"
+              className={({ isActive }) => cn(
+                "flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all duration-150 relative active:scale-95",
+                isActive 
+                  ? isEmerald 
+                    ? "text-[#2ea884] font-black" 
+                    : isCrimson 
+                      ? "text-[#ea2340] font-black" 
+                      : isAmber 
+                        ? "text-[#d97706] font-black" 
+                        : "text-blue-600 font-black"
+                  : "text-slate-500 font-bold hover:text-slate-800"
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <div className="relative">
+                    <Truck size={20} className={cn("transition-transform", isActive ? "scale-110 stroke-[2.6]" : "stroke-[2]")} />
+                    {activeReturns.length > 0 && (
+                      <span className="absolute -top-1 -right-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white animate-pulse shadow-xs">
+                        {activeReturns.length}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] mt-0.5 tracking-tight font-semibold">গাড়িসমূহ</span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobileNavIndicator"
+                      className={cn(
+                        "w-4 h-1 rounded-full mt-0.5",
+                        isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
+                      )}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+
+            {/* 3. HERO EXACT CENTER: FLOATING QR SCANNER (Center 3) */}
+            <div className="flex-1 flex flex-col items-center justify-center relative -top-4 z-50">
+              <div className="relative flex flex-col items-center">
+                {/* Outer Subtle Glow Halo */}
+                <div className={cn(
+                  "absolute -inset-1 rounded-full blur-xs opacity-60 animate-pulse",
+                  isEmerald 
+                    ? "bg-emerald-400/50" 
+                    : isCrimson 
+                      ? "bg-rose-400/50" 
+                      : isAmber 
+                        ? "bg-amber-400/60" 
+                        : "bg-blue-400/50"
+                )} />
+                
+                <NavLink
+                  to="/qr-scanner"
+                  className={({ isActive }) => cn(
+                    "relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 border-[3.5px] border-white shadow-[0_8px_20px_rgba(0,0,0,0.18)] cursor-pointer",
+                    isActive 
+                      ? "ring-4 ring-offset-2 scale-105" 
+                      : "hover:scale-105",
+                    isEmerald 
+                      ? "bg-gradient-to-br from-[#3ebd97] via-[#2ea884] to-[#155341] text-white shadow-emerald-600/40 ring-emerald-400" 
+                      : isCrimson 
+                        ? "bg-gradient-to-br from-[#ff385c] via-[#ea2340] to-[#881337] text-white shadow-rose-600/40 ring-rose-400" 
+                        : isAmber 
+                          ? "bg-gradient-to-br from-[#fbbf24] via-[#f59e0b] to-[#78350f] text-slate-950 shadow-amber-600/40 ring-amber-400 font-black" 
+                          : "bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white shadow-blue-600/40 ring-blue-400"
+                  )}
+                  aria-label="Scan QR Code"
+                >
+                  <QrCode size={26} className="stroke-[2.6] drop-shadow-xs" />
+                </NavLink>
+                
+                <span className={cn(
+                  "text-[10px] font-black tracking-tight mt-1 px-2 py-0.5 rounded-full bg-slate-900 text-white shadow-xs",
+                  isAmber && "bg-amber-950 text-amber-200"
+                )}>
+                  QR স্ক্যান
+                </span>
+              </div>
+            </div>
+
+            {/* 4. Trips (Right 2) */}
+            <NavLink
+              to="/trips"
+              className={({ isActive }) => cn(
+                "flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all duration-150 relative active:scale-95",
+                isActive 
+                  ? isEmerald 
+                    ? "text-[#2ea884] font-black" 
+                    : isCrimson 
+                      ? "text-[#ea2340] font-black" 
+                      : isAmber 
+                        ? "text-[#d97706] font-black" 
+                        : "text-blue-600 font-black"
+                  : "text-slate-500 font-bold hover:text-slate-800"
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <MapPin size={20} className={cn("transition-transform", isActive ? "scale-110 stroke-[2.6]" : "stroke-[2]")} />
+                  <span className="text-[10px] mt-0.5 tracking-tight font-semibold">ট্রিপস</span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobileNavIndicator"
+                      className={cn(
+                        "w-4 h-1 rounded-full mt-0.5",
+                        isEmerald ? "bg-[#2ea884]" : isCrimson ? "bg-[#ea2340]" : isAmber ? "bg-[#f59e0b]" : "bg-blue-600"
+                      )}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+
+            {/* 5. Mobile Drawer Menu (Right 1) */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl text-slate-500 hover:text-slate-800 transition-all active:scale-95 cursor-pointer"
+            >
+              <div className="relative">
+                <Menu size={20} className="stroke-[2.2]" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-2 flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full bg-red-500 text-[8px] font-black text-white animate-pulse">
+                    {pendingCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-semibold mt-0.5 tracking-tight">মেনু</span>
+            </button>
+          </nav>
+        </div>
       </main>
 
-      {/* Floating Returned Vehicle Pop-up Notifications */}
+      {/* Floating Returned Vehicle Pop-up Notifications (Phone Friendly) */}
       {isEligibleRole && activeReturns.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+        <div className="fixed bottom-20 sm:bottom-6 right-3 sm:right-6 left-3 sm:left-auto z-50 space-y-2 max-w-sm pointer-events-none">
           <AnimatePresence>
             {activeReturns.map((notif) => (
               <motion.div
                 key={notif.id}
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                initial={{ opacity: 0, y: 30, scale: 0.92 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
-                className="pointer-events-auto bg-slate-900 text-white border border-slate-800 p-4 rounded-2xl shadow-2xl flex items-start gap-3.5 relative overflow-hidden"
+                className="pointer-events-auto bg-slate-900 text-white border border-slate-800 p-3.5 rounded-2xl shadow-2xl flex items-start gap-3 relative overflow-hidden"
               >
-                {/* Decorative top accent strip */}
-                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-rose-500 to-amber-500 opacity-80" />
+                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-rose-500 to-amber-500 opacity-90" />
                 
-                <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0 mt-0.5 animate-pulse">
-                  <Truck size={18} className="animate-bounce" />
+                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0 mt-0.5 animate-pulse">
+                  <Truck size={17} className="animate-bounce" />
                 </div>
                 
                 <div className="flex-1 min-w-0 pr-4">
-                  <h4 className="font-bold text-sm tracking-tight text-white flex items-center gap-2">
+                  <h4 className="font-bold text-xs sm:text-sm tracking-tight text-white flex items-center gap-1.5">
                     গাড়ি ফিরে এসেছে!
                     <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   </h4>
-                  <p className="text-xs text-slate-300 mt-1 font-medium leading-relaxed">
-                    গাড়ি <span className="font-extrabold text-amber-400 text-sm font-mono tracking-wider">{notif.vehicleNumber}</span> {notif.previousStatus === 'Maintenance' ? 'মেইনটেনেন্স' : 'ট্রিপ'} থেকে ফিরে এসেছে এবং এখন <span className="text-emerald-400 font-extrabold">Available</span> রয়েছে।
+                  <p className="text-[11px] text-slate-300 mt-0.5 font-medium leading-relaxed">
+                    গাড়ি <span className="font-extrabold text-amber-400 font-mono">{notif.vehicleNumber}</span> ফিরে এসেছে এবং এখন <span className="text-emerald-400 font-bold">Available</span>।
                   </p>
                 </div>
 
                 <button
                   onClick={() => dismissNotification(notif.id)}
-                  className="absolute top-3 right-3 p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
+                  className="absolute top-2.5 right-2.5 p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer"
                 >
                   <X size={14} />
                 </button>

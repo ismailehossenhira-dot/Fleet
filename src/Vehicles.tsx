@@ -439,7 +439,109 @@ const Vehicles: React.FC = () => {
           />
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile-First Vehicle Cards View (Visible on Mobile & Tablet screens) */}
+        <div className="block md:hidden divide-y divide-border p-2">
+          {filtered.map(vehicle => (
+            <div key={vehicle.id} className="p-3.5 rounded-2xl hover:bg-slate-50 transition-colors space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-black text-slate-900 text-sm tracking-tight">{vehicle.vehicleNumber}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                      {vehicle.type}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <VehicleProfileButton vehicle={vehicle} />
+                    <AuditDetailsDropdown createdBy={vehicle.createdBy} updatedBy={vehicle.updatedBy} />
+                  </div>
+                </div>
+
+                <span className={cn(
+                  "px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 shadow-2xs",
+                  vehicle.status === 'Available' ? "bg-emerald-100 text-emerald-800" :
+                  vehicle.status === 'On Trip' ? "bg-blue-100 text-blue-800" :
+                  vehicle.status === 'Pending Out Scan' ? "bg-amber-100 text-amber-800" :
+                  "bg-orange-100 text-orange-800"
+                )}>
+                  {vehicle.status}
+                </span>
+              </div>
+
+              {vehicle.status === 'Maintenance' && vehicle.maintenanceNotes && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/70 text-[11px] text-amber-800 font-medium">
+                  <p className="font-bold flex items-center gap-1">
+                    <Wrench size={12} className="text-amber-600" />
+                    <span>সমস্যা / মেরামত বিবরণী:</span>
+                  </p>
+                  <p className="mt-0.5 italic">{vehicle.maintenanceNotes}</p>
+                </div>
+              )}
+
+              {/* Mobile Action Buttons Bar */}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                <button 
+                  onClick={() => setSelectedQRVehicle(vehicle)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  <QrCode size={14} className="stroke-[2.2]" />
+                  <span>QR কোড</span>
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  <VehicleProfileButton 
+                    vehicle={vehicle} 
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-blue-600 hover:text-white text-xs font-bold transition-colors active:scale-95" 
+                  />
+
+                  {canManage && (
+                    deletingId === vehicle.id ? (
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleDelete(vehicle.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold active:scale-95"
+                        >
+                          মুছুন?
+                        </button>
+                        <button 
+                          onClick={() => setDeletingId(null)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold"
+                        >
+                          না
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => { setEditingVehicle(vehicle); setDeletingId(null); }}
+                          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-500 hover:text-white transition-colors active:scale-95"
+                          title="Edit"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          onClick={() => setDeletingId(vehicle.id)}
+                          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-red-500 hover:text-white transition-colors active:scale-95"
+                          title="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-slate-400 italic text-xs">
+              কোনো গাড়ি খুঁজে পাওয়া যায়নি।
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="bg-[#f8fafc] border-b border-border">
