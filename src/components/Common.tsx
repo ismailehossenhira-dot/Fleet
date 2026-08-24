@@ -24,9 +24,11 @@ import {
   Palette,
   Check,
   Sparkles,
-  Search
+  Search,
+  Wrench,
+  Radio
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { signOut } from '../firebase';
 import { useAuth, UserRole } from '../AuthContext';
 import { useSearch } from '../SearchContext';
@@ -35,11 +37,19 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToCollection } from '../db';
 
+interface NavSubItem {
+  to: string;
+  label: string;
+  icon?: any;
+  badge?: string;
+}
+
 interface NavItem {
   to: string;
   icon: any;
   label: string;
   roles: UserRole[];
+  subItems?: NavSubItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -51,6 +61,16 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/new-trip', icon: PlusCircle, label: 'New Trip', roles: ['Admin', 'Sub Admin', 'Line Supervisor'] },
   { to: '/trips', icon: MapPin, label: 'Trips', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/morning-prep', icon: Sunrise, label: 'Morning Prep', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
+  { 
+    to: '/maintenance', 
+    icon: Wrench, 
+    label: 'Maintenance', 
+    roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'],
+    subItems: [
+      { to: '/maintenance', label: 'সার্ভিস ও মেরামত (Records)', icon: Wrench },
+      { to: '/maintenance/gps', label: 'GPS Device (ADL / BDT)', icon: Radio, badge: 'GPS' }
+    ]
+  },
   { to: '/cases', icon: FileWarning, label: 'Cases', roles: ['Admin', 'Sub Admin', 'Checker'] },
   { to: '/reports', icon: History, label: 'Reports', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
   { to: '/users', icon: Users, label: 'Users', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
@@ -67,6 +87,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { user, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const { theme, setTheme, toggleTheme, isEmerald, isOcean, isCrimson, isAmber, currentThemeOption } = useTheme();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false);
@@ -76,6 +97,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [trips, setTrips] = React.useState<any[]>([]);
   const [isVehiclesLoaded, setIsVehiclesLoaded] = React.useState(false);
   const [isTripsLoaded, setIsTripsLoaded] = React.useState(false);
+
+  const [openDropdowns, setOpenDropdowns] = React.useState<Record<string, boolean>>({});
+
+  const toggleDropdown = (path: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [path]: !prev[path]
+    }));
+  };
 
   const prevComputedStatusesRef = React.useRef<Record<string, string>>({});
   const isFirstLoadRef = React.useRef(true);
@@ -328,6 +362,103 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     const isVehicles = item.to === '/vehicles';
                     const hasActiveReturns = isVehicles && activeReturns.length > 0;
 
+                    const isItemActive = location.pathname === item.to || (item.subItems && location.pathname.startsWith(item.to));
+                    const isDropdownOpen = !!openDropdowns[item.to];
+
+                    if (item.subItems && item.subItems.length > 0) {
+                      return (
+                        <div key={item.to} className="space-y-1">
+                          <div
+                            className={cn(
+                              "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 text-[14px] font-bold select-none cursor-pointer",
+                              isItemActive
+                                ? isEmerald 
+                                  ? "bg-[#2ea884] text-white shadow-md"
+                                  : isCrimson
+                                    ? "bg-[#ea2340] text-white shadow-md"
+                                    : isAmber
+                                      ? "bg-[#f59e0b] text-slate-950 shadow-md"
+                                      : "bg-blue-600 text-white shadow-md" 
+                                : "text-slate-200 hover:bg-white/10"
+                            )}
+                            onClick={() => toggleDropdown(item.to)}
+                          >
+                            <NavLink
+                              to={item.to}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSidebarOpen(false);
+                              }}
+                              className="flex items-center gap-3 flex-1 text-left"
+                            >
+                              <item.icon size={19} className="stroke-[2.3]" />
+                              <span>{item.label}</span>
+                            </NavLink>
+
+                            <button
+                              type="button"
+                              onClick={(e) => toggleDropdown(item.to, e)}
+                              className="p-1 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center ml-1"
+                              title={isDropdownOpen ? 'মেনু বন্ধ করুন' : 'সাব-মেনু দেখুন'}
+                            >
+                              <ChevronDown 
+                                size={16} 
+                                className={cn(
+                                  "transition-transform duration-200 opacity-80",
+                                  isDropdownOpen ? "rotate-180" : "rotate-0"
+                                )} 
+                              />
+                            </button>
+                          </div>
+
+                          {/* Sub-items for mobile (Collapsible Dropdown Accordion) */}
+                          <AnimatePresence initial={false}>
+                            {isDropdownOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="ml-4 pl-3.5 border-l-2 border-white/20 space-y-1 pt-1 pb-1.5">
+                                  {item.subItems.map((sub) => {
+                                    const isSubActive = sub.to === '/maintenance/gps'
+                                      ? location.pathname.includes('/maintenance/gps')
+                                      : (location.pathname === '/maintenance' || location.pathname === '/maintenance/');
+
+                                    return (
+                                      <NavLink
+                                        key={sub.to}
+                                        to={sub.to}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className={cn(
+                                          "flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                                          isSubActive
+                                            ? "bg-white/20 text-white shadow-xs font-extrabold"
+                                            : "text-slate-300 hover:text-white hover:bg-white/10"
+                                        )}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {sub.icon && <sub.icon size={14} className="shrink-0 opacity-80" />}
+                                          <span>{sub.label}</span>
+                                        </div>
+                                        {sub.badge && (
+                                          <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-blue-500/40 text-blue-200 uppercase">
+                                            {sub.badge}
+                                          </span>
+                                        )}
+                                      </NavLink>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    }
+
                     return (
                       <NavLink
                         key={item.to}
@@ -474,6 +605,101 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               const isVehicles = item.to === '/vehicles';
               const hasActiveReturns = isVehicles && activeReturns.length > 0;
 
+              const isItemActive = location.pathname === item.to || (item.subItems && location.pathname.startsWith(item.to));
+              const isDropdownOpen = !!openDropdowns[item.to];
+
+              if (item.subItems && item.subItems.length > 0) {
+                return (
+                  <div key={item.to} className="space-y-1">
+                    <div
+                      className={cn(
+                        "flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-[15px] font-bold tracking-normal select-none cursor-pointer",
+                        isItemActive 
+                          ? isEmerald 
+                            ? "bg-[#2ea884] text-white font-extrabold shadow-md shadow-emerald-950/40"
+                            : isCrimson
+                              ? "bg-[#ea2340] text-white font-extrabold shadow-md shadow-rose-950/50"
+                              : isAmber
+                                ? "bg-[#f59e0b] text-slate-950 font-black shadow-md shadow-amber-950/50"
+                                : "bg-blue-600 text-white font-extrabold shadow-md shadow-blue-900/30" 
+                          : "text-slate-200 hover:text-white hover:bg-white/10 font-bold"
+                      )}
+                      onClick={() => toggleDropdown(item.to)}
+                    >
+                      <NavLink
+                        to={item.to}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="flex items-center gap-3 flex-1 text-left"
+                      >
+                        <item.icon size={20} className="stroke-[2.3]" />
+                        <span>{item.label}</span>
+                      </NavLink>
+
+                      <button
+                        type="button"
+                        onClick={(e) => toggleDropdown(item.to, e)}
+                        className="p-1 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center ml-1"
+                        title={isDropdownOpen ? 'মেনু বন্ধ করুন' : 'সাব-মেনু দেখুন'}
+                      >
+                        <ChevronDown 
+                          size={15} 
+                          className={cn(
+                            "transition-transform duration-200 opacity-80",
+                            isDropdownOpen ? "rotate-180" : "rotate-0"
+                          )} 
+                        />
+                      </button>
+                    </div>
+
+                    {/* Sub-items for Desktop (Collapsible Dropdown Accordion) */}
+                    <AnimatePresence initial={false}>
+                      {isDropdownOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="ml-4 pl-3 border-l-2 border-white/20 space-y-1 pt-1 pb-1">
+                            {item.subItems.map((sub) => {
+                              const isSubActive = sub.to === '/maintenance/gps'
+                                ? location.pathname.includes('/maintenance/gps')
+                                : (location.pathname === '/maintenance' || location.pathname === '/maintenance/');
+
+                              return (
+                                <NavLink
+                                  key={sub.to}
+                                  to={sub.to}
+                                  className={cn(
+                                    "flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold transition-all group",
+                                    isSubActive
+                                      ? "bg-white/20 text-white shadow-xs font-extrabold"
+                                      : "text-slate-300 hover:text-white hover:bg-white/10"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {sub.icon && <sub.icon size={13} className="shrink-0 opacity-80 group-hover:scale-110 transition-transform" />}
+                                    <span>{sub.label}</span>
+                                  </div>
+                                  {sub.badge && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-blue-500/40 text-blue-200 uppercase">
+                                      {sub.badge}
+                                    </span>
+                                  )}
+                                </NavLink>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              }
+
               return (
                 <NavLink
                   key={item.to}
@@ -531,14 +757,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <header className="h-14 sm:h-16 flex items-center justify-between px-3.5 sm:px-6 md:px-8 bg-surface border-b border-border flex-shrink-0 z-30 shadow-2xs">
           {/* Mobile Header Left Brand */}
           <div className="flex items-center gap-2 lg:hidden">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-1 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors active:scale-95"
-              aria-label="Open Menu"
-            >
-              <Menu size={22} className="stroke-[2.4]" />
-            </button>
-
             <div className="flex items-center gap-2">
               <div className={cn(
                 "w-7 h-7 rounded-lg p-0.5 shadow-xs flex items-center justify-center bg-gradient-to-br",

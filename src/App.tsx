@@ -20,6 +20,7 @@ import Reports from './Reports';
 import QRScanner from './QRScanner';
 import UsersManagement from './UsersManagement';
 import Requests from './Requests';
+import Maintenance from './Maintenance';
 import { AppPreloader } from './components/AppPreloader';
 import { loginWithUsernameAndPassword } from './db';
 import { Compass, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
@@ -194,6 +195,9 @@ export default function App() {
               <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
               <Route path="/new-trip" element={<ProtectedRoute><NewTrip /></ProtectedRoute>} />
               <Route path="/morning-prep" element={<ProtectedRoute><MorningPrep /></ProtectedRoute>} />
+              <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
+              <Route path="/maintenance/gps" element={<ProtectedRoute><Maintenance defaultTab="gps" /></ProtectedRoute>} />
+              <Route path="/maintenance/gps-device" element={<ProtectedRoute><Maintenance defaultTab="gps" /></ProtectedRoute>} />
               <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
               <Route path="/cases" element={<ProtectedRoute><CaseManagement /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />

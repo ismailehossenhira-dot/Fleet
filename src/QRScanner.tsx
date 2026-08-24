@@ -1712,7 +1712,7 @@ const QRScanner: React.FC = () => {
     <div className="space-y-6">
       {/* Page Header */}
       <div className={cn(
-        "p-5 rounded-2xl border shadow-xs flex items-center justify-between gap-4 flex-wrap",
+        "p-3.5 sm:p-5 rounded-2xl border shadow-xs flex items-center justify-between gap-4 flex-wrap",
         isEmerald 
           ? "bg-gradient-to-r from-[#e8f7f2] via-[#d3f1e7] to-white border-[#b5e7d8]"
           : isCrimson
@@ -1723,18 +1723,18 @@ const QRScanner: React.FC = () => {
       )}>
         <div className="flex items-center gap-3">
           <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md font-bold shrink-0 bg-gradient-to-br",
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-md font-bold shrink-0 bg-gradient-to-br",
             currentThemeOption.previewGradient
           )}>
-            <QrCode size={24} />
+            <QrCode size={22} className="sm:w-6 sm:h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                কিউআর কোড স্মার্ট স্ক্যানার (QR Scanner)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                কিউআর কোড স্ক্যানার
               </h2>
               <span className={cn(
-                "text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border shadow-2xs",
+                "hidden sm:inline-block text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border shadow-2xs",
                 isEmerald ? "bg-[#d5f3e8] text-[#0f513f] border-[#a1dec9]" :
                 isCrimson ? "bg-[#ffe4e6] text-[#9f1239] border-[#fecdd3]" :
                 isAmber ? "bg-[#fef3c7] text-[#78350f] border-[#fde68a]" :
@@ -1743,13 +1743,14 @@ const QRScanner: React.FC = () => {
                 {currentThemeOption.name}
               </span>
             </div>
-            <p className="text-xs text-slate-600 font-medium mt-0.5">
+            {/* Explanatory text hidden on mobile phones for cleaner interface */}
+            <p className="hidden md:block text-xs text-slate-600 font-medium mt-0.5">
               ক্যামেরা বা গাড়ির রেজিস্ট্রেশন নম্বর ব্যবহার করে দ্রুত IN / OUT ট্রিপ ও ইন্সপেকশন পরিচালনা করুন।
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
             সক্রিয় ফ্লিট: <strong className="text-slate-800 font-mono">{vehicles.length}</strong> টি গাড়ি
           </span>

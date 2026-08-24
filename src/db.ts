@@ -1035,4 +1035,141 @@ export const addStaffNote = async (noteData: {
   }
 };
 
+// --- Maintenance Collection ---
+export const addMaintenanceRecord = async (data: any, setVehicleStatus: boolean = true, profile?: any) => {
+  try {
+    const docRef = await addDoc(collection(db, 'maintenance'), {
+      ...data,
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    if (setVehicleStatus && data.status !== 'Completed') {
+      try {
+        if (data.vehicleId) {
+          await updateVehicleStatus(data.vehicleId, 'Maintenance', `${data.title} (${data.category || 'Maintenance'})`, profile);
+        }
+      } catch (vehErr) {
+        console.warn("Could not auto-update vehicle status on maintenance:", vehErr);
+      }
+    }
+
+    return docRef;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'maintenance');
+  }
+};
+
+export const updateMaintenanceRecord = async (id: string, updates: any, profile?: any) => {
+  try {
+    const docRef = doc(db, 'maintenance', id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `maintenance/${id}`);
+  }
+};
+
+export const completeMaintenanceRecord = async (id: string, vehicleId: string, vehiclePlate: string, profile?: any) => {
+  try {
+    const docRef = doc(db, 'maintenance', id);
+    await updateDoc(docRef, {
+      status: 'Completed',
+      completedDate: new Date().toISOString().split('T')[0],
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Make vehicle Available again
+    if (vehicleId) {
+      try {
+        await updateVehicleStatus(vehicleId, 'Available', '', profile);
+      } catch (vehErr) {
+        console.warn("Could not set vehicle back to Available:", vehErr);
+      }
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `maintenance/${id}`);
+  }
+};
+
+export const deleteMaintenanceRecord = async (id: string) => {
+  try {
+    await deleteDoc(doc(db, 'maintenance', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `maintenance/${id}`);
+  }
+};
+
+// --- GPS & Camera Devices (ADL & BD Tracking) Collection ---
+export interface GPSDeviceRecord {
+  id?: string;
+  vehicleId?: string;
+  vehiclePlate: string;
+  provider: 'ADL' | 'BD Tracking';
+  deviceId?: string;
+  simNumber?: string;
+  gpsStatus: 'Online' | 'Offline' | 'No Signal' | 'Power Cut';
+  cameraStatus: 'OK' | 'Damaged' | 'Offline' | 'No Video' | 'Cable Issue' | 'Not Installed';
+  issueType?: string;
+  offlineSince?: string; // YYYY-MM-DD
+  lastKnownLocation?: string;
+  notes?: string;
+  ticketNumber?: string;
+  actionStatus?: 'Active Issue' | 'Complain Lodged' | 'Technician Scheduled' | 'Resolved';
+  resolvedDate?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export const addGPSDevice = async (data: GPSDeviceRecord, profile?: any) => {
+  try {
+    return await addDoc(collection(db, 'gps_devices'), {
+      ...data,
+      vehiclePlate: data.vehiclePlate.trim().toUpperCase(),
+      provider: data.provider || 'ADL',
+      gpsStatus: data.gpsStatus || 'Online',
+      cameraStatus: data.cameraStatus || 'OK',
+      actionStatus: data.actionStatus || (data.gpsStatus === 'Offline' || data.cameraStatus === 'Damaged' ? 'Active Issue' : 'Resolved'),
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'gps_devices');
+  }
+};
+
+export const updateGPSDevice = async (id: string, updates: Partial<GPSDeviceRecord>, profile?: any) => {
+  try {
+    const docRef = doc(db, 'gps_devices', id);
+    const payload: any = {
+      ...updates,
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp(),
+    };
+    if (updates.vehiclePlate) {
+      payload.vehiclePlate = updates.vehiclePlate.trim().toUpperCase();
+    }
+    await updateDoc(docRef, payload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `gps_devices/${id}`);
+  }
+};
+
+export const deleteGPSDevice = async (id: string) => {
+  try {
+    await deleteDoc(doc(db, 'gps_devices', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `gps_devices/${id}`);
+  }
+};
+
+
 

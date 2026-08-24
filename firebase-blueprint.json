@@ -237,6 +237,32 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["staffId", "staffName", "authorName", "authorRole", "noteText"]
+    },
+    "GPSDevice": {
+      "title": "GPS Device",
+      "description": "Represents vehicle GPS and dashcam tracking status, vendor and offline duration logs",
+      "type": "object",
+      "properties": {
+        "vehicleId": { "type": "string" },
+        "vehiclePlate": { "type": "string" },
+        "provider": { "type": "string", "enum": ["ADL", "BD Tracking"] },
+        "deviceId": { "type": "string" },
+        "simNumber": { "type": "string" },
+        "gpsStatus": { "type": "string", "enum": ["Online", "Offline", "No Signal", "Power Cut"] },
+        "cameraStatus": { "type": "string", "enum": ["OK", "Damaged", "Offline", "No Video", "Cable Issue", "Not Installed"] },
+        "issueType": { "type": "string" },
+        "offlineSince": { "type": "string" },
+        "lastKnownLocation": { "type": "string" },
+        "notes": { "type": "string" },
+        "ticketNumber": { "type": "string" },
+        "actionStatus": { "type": "string", "enum": ["Active Issue", "Complain Lodged", "Technician Scheduled", "Resolved"] },
+        "resolvedDate": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["vehiclePlate", "provider"]
     }
   },
   "firestore": {
@@ -279,6 +305,10 @@
     "staff_notes": {
       "schema": "StaffNote",
       "description": "Collection of permanent rating history and manager/admin notes for drivers and helpers"
+    },
+    "gps_devices": {
+      "schema": "GPSDevice",
+      "description": "Collection of vehicle GPS trackers and camera status logs for ADL and BD Tracking"
     }
   }
 }
