@@ -58,7 +58,7 @@ service cloud.firestore {
     function isValidVehicle(data) {
       return data.keys().hasAll(['vehicleNumber', 'type', 'status'])
         && data.vehicleNumber is string && data.vehicleNumber.size() > 0 && data.vehicleNumber.size() <= 64
-        && data.type in ['Small', 'Medium', 'Large']
+        && data.type is string && data.type.size() > 0 && data.type.size() <= 64
         && data.status in ['Available', 'On Trip', 'Maintenance', 'Pending Out Scan'];
     }
 
@@ -110,12 +110,7 @@ service cloud.firestore {
         // Action: Generic Update
         canManage() || isLineSupervisor()
       );
-      allow delete: if (canManage() || isLineSupervisor()) 
-        && (
-          existing().status == 'Pending' ||
-          existing().status == 'Cancelled' ||
-          (existing().status != 'Running' && (existing().startTime == null || existing().startTime < request.time - duration.value(24, 'h')))
-        );
+      allow delete: if canManage() || (isLineSupervisor() && existing().status in ['Pending', 'Cancelled']);
     }
 
     match /cases/{caseId} {
@@ -197,7 +192,7 @@ service cloud.firestore {
     match /maintenance/{maintenanceId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
-      allow delete: if canManage();
+      allow delete: if canManage() || isLineSupervisor();
     }
 
     match /staff_notes/{noteId} {
@@ -216,7 +211,7 @@ service cloud.firestore {
     match /gps_devices/{deviceId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn() && isValidGPSDevice(incoming());
-      allow delete: if canManage();
+      allow delete: if canManage() || isLineSupervisor();
     }
   }
 }

@@ -12,7 +12,8 @@ import {
   serverTimestamp,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
@@ -94,13 +95,42 @@ export const addVehicle = async (vehicle: any, profile?: any) => {
 
 export const updateVehicleStatus = async (vehicleId: string, status: string, maintenanceNotes?: string, profile?: any) => {
   try {
-    const docRef = doc(db, 'vehicles', vehicleId);
-    
-    // Fetch current status to check transition
-    const docSnap = await getDoc(docRef);
-    const vehicleData = docSnap.exists() ? docSnap.data() : null;
-    const oldStatus = vehicleData ? vehicleData.status : 'None';
-    const vehiclePlate = vehicleData ? vehicleData.vehicleNumber : 'Unknown';
+    if (!vehicleId) return;
+    let docRef = doc(db, 'vehicles', vehicleId);
+    let docSnap = await getDoc(docRef);
+    let realVehicleId = vehicleId;
+
+    if (!docSnap.exists()) {
+      // Try finding vehicle document by vehicleNumber
+      const q = query(
+        collection(db, 'vehicles'),
+        where('vehicleNumber', '==', vehicleId.trim().toUpperCase())
+      );
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        docRef = querySnap.docs[0].ref;
+        docSnap = querySnap.docs[0];
+        realVehicleId = docSnap.id;
+      } else {
+        // Fallback: try case-insensitive or trimmed search across all vehicles
+        const allVehSnap = await getDocs(collection(db, 'vehicles'));
+        const matched = allVehSnap.docs.find(d => 
+          (d.data().vehicleNumber || '').replace(/\s+/g, '').toUpperCase() === vehicleId.replace(/\s+/g, '').toUpperCase()
+        );
+        if (matched) {
+          docRef = matched.ref;
+          docSnap = matched;
+          realVehicleId = matched.id;
+        } else {
+          console.warn(`Vehicle with ID/Plate "${vehicleId}" not found in vehicles collection.`);
+          return;
+        }
+      }
+    }
+
+    const vehicleData = docSnap.data();
+    const oldStatus = vehicleData ? (vehicleData.status || 'None') : 'None';
+    const vehiclePlate = vehicleData ? (vehicleData.vehicleNumber || vehicleId) : vehicleId;
 
     const updates: any = { 
       status, 
@@ -116,7 +146,7 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
       try {
         const q = query(
           collection(db, 'trips'),
-          where('vehicleId', '==', vehicleId)
+          where('vehicleId', '==', realVehicleId)
         );
         const tripsSnap = await getDocs(q);
         for (const docObj of tripsSnap.docs) {
@@ -145,7 +175,7 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
       try {
         const q = query(
           collection(db, 'trips'),
-          where('vehicleId', '==', vehicleId),
+          where('vehicleId', '==', realVehicleId),
           where('status', '==', 'Running')
         );
         const tripsSnap = await getDocs(q);
@@ -161,7 +191,7 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
         // Also delete any Pending trips for this vehicle (since they never left the garage)
         const qPending = query(
           collection(db, 'trips'),
-          where('vehicleId', '==', vehicleId),
+          where('vehicleId', '==', realVehicleId),
           where('status', '==', 'Pending')
         );
         const pendingSnap = await getDocs(qPending);
@@ -186,15 +216,19 @@ export const updateVehicleStatus = async (vehicleId: string, status: string, mai
 
     // Log the status transition if status changed
     if (oldStatus !== status) {
-      await addDoc(collection(db, 'vehicle_status_logs'), {
-        vehicleId,
-        vehiclePlate,
-        oldStatus,
-        newStatus: status,
-        notes: maintenanceNotes || '',
-        createdBy: getUserString(profile),
-        createdAt: serverTimestamp()
-      });
+      try {
+        await addDoc(collection(db, 'vehicle_status_logs'), {
+          vehicleId: realVehicleId,
+          vehiclePlate,
+          oldStatus,
+          newStatus: status,
+          notes: maintenanceNotes || '',
+          createdBy: getUserString(profile),
+          createdAt: serverTimestamp()
+        });
+      } catch (logErr) {
+        console.warn("Could not write vehicle_status_logs:", logErr);
+      }
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `vehicles/${vehicleId}`);
@@ -505,6 +539,23 @@ export const deleteTrip = async (tripId: string) => {
   }
 };
 
+export const deleteMultipleTrips = async (tripIds: string[]) => {
+  if (!tripIds || tripIds.length === 0) return;
+  try {
+    const batchSize = 400;
+    for (let i = 0; i < tripIds.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = tripIds.slice(i, i + batchSize);
+      chunk.forEach(id => {
+        batch.delete(doc(db, 'trips', id));
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'trips (batch)');
+  }
+};
+
 export const cancelPendingTrip = async (tripId: string, vehicleId?: string, profile?: any) => {
   try {
     const tripRef = doc(db, 'trips', tripId);
@@ -661,6 +712,31 @@ export const deleteMissingReport = async (reportId: string) => {
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `missing_reports/${reportId}`);
+  }
+};
+
+export const deleteMissingReportHistory = async (historyId: string) => {
+  try {
+    await deleteDoc(doc(db, 'missing_reports_history', historyId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `missing_reports_history/${historyId}`);
+  }
+};
+
+export const deleteMultipleMissingReportHistory = async (historyIds: string[]) => {
+  if (!historyIds || historyIds.length === 0) return;
+  try {
+    const batchSize = 400;
+    for (let i = 0; i < historyIds.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = historyIds.slice(i, i + batchSize);
+      chunk.forEach(id => {
+        batch.delete(doc(db, 'missing_reports_history', id));
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'missing_reports_history (batch)');
   }
 };
 
@@ -1074,7 +1150,7 @@ export const updateMaintenanceRecord = async (id: string, updates: any, profile?
   }
 };
 
-export const completeMaintenanceRecord = async (id: string, vehicleId: string, vehiclePlate: string, profile?: any) => {
+export const completeMaintenanceRecord = async (id: string, vehicleId?: string, vehiclePlate?: string, profile?: any) => {
   try {
     const docRef = doc(db, 'maintenance', id);
     await updateDoc(docRef, {
@@ -1085,9 +1161,10 @@ export const completeMaintenanceRecord = async (id: string, vehicleId: string, v
     });
 
     // Make vehicle Available again
-    if (vehicleId) {
+    const targetVeh = vehicleId || vehiclePlate;
+    if (targetVeh) {
       try {
-        await updateVehicleStatus(vehicleId, 'Available', '', profile);
+        await updateVehicleStatus(targetVeh, 'Available', '', profile);
       } catch (vehErr) {
         console.warn("Could not set vehicle back to Available:", vehErr);
       }
@@ -1102,6 +1179,23 @@ export const deleteMaintenanceRecord = async (id: string) => {
     await deleteDoc(doc(db, 'maintenance', id));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `maintenance/${id}`);
+  }
+};
+
+export const deleteMultipleMaintenanceRecords = async (ids: string[]) => {
+  if (!ids || ids.length === 0) return;
+  try {
+    const batchSize = 400;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = writeBatch(db);
+      const chunk = ids.slice(i, i + batchSize);
+      chunk.forEach(id => {
+        batch.delete(doc(db, 'maintenance', id));
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'maintenance (batch)');
   }
 };
 
@@ -1120,6 +1214,7 @@ export interface GPSDeviceRecord {
   lastKnownLocation?: string;
   notes?: string;
   ticketNumber?: string;
+  vendorNotifyCount?: number;
   actionStatus?: 'Active Issue' | 'Complain Lodged' | 'Technician Scheduled' | 'Resolved';
   resolvedDate?: string;
   createdBy?: string;

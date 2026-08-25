@@ -6,6 +6,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Restricts phone number input to digits only and maximum 11 digits.
+ * Converts Bengali digits (০-৯) to English (0-9) automatically.
+ */
+export function sanitizePhoneNumber(value: string, maxLength: number = 11): string {
+  if (!value) return '';
+  const bengaliToEnglish: Record<string, string> = {
+    '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+    '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+  };
+  const normalized = String(value).replace(/[০-৯]/g, d => bengaliToEnglish[d] || d);
+  const digitsOnly = normalized.replace(/\D/g, '');
+  return digitsOnly.slice(0, maxLength);
+}
+
 export const DOCUMENT_TYPES = ['RP', 'FC', 'TT', 'RC', 'ADS'] as const;
 export type DocumentType = typeof DOCUMENT_TYPES[number];
 
@@ -29,8 +44,17 @@ export const FAMILY_RELATIONS = [
 
 export type FamilyRelation = typeof FAMILY_RELATIONS[number]['value'];
 
-export const VEHICLE_TYPES = ['Small', 'Medium', 'Large'] as const;
-export type VehicleType = typeof VEHICLE_TYPES[number];
+export const VEHICLE_TYPES = [
+  'Dost Plus',
+  'Leo',
+  'Partner 1.5T',
+  'Partner 3T',
+  'AL 12-14',
+  'Tata 407',
+  'Tata XL',
+  'V 20'
+] as const;
+export type VehicleType = typeof VEHICLE_TYPES[number] | string;
 
 export const VEHICLE_STATUSES = ['Available', 'On Trip', 'Maintenance'] as const;
 export type VehicleStatus = typeof VEHICLE_STATUSES[number];

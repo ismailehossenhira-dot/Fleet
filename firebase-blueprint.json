@@ -238,6 +238,22 @@
       },
       "required": ["staffId", "staffName", "authorName", "authorRole", "noteText"]
     },
+    "VehicleModel": {
+      "title": "Vehicle Model",
+      "description": "Represents vehicle models / categories managed dynamically by Admins",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "capacity": { "type": "string" },
+        "description": { "type": "string" },
+        "isDefault": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
+    },
     "GPSDevice": {
       "title": "GPS Device",
       "description": "Represents vehicle GPS and dashcam tracking status, vendor and offline duration logs",
@@ -309,6 +325,10 @@
     "gps_devices": {
       "schema": "GPSDevice",
       "description": "Collection of vehicle GPS trackers and camera status logs for ADL and BD Tracking"
+    },
+    "vehicle_models": {
+      "schema": "VehicleModel",
+      "description": "Collection of dynamic vehicle models and categories managed by Admins"
     }
   }
 }

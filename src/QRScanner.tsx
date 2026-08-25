@@ -165,31 +165,34 @@ const QRScanner: React.FC = () => {
       unsubCases();
       unsubMissing();
       if (scannerRef.current) {
+        const currentScanner = scannerRef.current;
+        scannerRef.current = null;
         try {
-          scannerRef.current.stop()
+          currentScanner.stop()
             .then(() => {
               const container = document.getElementById("qr-reader-container");
               if (container) container.innerHTML = "";
             })
-            .catch(err => console.error("Error stopping scanner on unmount:", err));
-        } catch (e) {
-          console.error("Scanner stop error on unmount:", e);
+            .catch(() => {
+              // Benign abort/stop on unmount
+            });
+        } catch {
+          // Benign catch
         }
       }
     };
   }, []);
 
-  // Auto-start camera when no result is scanned and scanner isn't explicitly stopped by user
+  // Auto-start camera ONLY when camera mode is active, no result is scanned, and scanner isn't explicitly stopped by user
   useEffect(() => {
-    if (!scanResult && !scannerActive && !userStoppedScanner) {
+    if (activeScanMode === 'camera' && !scanResult && !scannerActive && !userStoppedScanner) {
       startCameraScanner();
     }
-  }, [scanResult, scannerActive, userStoppedScanner]);
+  }, [scanResult, scannerActive, userStoppedScanner, activeScanMode]);
 
   // Initialize html5-qrcode scanner
   const startCameraScanner = () => {
     if (isStartingRef.current || scannerRef.current) {
-      console.log("Scanner already starting or active, ignoring duplicate start request.");
       return;
     }
     isStartingRef.current = true;
@@ -200,9 +203,12 @@ const QRScanner: React.FC = () => {
     // Defer initialization to let the div mount in the DOM
     setTimeout(() => {
       const container = document.getElementById("qr-reader-container");
-      if (container) {
-        container.innerHTML = ""; // Clear any duplicate or corrupted leftover elements!
+      if (!container) {
+        isStartingRef.current = false;
+        setScannerActive(false);
+        return;
       }
+      container.innerHTML = ""; // Clear any duplicate or corrupted leftover elements!
 
       try {
         const scanner = new Html5Qrcode("qr-reader-container");
@@ -222,27 +228,33 @@ const QRScanner: React.FC = () => {
                 scannerRef.current = null;
                 if (container) container.innerHTML = "";
               })
-              .catch(err => {
-                console.error("Error stopping scanner on decode:", err);
+              .catch(() => {
                 setScannerActive(false);
                 scannerRef.current = null;
                 if (container) container.innerHTML = "";
               });
           },
-          (error) => {
-            // Subtle debug log, not spamming UI
+          () => {
+            // Frame scan tick, ignore
           }
         ).then(() => {
           scannerRef.current = scanner;
           isStartingRef.current = false;
         }).catch((err: any) => {
-          console.warn("Scanner startup error inside start promise:", err);
+          const errStr = String(err?.message || err || '');
+          // Ignore benign abort/cancelled errors during navigation
+          if (errStr.includes("aborted") || errStr.includes("AbortError") || errStr.includes("cancelled")) {
+            setScannerActive(false);
+            isStartingRef.current = false;
+            if (container) container.innerHTML = "";
+            return;
+          }
+
           let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।";
-          const errStr = String(err);
           if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
-            errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। আপনি যদি ডেভেলপমেন্ট বা স্যান্ডবক্স আইফ্রেম মুডে থাকেন, অনুগ্রহ করে নিচের স্মার্ট সিমুলেটর (Simulator Fallback) ব্যবহার করে টেস্ট করুন।";
+            errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। আপনি যদি ডেভেলপমেন্ট বা স্যান্ডবক্স আইফ্রেম মুডে থাকেন, অনুগ্রহ করে গাড়ির নম্বর দিয়ে সার্চ (Manual) মুড ব্যবহার করুন।";
           } else if (errStr.includes("NotAllowedError") || errStr.includes("permission") || (err && err.name === "NotAllowedError")) {
-            errMsg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজার সেটিংসে ক্যামেরা অ্যাক্সেস দিন অথবা নিচের স্মার্ট সিমুলেটর ব্যবহার করুন।";
+            errMsg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজার সেটিংসে ক্যামেরা অ্যাক্সেস দিন অথবা গাড়ির নম্বর দিয়ে সার্চ (Manual) মুড ব্যবহার করুন।";
           }
           setScannerError(errMsg);
           setScannerActive(false);
@@ -251,11 +263,16 @@ const QRScanner: React.FC = () => {
         });
         
       } catch (err: any) {
-        console.warn("Scanner startup error:", err);
-        let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।";
-        const errStr = String(err);
+        const errStr = String(err?.message || err || '');
+        if (errStr.includes("aborted") || errStr.includes("AbortError") || errStr.includes("cancelled")) {
+          setScannerActive(false);
+          isStartingRef.current = false;
+          if (container) container.innerHTML = "";
+          return;
+        }
+        let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন।";
         if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
-          errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। অনুগ্রহ করে নিচের স্মার্ট সিমুলেটর (Simulator Fallback) ব্যবহার করে সহজেই টেস্ট করুন।";
+          errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)।";
         }
         setScannerError(errMsg);
         setScannerActive(false);
@@ -279,8 +296,7 @@ const QRScanner: React.FC = () => {
             container.innerHTML = "";
           }
         })
-        .catch(err => {
-          console.error("Error stopping scanner:", err);
+        .catch(() => {
           setScannerActive(false);
           const container = document.getElementById("qr-reader-container");
           if (container) {

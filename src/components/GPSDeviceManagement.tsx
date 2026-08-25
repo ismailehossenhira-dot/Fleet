@@ -32,7 +32,7 @@ import {
   deleteGPSDevice,
   GPSDeviceRecord 
 } from '../db';
-import { cn } from '../lib/utils';
+import { cn, sanitizePhoneNumber } from '../lib/utils';
 import { useAuth } from '../AuthContext';
 import { useSearch } from '../SearchContext';
 import { useTheme } from '../ThemeContext';
@@ -70,7 +70,7 @@ export const GPSDeviceManagement: React.FC = () => {
     offlineSince: new Date().toISOString().split('T')[0],
     lastKnownLocation: '',
     notes: '',
-    ticketNumber: '',
+    vendorNotifyCount: 0,
     actionStatus: 'Active Issue' as GPSDeviceRecord['actionStatus']
   });
 
@@ -182,7 +182,8 @@ export const GPSDeviceManagement: React.FC = () => {
         (d.simNumber || '').toLowerCase().includes(q) ||
         (d.notes || '').toLowerCase().includes(q) ||
         (d.lastKnownLocation || '').toLowerCase().includes(q) ||
-        (d.ticketNumber || '').toLowerCase().includes(q)
+        (d.ticketNumber || '').toLowerCase().includes(q) ||
+        String(d.vendorNotifyCount || '').includes(q)
       );
 
       return matchesTab && matchesProvider && matchesDuration && matchesSearch;
@@ -202,7 +203,7 @@ export const GPSDeviceManagement: React.FC = () => {
       offlineSince: new Date().toISOString().split('T')[0],
       lastKnownLocation: '',
       notes: '',
-      ticketNumber: '',
+      vendorNotifyCount: 0,
       actionStatus: 'Active Issue'
     });
     setShowAddModal(true);
@@ -221,7 +222,7 @@ export const GPSDeviceManagement: React.FC = () => {
       offlineSince: dev.offlineSince || new Date().toISOString().split('T')[0],
       lastKnownLocation: dev.lastKnownLocation || '',
       notes: dev.notes || '',
-      ticketNumber: dev.ticketNumber || '',
+      vendorNotifyCount: dev.vendorNotifyCount !== undefined ? dev.vendorNotifyCount : 0,
       actionStatus: dev.actionStatus || 'Active Issue'
     });
     setShowAddModal(true);
@@ -249,7 +250,7 @@ export const GPSDeviceManagement: React.FC = () => {
       offlineSince: formData.offlineSince,
       lastKnownLocation: formData.lastKnownLocation.trim(),
       notes: formData.notes.trim(),
-      ticketNumber: formData.ticketNumber.trim(),
+      vendorNotifyCount: Math.max(0, Number(formData.vendorNotifyCount) || 0),
       actionStatus: formData.actionStatus
     };
 
@@ -348,12 +349,14 @@ export const GPSDeviceManagement: React.FC = () => {
                 <th>জিপিএস স্ট্যাটাস</th>
                 <th>ক্যামেরা স্ট্যাটাস</th>
                 <th>কতোদিন অফলাইন</th>
+                <th>ভেন্ডারকে জানানো</th>
                 <th>সমস্যার ধরন ও মন্তব্য</th>
               </tr>
             </thead>
             <tbody>
               ${listToPrint.map((item, idx) => {
                 const days = calculateDays(item.offlineSince);
+                const notified = item.vendorNotifyCount || 0;
                 return `
                   <tr>
                     <td>${idx + 1}</td>
@@ -365,6 +368,11 @@ export const GPSDeviceManagement: React.FC = () => {
                     <td>
                       <span class="${days >= 7 ? 'badge-crit' : 'badge-warn'}">
                         ${days} দিন (${item.offlineSince || 'N/A'})
+                      </span>
+                    </td>
+                    <td>
+                      <span class="${notified >= 3 ? 'badge-crit' : notified >= 1 ? 'badge-warn' : ''}">
+                        ${notified === 0 ? '০ বার' : `${notified} বার`}
                       </span>
                     </td>
                     <td>
@@ -796,12 +804,22 @@ export const GPSDeviceManagement: React.FC = () => {
                         <span className="font-medium text-slate-800 truncate max-w-[140px]">{dev.lastKnownLocation}</span>
                       </div>
                     )}
-                    {dev.ticketNumber && (
-                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-1">
-                        <span className="text-slate-500 text-[11px]">ভেন্ডর কমপ্লেইন নং:</span>
-                        <span className="font-mono font-bold text-blue-700">{dev.ticketNumber}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5 mt-1">
+                      <span className="text-slate-600 text-[11px] font-semibold flex items-center gap-1.5">
+                        <PhoneCall size={12} className="text-slate-400" />
+                        <span>ভেন্ডারকে জানানো হয়েছে:</span>
+                      </span>
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-md text-[11px] font-bold font-mono",
+                        (dev.vendorNotifyCount || 0) >= 3 
+                          ? "bg-rose-100 text-rose-800 border border-rose-200" 
+                          : (dev.vendorNotifyCount || 0) >= 1 
+                          ? "bg-amber-100 text-amber-800 border border-amber-200" 
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                      )}>
+                        {(dev.vendorNotifyCount || 0) === 0 ? '০ বার (জানানো হয়নি)' : `${dev.vendorNotifyCount} বার`}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Notes / Remarks */}
@@ -924,12 +942,13 @@ export const GPSDeviceManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">সিম কার্ড নম্বর</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">সিম কার্ড নম্বর (সর্বোচ্চ ১১ ডিজিট)</label>
                   <input
-                    type="text"
+                    type="tel"
+                    maxLength={11}
                     placeholder="যেমন: 01712345678"
                     value={formData.simNumber}
-                    onChange={(e) => setFormData({ ...formData, simNumber: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, simNumber: sanitizePhoneNumber(e.target.value) })}
                     className="w-full text-xs font-mono font-medium px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
@@ -1002,7 +1021,7 @@ export const GPSDeviceManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action / Complain Ticket */}
+              {/* Action & Vendor Notification Count */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">পদক্ষেপ / অ্যাকশন স্ট্যাটাস</label>
@@ -1019,14 +1038,59 @@ export const GPSDeviceManagement: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">ভেন্ডর টিকিট / কমপ্লেইন নং</label>
-                  <input
-                    type="text"
-                    placeholder="যেমন: TKT-ADL-9921"
-                    value={formData.ticketNumber}
-                    onChange={(e) => setFormData({ ...formData, ticketNumber: e.target.value })}
-                    className="w-full text-xs font-mono font-medium px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      <PhoneCall size={13} className="text-blue-600" />
+                      <span>ভেন্ডারকে কতোবার জানানো হয়েছে</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-slate-500 font-mono">
+                      {formData.vendorNotifyCount || 0} বার
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, vendorNotifyCount: Math.max(0, (Number(prev.vendorNotifyCount) || 0) - 1) }))}
+                      className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center border border-slate-200 text-base active:scale-95 transition-all"
+                      title="১ কমান"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={formData.vendorNotifyCount}
+                      onChange={(e) => setFormData({ ...formData, vendorNotifyCount: Math.max(0, parseInt(e.target.value) || 0) })}
+                      className="flex-1 text-center font-mono font-black text-sm py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, vendorNotifyCount: (Number(prev.vendorNotifyCount) || 0) + 1 }))}
+                      className="w-9 h-9 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold flex items-center justify-center border border-blue-200 text-base active:scale-95 transition-all"
+                      title="১ বাড়ান"
+                    >
+                      +
+                    </button>
+                  </div>
+                  {/* Quick Select Preset Buttons */}
+                  <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto pb-0.5">
+                    {[0, 1, 2, 3, 5].map((cnt) => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, vendorNotifyCount: cnt })}
+                        className={cn(
+                          "px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all shrink-0",
+                          (Number(formData.vendorNotifyCount) || 0) === cnt
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                        )}
+                      >
+                        {cnt === 0 ? '০ বার' : `${cnt} বার`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

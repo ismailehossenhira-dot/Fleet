@@ -3,7 +3,7 @@ import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, Ch
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown, StaffProfileButton, StaffProfileModal } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
-import { STAFF_ROLES, cn } from './lib/utils';
+import { STAFF_ROLES, cn, sanitizePhoneNumber } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
 import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
@@ -455,10 +455,11 @@ const Drivers: React.FC = () => {
                     <input 
                       type="tel" 
                       required
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      maxLength={11}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-mono"
                       placeholder="017XXXXXXXX"
                       value={newDriver.phoneNumber}
-                      onChange={e => setNewDriver({ ...newDriver, phoneNumber: e.target.value })}
+                      onChange={e => setNewDriver({ ...newDriver, phoneNumber: sanitizePhoneNumber(e.target.value) })}
                     />
                   </div>
                   <div>
@@ -478,10 +479,11 @@ const Drivers: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
                     <input 
                       type="tel" 
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      maxLength={11}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-mono"
                       placeholder="018XXXXXXXX"
                       value={newDriver.familyPhone}
-                      onChange={e => setNewDriver({ ...newDriver, familyPhone: e.target.value })}
+                      onChange={e => setNewDriver({ ...newDriver, familyPhone: sanitizePhoneNumber(e.target.value) })}
                     />
                   </div>
                   <div>
@@ -582,9 +584,10 @@ const Drivers: React.FC = () => {
                     <input 
                       type="tel" 
                       required
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      maxLength={11}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-mono"
                       value={editingDriver.phoneNumber || ''}
-                      onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: e.target.value })}
+                      onChange={e => setEditingDriver({ ...editingDriver, phoneNumber: sanitizePhoneNumber(e.target.value) })}
                     />
                   </div>
                   <div>
@@ -604,10 +607,11 @@ const Drivers: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
                     <input 
                       type="tel" 
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
+                      maxLength={11}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-mono"
                       placeholder="018XXXXXXXX"
                       value={editingDriver.familyPhone || ''}
-                      onChange={e => setEditingDriver({ ...editingDriver, familyPhone: e.target.value })}
+                      onChange={e => setEditingDriver({ ...editingDriver, familyPhone: sanitizePhoneNumber(e.target.value) })}
                     />
                   </div>
                   <div>

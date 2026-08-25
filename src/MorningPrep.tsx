@@ -150,7 +150,7 @@ const MorningPrep: React.FC = () => {
     const prepPayload = {
       vehicleId: selectedVehicle,
       vehiclePlate: vehicleObj?.vehicleNumber || 'Unknown Vehicle',
-      vehicleType: vehicleObj?.type || 'Medium',
+      vehicleType: vehicleObj?.type || 'Dost Plus',
       driverId: selectedDriver,
       driverName: driverObj?.name || 'Unknown Driver',
       driverPhone: driverObj?.phone || '',

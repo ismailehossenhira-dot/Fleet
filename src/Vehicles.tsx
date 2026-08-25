@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench } from 'lucide-react';
 import { Card, Button, AuditDetailsDropdown, VehicleProfileButton, VehicleProfileModal } from './components/Common';
 import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus } from './db';
-import { VEHICLE_TYPES, VEHICLE_STATUSES, cn } from './lib/utils';
+import { VEHICLE_TYPES, VEHICLE_STATUSES, VehicleType, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -23,7 +23,7 @@ const Vehicles: React.FC = () => {
 
   const [newVehicle, setNewVehicle] = useState({
     vehicleNumber: '',
-    type: 'Medium' as 'Small' | 'Medium' | 'Large',
+    type: 'Dost Plus' as VehicleType,
     status: 'Available' as 'Available' | 'Maintenance',
     maintenanceNotes: ''
   });
@@ -139,7 +139,7 @@ const Vehicles: React.FC = () => {
 
   const handleCancel = () => {
     setShowAdd(false);
-    setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
+    setNewVehicle({ vehicleNumber: '', type: 'Dost Plus', status: 'Available', maintenanceNotes: '' });
     localStorage.removeItem('vehicles_newVehicle');
     localStorage.removeItem('vehicles_showAdd');
   };
@@ -155,7 +155,7 @@ const Vehicles: React.FC = () => {
       normalizedVehicle.maintenanceNotes = '';
     }
     await addVehicle(normalizedVehicle, profile);
-    setNewVehicle({ vehicleNumber: '', type: 'Medium', status: 'Available', maintenanceNotes: '' });
+    setNewVehicle({ vehicleNumber: '', type: 'Dost Plus', status: 'Available', maintenanceNotes: '' });
     setShowAdd(false);
     localStorage.removeItem('vehicles_newVehicle');
     localStorage.removeItem('vehicles_showAdd');
@@ -217,10 +217,19 @@ const Vehicles: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900">Vehicle Management</h2>
           <p className="text-slate-500">Register and manage your fleet inventory.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setTypeFilter(typeFilter === 'All' ? 'Small' : typeFilter === 'Small' ? 'Medium' : typeFilter === 'Medium' ? 'Large' : 'All')}>
-            Filter: {typeFilter}
-          </Button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+            >
+              <option value="All">সকল মডেল (All Models)</option>
+              {VEHICLE_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
           {canManage && (
             <Button onClick={() => setShowAdd(!showAdd)}>
               <Plus size={20} />
@@ -272,7 +281,7 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির মডেল (Vehicle Model)</label>
                     <select 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
                       value={newVehicle.type}
@@ -362,7 +371,7 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Vehicle Type</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির নাম / মডেল (Vehicle Model)</label>
                     <select 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
                       value={editingVehicle.type}

@@ -7,6 +7,7 @@ import {
   subscribeToCollection 
 } from './db';
 import { Card, Button } from './components/Common';
+import { VEHICLE_TYPES } from './lib/utils';
 import { 
   PlusCircle, 
   CheckCircle, 
@@ -42,7 +43,7 @@ const Requests: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     zone: '',
-    type: 'Small',
+    type: 'Dost Plus',
     quantity: 1,
     notes: ''
   });
@@ -127,7 +128,7 @@ const Requests: React.FC = () => {
       
       setFormData({
         zone: '',
-        type: 'Small',
+        type: 'Dost Plus',
         quantity: 1,
         notes: ''
       });
@@ -353,16 +354,16 @@ const Requests: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  গাড়ির ধরণ (Vehicle Type) <span className="text-red-500">*</span>
+                  গাড়ির নাম / মডেল (Vehicle Model) <span className="text-red-500">*</span>
                 </label>
                 <select
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:border-accent focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:border-accent focus:bg-white transition-all font-medium"
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 >
-                  <option value="Small">Small (ছোট - পিকআপ ইত্যাদি)</option>
-                  <option value="Medium">Medium (মাঝারি - মিনি ট্রাক ইত্যাদি)</option>
-                  <option value="Large">Large (বড় - ১০/১২ চাকার ট্রাক ইত্যাদি)</option>
+                  {VEHICLE_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
                 </select>
               </div>
 
@@ -499,7 +500,7 @@ const Requests: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-slate-500">
                           <span className="flex items-center gap-1.5">
                             <Truck size={12} className="text-slate-400" />
-                            গাড়ির ধরণ: <strong className="text-slate-700">{req.type === 'Small' ? 'ছোট (Small)' : req.type === 'Medium' ? 'মাঝারি (Medium)' : 'বড় (Large)'}</strong>
+                            মডেল: <strong className="text-slate-700 font-bold">{req.type || 'N/A'}</strong>
                           </span>
                           <span className="flex items-center gap-1.5">
                             <FileText size={12} className="text-slate-400" />

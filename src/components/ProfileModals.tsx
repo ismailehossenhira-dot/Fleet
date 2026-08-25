@@ -38,7 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown } from './Common';
 import { subscribeToCollection, updateVehicle, updateDriver, findStaffById } from '../db';
 import { useAuth } from '../AuthContext';
-import { cn, FAMILY_RELATIONS, FamilyRelation } from '../lib/utils';
+import { cn, FAMILY_RELATIONS, FamilyRelation, sanitizePhoneNumber } from '../lib/utils';
 import { exportStaffProfilePrint, downloadStaffBiodataFile } from '../utils/exportUtils';
 
 // Standard Tools list
@@ -533,9 +533,10 @@ export const StaffProfileModal: React.FC<{
                         <input 
                           type="tel" 
                           required
-                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                          maxLength={11}
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-mono font-medium text-slate-800"
                           value={editForm.phoneNumber}
-                          onChange={e => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                          onChange={e => setEditForm({ ...editForm, phoneNumber: sanitizePhoneNumber(e.target.value) })}
                         />
                       </div>
 
@@ -556,10 +557,11 @@ export const StaffProfileModal: React.FC<{
                           <label className="block text-slate-700 font-bold mb-1">পরিবারের নাম্বার (Family Phone)</label>
                           <input 
                             type="tel" 
+                            maxLength={11}
                             placeholder="01XXXXXXXXX"
-                            className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-medium text-slate-800"
+                            className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 outline-none focus:border-blue-500 font-mono font-medium text-slate-800"
                             value={editForm.familyPhone}
-                            onChange={e => setEditForm({ ...editForm, familyPhone: e.target.value })}
+                            onChange={e => setEditForm({ ...editForm, familyPhone: sanitizePhoneNumber(e.target.value) })}
                           />
                         </div>
 
@@ -1311,8 +1313,8 @@ export const VehicleProfileModal: React.FC<{
               {/* Quick Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 block font-semibold mb-1">গাড়ির ধরণ:</span>
-                  <div className="font-bold text-slate-800 text-sm uppercase">{vehicle.type || 'Medium'}</div>
+                  <span className="text-slate-400 block font-semibold mb-1">গাড়ির মডেল:</span>
+                  <div className="font-bold text-slate-800 text-sm">{vehicle.type || 'N/A'}</div>
                   <span className="text-[10px] text-slate-400 mt-1 block">নিবন্ধন: #{vehicle.vehicleNumber}</span>
                 </div>
 
@@ -1703,7 +1705,7 @@ export const VehicleProfileButton: React.FC<{
         setLoadedVehicle({
           id: vehicleId || '',
           vehicleNumber: vehicleNumber || 'Unknown',
-          type: 'Medium',
+          type: 'Dost Plus',
           status: 'Available',
           tools: getDefaultVehicleTools(),
           documents: getDefaultVehicleDocs(),
