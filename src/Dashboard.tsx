@@ -34,7 +34,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Card } from './components/Common';
-import { subscribeToCollection, updateVehicleStatus, cancelPendingTrip } from './db';
+import { VehicleModelManagementModal } from './components/VehicleModelManagement';
+import { subscribeToCollection, updateVehicleStatus, cancelPendingTrip, VehicleModelRecord } from './db';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useSearch } from './SearchContext';
@@ -82,7 +83,8 @@ const StatCard: React.FC<{
 );
 
 const Dashboard: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, isAdmin, isSuperAdmin } = useAuth();
+  const canManageModels = isAdmin || isSuperAdmin;
   const { isEmerald, isCrimson, isAmber, currentThemeOption } = useTheme();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
@@ -123,6 +125,8 @@ const Dashboard: React.FC = () => {
   const [modelSearchFilter, setModelSearchFilter] = useState<string>('');
   const [selectedModelFilter, setSelectedModelFilter] = useState<string | null>(null);
   const [drilldownVehicleSearch, setDrilldownVehicleSearch] = useState<string>('');
+  const [customModels, setCustomModels] = useState<VehicleModelRecord[]>([]);
+  const [showModelManagement, setShowModelManagement] = useState<boolean>(false);
 
   const toggleShowVehicleModels = () => {
     setShowVehicleModels(prev => {
@@ -165,10 +169,12 @@ const Dashboard: React.FC = () => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
     const unsubTrips = subscribeToCollection('trips', setTrips);
     const unsubDrivers = subscribeToCollection('drivers', setDrivers);
+    const unsubModels = subscribeToCollection('vehicle_models', setCustomModels);
     return () => {
       unsubVehicles();
       unsubTrips();
       unsubDrivers();
+      unsubModels();
     };
   }, []);
 
@@ -200,6 +206,16 @@ const Dashboard: React.FC = () => {
     return { ...v, status: 'Available' as const };
   });
 
+  const allTypesList = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...VEHICLE_TYPES,
+        ...customModels.map(m => m.name),
+        ...computedVehicles.map(v => v.type).filter(Boolean)
+      ])
+    );
+  }, [customModels, computedVehicles]);
+
   const stats = {
     totalVehicles: computedVehicles.length,
     activeFleet: computedVehicles.filter(v => v.status !== 'Maintenance').length,
@@ -209,18 +225,11 @@ const Dashboard: React.FC = () => {
     runningTrips: trips.filter(t => t.status === 'Running').length,
     completedTrips: trips.filter(t => t.status === 'Completed').length,
     totalDrivers: drivers.length,
-    typeBreakdown: VEHICLE_TYPES.reduce((acc, type) => {
+    typeBreakdown: allTypesList.reduce((acc, type) => {
       acc[type] = computedVehicles.filter(v => v.type === type).length;
       return acc;
     }, {} as Record<string, number>)
   };
-
-  const allTypesList = Array.from(
-    new Set([
-      ...VEHICLE_TYPES,
-      ...computedVehicles.map(v => v.type).filter(Boolean)
-    ])
-  );
 
   const modelAnalyticsList = useMemo(() => {
     const list = allTypesList.map(type => {
@@ -878,6 +887,18 @@ const Dashboard: React.FC = () => {
 
             {/* Right Header Action Controls */}
             <div className="flex items-center gap-2 flex-wrap ml-auto">
+              {canManageModels && (
+                <button
+                  type="button"
+                  onClick={() => setShowModelManagement(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95 bg-surface hover:bg-slate-100 text-text-main border-border"
+                  title="গাড়ির মডেল যুক্ত বা কনফিগার করুন (Admin Only)"
+                >
+                  <Layers size={14} className="text-accent" />
+                  <span>মডেল কনফিগার</span>
+                  <span className="text-[9px] bg-accent/10 text-accent font-bold px-1.5 py-0.2 rounded-sm ml-0.5">Admin</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={toggleShowVehicleModels}
@@ -1780,6 +1801,17 @@ const Dashboard: React.FC = () => {
       </motion.div>
         )}
       </AnimatePresence>
+      {/* Vehicle Model Management Modal (Admin Only) */}
+      <VehicleModelManagementModal
+        isOpen={showModelManagement}
+        onClose={() => setShowModelManagement(false)}
+        customModels={customModels}
+        vehicles={vehicles}
+        onModelSelected={(selectedModelName) => {
+          setSelectedModelFilter(selectedModelName);
+          setShowVehicleModels(true);
+        }}
+      />
     </div>
   );
 };

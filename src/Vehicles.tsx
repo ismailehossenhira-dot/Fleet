@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench, Layers, ShieldCheck } from 'lucide-react';
 import { Card, Button, AuditDetailsDropdown, VehicleProfileButton, VehicleProfileModal } from './components/Common';
-import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus } from './db';
+import { VehicleModelManagementModal } from './components/VehicleModelManagement';
+import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus, VehicleModelRecord } from './db';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, VehicleType, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const Vehicles: React.FC = () => {
-  const { isAdmin, isSubAdmin, profile } = useAuth();
+  const { isAdmin, isSubAdmin, isSuperAdmin, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin;
+  const canManageModels = isAdmin || isSuperAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
+  const [customModels, setCustomModels] = useState<VehicleModelRecord[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showModelManagement, setShowModelManagement] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -129,11 +133,19 @@ const Vehicles: React.FC = () => {
   useEffect(() => {
     const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
     const unsubTrips = subscribeToCollection('trips', setTrips);
+    const unsubModels = subscribeToCollection('vehicle_models', setCustomModels);
     return () => {
       unsubVehicles();
       unsubTrips();
+      unsubModels();
     };
   }, []);
+
+  const availableModels = useMemo(() => {
+    const customNames = customModels.map(m => m.name);
+    const vehicleNames = vehicles.map(v => v.type).filter(Boolean);
+    return Array.from(new Set([...VEHICLE_TYPES, ...customNames, ...vehicleNames]));
+  }, [customModels, vehicles]);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -217,19 +229,31 @@ const Vehicles: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900">Vehicle Management</h2>
           <p className="text-slate-500">Register and manage your fleet inventory.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
             >
-              <option value="All">সকল মডেল (All Models)</option>
-              {VEHICLE_TYPES.map(t => (
+              <option value="All">সকল মডেল (All Models - {availableModels.length})</option>
+              {availableModels.map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
+          {canManageModels && (
+            <button
+              type="button"
+              onClick={() => setShowModelManagement(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="গাড়ির মডেল ও ক্যাটাগরি তৈরি এবং কনফিগার করুন (Admin Only)"
+            >
+              <Layers size={15} className="text-blue-600" />
+              <span>মডেল কনফিগার</span>
+              <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded-sm ml-0.5">Admin</span>
+            </button>
+          )}
           {canManage && (
             <Button onClick={() => setShowAdd(!showAdd)}>
               <Plus size={20} />
@@ -281,13 +305,25 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির মডেল (Vehicle Model)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-slate-700">গাড়ির মডেল (Model)</label>
+                      {canManageModels && (
+                        <button
+                          type="button"
+                          onClick={() => setShowModelManagement(true)}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Plus size={12} />
+                          <span>নতুন মডেল</span>
+                        </button>
+                      )}
+                    </div>
                     <select 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
                       value={newVehicle.type}
                       onChange={e => setNewVehicle({ ...newVehicle, type: e.target.value as any })}
                     >
-                      {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {availableModels.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
@@ -371,13 +407,25 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির নাম / মডেল (Vehicle Model)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-slate-700">গাড়ির নাম / মডেল (Model)</label>
+                      {canManageModels && (
+                        <button
+                          type="button"
+                          onClick={() => setShowModelManagement(true)}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Plus size={12} />
+                          <span>নতুন মডেল</span>
+                        </button>
+                      )}
+                    </div>
                     <select 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
                       value={editingVehicle.type}
                       onChange={e => setEditingVehicle({ ...editingVehicle, type: e.target.value as any })}
                     >
-                      {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {availableModels.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
@@ -772,6 +820,21 @@ const Vehicles: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Vehicle Model Management Modal (Admin Only) */}
+      <VehicleModelManagementModal
+        isOpen={showModelManagement}
+        onClose={() => setShowModelManagement(false)}
+        customModels={customModels}
+        vehicles={vehicles}
+        onModelSelected={(selectedModelName) => {
+          if (showAdd) {
+            setNewVehicle(prev => ({ ...prev, type: selectedModelName as any }));
+          } else if (editingVehicle) {
+            setEditingVehicle((prev: any) => prev ? ({ ...prev, type: selectedModelName }) : prev);
+          }
+        }}
+      />
     </div>
   );
 };

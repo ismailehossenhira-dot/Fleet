@@ -1266,5 +1266,67 @@ export const deleteGPSDevice = async (id: string) => {
   }
 };
 
+// --- Dynamic Vehicle Models Collection (Managed by Admins) ---
+export interface VehicleModelRecord {
+  id?: string;
+  name: string; // e.g. "Dost Plus", "Leo", "Ashok Leyland 1616", "Tata 407", etc.
+  category?: string; // e.g. "Pickup", "Mini Truck", "Medium Truck", "Heavy Truck", "Covered Van"
+  capacity?: string; // e.g. "1.5 Ton", "3 Ton", "7.5 Ton", "15 Ton"
+  description?: string;
+  isDefault?: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
 
+export const addVehicleModel = async (model: { name: string; category?: string; capacity?: string; description?: string }, profile?: any) => {
+  try {
+    const trimmedName = model.name.trim();
+    if (!trimmedName) throw new Error('Vehicle model name is required');
 
+    return await addDoc(collection(db, 'vehicle_models'), {
+      name: trimmedName,
+      category: model.category?.trim() || 'General Truck',
+      capacity: model.capacity?.trim() || '',
+      description: model.description?.trim() || '',
+      isDefault: false,
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, 'vehicle_models');
+  }
+};
+
+export const updateVehicleModel = async (id: string, updates: Partial<VehicleModelRecord>, profile?: any) => {
+  try {
+    const docRef = doc(db, 'vehicle_models', id);
+    const payload: any = {
+      ...updates,
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp(),
+    };
+    if (updates.name) {
+      payload.name = updates.name.trim();
+    }
+    if (updates.category) {
+      payload.category = updates.category.trim();
+    }
+    if (updates.capacity) {
+      payload.capacity = updates.capacity.trim();
+    }
+    await updateDoc(docRef, payload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `vehicle_models/${id}`);
+  }
+};
+
+export const deleteVehicleModel = async (id: string) => {
+  try {
+    await deleteDoc(doc(db, 'vehicle_models', id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `vehicle_models/${id}`);
+  }
+};

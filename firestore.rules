@@ -213,5 +213,18 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && isValidGPSDevice(incoming());
       allow delete: if canManage() || isLineSupervisor();
     }
+
+    // Vehicle Models (Managed exclusively by Admins & Super Admins)
+    function isValidVehicleModel(data) {
+      return data.keys().hasAll(['name'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+    }
+
+    match /vehicle_models/{modelId} {
+      allow read: if isSignedIn();
+      allow create: if (isAdmin() || isSuperAdmin()) && isValidVehicleModel(incoming());
+      allow update: if (isAdmin() || isSuperAdmin()) && isValidVehicleModel(incoming());
+      allow delete: if (isAdmin() || isSuperAdmin());
+    }
   }
 }
