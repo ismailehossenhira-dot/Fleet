@@ -19,7 +19,10 @@ import {
   LogIn,
   Wrench,
   Clock,
-  Eye
+  Eye,
+  Flashlight,
+  Activity,
+  Gauge
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -28,7 +31,10 @@ import {
   formatBanglaPlateDisplay, 
   playScanSuccessSound,
   convertBanglaToEngDigits,
-  convertEngToBanglaDigits
+  convertEngToBanglaDigits,
+  translateBanglaPlateToEnglish,
+  translateEnglishPlateToBangla,
+  BANGLA_TO_ENG_CLASS_MAP
 } from '../lib/anpr';
 import { cn } from '../lib/utils';
 import { useTheme } from '../ThemeContext';
@@ -64,6 +70,9 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [isContinuousAutoScan, setIsContinuousAutoScan] = useState<boolean>(true);
+  const [motionSpeedMode, setMotionSpeedMode] = useState<'fast' | 'normal'>('fast');
+  const [torchActive, setTorchActive] = useState<boolean>(false);
+  const [hasTorchSupport, setHasTorchSupport] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [autoGateCountdown, setAutoGateCountdown] = useState<number | null>(null);
@@ -91,43 +100,96 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setTorchActive(false);
+    setHasTorchSupport(false);
     setCameraActive(false);
   }, [stream]);
 
-  // Start camera stream (Always-on capability)
+  // Toggle Torch/Flashlight for night & low-light gate scanning
+  const toggleTorch = async () => {
+    if (!stream) return;
+    const videoTrack = stream.getVideoTracks()[0];
+    if (!videoTrack) return;
+    try {
+      const nextState = !torchActive;
+      await (videoTrack as any).applyConstraints({
+        advanced: [{ torch: nextState }]
+      });
+      setTorchActive(nextState);
+    } catch (e) {
+      console.warn("Torch constraint not supported on this device:", e);
+    }
+  };
+
+  // Start camera stream (Always-on capability with multi-tier fallback)
   const startCamera = useCallback(async () => {
     setCameraLoading(true);
     setCameraError(null);
 
     // Stop any existing tracks first
     if (stream) {
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(t => {
+        try {
+          t.stop();
+        } catch {
+          // ignore
+        }
+      });
     }
 
     try {
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
-
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(newStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        videoRef.current.play().catch(e => console.warn("Video play error:", e));
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('NOT_SUPPORTED');
       }
-      setCameraActive(true);
+
+      let newStream: MediaStream | null = null;
+
+      // Tier 1: Try with ideal facingMode and desired resolution
+      try {
+        const idealConstraints: MediaStreamConstraints = {
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+        newStream = await navigator.mediaDevices.getUserMedia(idealConstraints);
+      } catch (tier1Err) {
+        // Tier 2: Try basic video without facingMode constraint (essential for desktop/laptop/single webcams)
+        console.warn("Primary camera constraints unavailable, attempting fallback to default video device...", tier1Err);
+        try {
+          newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (tier2Err) {
+          throw tier2Err;
+        }
+      }
+
+      if (newStream) {
+        setStream(newStream);
+        const track = newStream.getVideoTracks()[0];
+        const capabilities: any = track?.getCapabilities?.() || {};
+        if (capabilities.torch) {
+          setHasTorchSupport(true);
+        }
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = newStream;
+          videoRef.current.play().catch(e => console.warn("Video play notice:", e));
+        }
+        setCameraActive(true);
+      }
     } catch (err: any) {
-      console.error("Camera access error:", err);
-      let msg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ব্রাউজারে ক্যামেরা পারমিশন এলাউ করুন।";
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজার সেটিংস থেকে পারমিশন দিন।";
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        msg = "কোনো ক্যামেরা ডিভাইস পাওয়া যায়নি। অনুগ্রহ করে ম্যানুয়াল সার্চ ব্যবহার করুন।";
+      console.warn("Camera device initialization note:", err?.name || err?.message || err);
+      let msg = "ক্যামেরা চালু করা সম্ভব হয়নি।";
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        msg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজারে ক্যামেরা পারমিশন এলাউ করুন অথবা ছবি আপলোড করুন।";
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError' || String(err?.message || '').toLowerCase().includes('not found')) {
+        msg = "কোনো সংযুক্ত ক্যামেরা ডিভাইস পাওয়া যায়নি (Camera not found)। আপনি নিচের 'ছবি আপলোড' বা 'ম্যানুয়াল সার্চ' অপশন ব্যবহার করতে পারেন।";
+      } else if (err?.message === 'NOT_SUPPORTED') {
+        msg = "আপনার বর্তমান ব্রাউজারে ক্যামেরা অ্যাক্সেস সাপোর্ট করে না। অনুগ্রহ করে ছবি আপলোড অথবা ম্যানুয়াল সার্চ ব্যবহার করুন।";
+      } else {
+        msg = "ক্যামেরা সংযোগে সমস্যা হচ্ছে। অনুগ্রহ করে নিচে ছবি আপলোড করুন অথবা ম্যানুয়াল সার্চ ব্যবহার করুন।";
       }
       setCameraError(msg);
       setCameraActive(false);
@@ -156,20 +218,26 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     }
   }, [facingMode]);
 
-  // Capture current frame from video
+  // Capture current frame from video with motion optimization & dynamic scaling
   const captureFrameBase64 = (): string | null => {
     if (!videoRef.current || !canvasRef.current) return null;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (video.videoWidth === 0 || video.videoHeight === 0) return null;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Scale to max width/height 1024 for lightning-fast recognition
+    const maxDim = Math.max(video.videoWidth, video.videoHeight);
+    const scale = maxDim > 1024 ? 1024 / maxDim : 1;
+    const targetW = Math.round(video.videoWidth * scale);
+    const targetH = Math.round(video.videoHeight * scale);
+
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.85);
+    ctx.drawImage(video, 0, 0, targetW, targetH);
+    return canvas.toDataURL('image/jpeg', 0.84);
   };
 
   // Perform AI Plate Scan API Call
@@ -236,18 +304,19 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     }
   };
 
-  // Auto-scan timer interval for continuous recognition
+  // Auto-scan timer interval for continuous recognition (Fast Motion: 1.4s, Standard: 2.6s)
   useEffect(() => {
     let intervalId: any = null;
     if (cameraActive && isContinuousAutoScan && !isProcessing && !autoGateCountdown) {
+      const intervalMs = motionSpeedMode === 'fast' ? 1400 : 2600;
       intervalId = setInterval(() => {
         performPlateScan();
-      }, 2200);
+      }, intervalMs);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [cameraActive, isContinuousAutoScan, isProcessing, autoGateCountdown, vehicles]);
+  }, [cameraActive, isContinuousAutoScan, isProcessing, autoGateCountdown, motionSpeedMode, vehicles]);
 
   // Auto gate countdown timer
   useEffect(() => {
@@ -350,6 +419,37 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
 
           {/* Quick Action Buttons on Top Bar */}
           <div className="flex items-center gap-1.5">
+            {/* Motion Speed Toggle (Fast Motion ANPR) */}
+            <button
+              type="button"
+              onClick={() => setMotionSpeedMode(prev => prev === 'fast' ? 'normal' : 'fast')}
+              className={cn(
+                "px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 border",
+                motionSpeedMode === 'fast'
+                  ? "bg-amber-500/30 text-amber-300 border-amber-400/50 shadow-xs"
+                  : "bg-black/40 text-slate-400 border-white/10"
+              )}
+              title="চলন্ত গাড়ির স্পিড মোড পরিবর্তন"
+            >
+              <Gauge size={13} className={motionSpeedMode === 'fast' ? "text-amber-400 animate-pulse" : ""} />
+              <span>{motionSpeedMode === 'fast' ? 'চলন্ত গাড়ি মোড (Fast 1.4s)' : 'স্ট্যান্ডার্ড (2.6s)'}</span>
+            </button>
+
+            {/* Flashlight / Torch Toggle */}
+            {hasTorchSupport && (
+              <button
+                type="button"
+                onClick={toggleTorch}
+                className={cn(
+                  "p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border",
+                  torchActive ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md" : "bg-black/40 text-slate-300 border-white/10"
+                )}
+                title={torchActive ? "ফ্ল্যাশলাইট বন্ধ করুন" : "ফ্ল্যাশলাইট চালু করুন (Night Mode)"}
+              >
+                <Flashlight size={15} />
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -383,7 +483,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
         </div>
 
         {/* Video Screen & Scanning Reticle */}
-        <div className="relative flex-1 flex items-center justify-center min-h-[300px] overflow-hidden bg-black">
+        <div className="relative flex-1 flex items-center justify-center min-h-[320px] overflow-hidden bg-black">
           {cameraActive ? (
             <>
               <video
@@ -391,47 +491,59 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover min-h-[300px]"
+                className="w-full h-full object-cover min-h-[320px]"
               />
 
-              {/* High-tech Targeting Overlay for Bangladeshi License Plates */}
-              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
+              {/* High-tech Targeting Overlay for Bangladeshi Front-Facing License Plates & Hood Stickers */}
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
                 
-                {/* Plate Bounding Target Box */}
-                <div className="relative w-full max-w-[340px] h-[130px] rounded-xl border-2 border-dashed border-emerald-400/80 bg-emerald-500/5 shadow-[0_0_20px_rgba(52,211,153,0.25)] flex flex-col justify-between p-2">
+                {/* Front Fascia & Plate Bounding Target Box */}
+                <div className="relative w-full max-w-[380px] h-[160px] rounded-2xl border-2 border-dashed border-emerald-400/90 bg-emerald-500/10 shadow-[0_0_25px_rgba(52,211,153,0.3)] flex flex-col justify-between p-3">
                   
                   {/* Corner Target Markers */}
-                  <div className="absolute -top-1 -left-1 w-4 h-4 border-t-3 border-l-3 border-emerald-400"></div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 border-t-3 border-r-3 border-emerald-400"></div>
-                  <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-3 border-l-3 border-emerald-400"></div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-3 border-r-3 border-emerald-400"></div>
+                  <div className="absolute -top-1.5 -left-1.5 w-5 h-5 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg"></div>
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg"></div>
+                  <div className="absolute -bottom-1.5 -left-1.5 w-5 h-5 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg"></div>
+                  <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 border-b-4 border-r-4 border-emerald-400 rounded-br-lg"></div>
 
                   {/* Animated Laser Scanning Line */}
                   <motion.div
-                    className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399]"
-                    animate={{ top: ['5%', '90%', '5%'] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-300 to-transparent shadow-[0_0_15px_#34d399]"
+                    animate={{ top: ['8%', '88%', '8%'] }}
+                    transition={{ duration: motionSpeedMode === 'fast' ? 1.4 : 2.2, repeat: Infinity, ease: 'easeInOut' }}
                   />
 
                   {/* Guide text inside box */}
-                  <div className="flex justify-between items-center text-[10px] text-emerald-300 font-mono">
-                    <span>BRTA BD PLATE</span>
-                    <span>AI ANPR OCR</span>
+                  <div className="flex justify-between items-center text-[10px] text-emerald-300 font-mono font-bold tracking-wider">
+                    <span className="flex items-center gap-1">
+                      <Activity size={12} className="animate-pulse text-emerald-400" />
+                      FRONT VEHICLE OCR
+                    </span>
+                    <span className="bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40">
+                      BRTA BD PLATE
+                    </span>
                   </div>
 
-                  <div className="text-center font-bold text-xs text-white/90 drop-shadow-md">
-                    গাড়ির নাম্বার প্লেট এই ফ্রেমের ভেতরে রাখুন
+                  <div className="text-center">
+                    <div className="font-black text-sm text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                      গাড়ির সামনের অংশ (হুড / বনেট / বাম্পার / প্লেট) ফ্রেমের ভিতরে রাখুন
+                    </div>
+                    <div className="text-[11px] text-emerald-200 font-medium drop-shadow-md mt-0.5">
+                      যেমন: ঢাকা মেট্রো-ম ১১-৮৭৫৭ / উ, ঊ, ন, ট, ড, ১২৩৪৫৬
+                    </div>
                   </div>
 
-                  <div className="text-center text-[10px] text-emerald-200/80 font-medium">
-                    যেমন: ঢাকা মেট্রো-ম ১১-২২৩৩ / উ, ঊ, ড, ন, ১২৩৪৫৬
+                  {/* Bottom Sub-tag inside viewfinder */}
+                  <div className="flex justify-between items-center text-[9px] text-emerald-300/80 font-mono">
+                    <span>চলন্ত গাড়ি অটো রিড</span>
+                    <span>AI FAST DETECT</span>
                   </div>
                 </div>
 
                 {/* Subtitle / Mode Indicator */}
-                <div className="mt-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-xs text-[11px] text-slate-300 flex items-center gap-1.5 border border-white/10">
-                  <Scan size={12} className="text-emerald-400" />
-                  <span>বাংলা বর্ণ ও সংখ্যা স্বয়ংক্রিয়ভাবে স্ক্যান হচ্ছে</span>
+                <div className="mt-3 px-3 py-1 rounded-full bg-black/70 backdrop-blur-xs text-[11px] text-slate-200 flex items-center gap-2 border border-white/10 shadow-lg">
+                  <Scan size={13} className="text-emerald-400 animate-spin" style={{ animationDuration: '4s' }} />
+                  <span>চলন্ত গাড়ির সামনের বাংলা ও ইংরেজি নাম্বার স্বয়ংক্রিয়ভাবে শনাক্ত হচ্ছে</span>
                 </div>
               </div>
             </>
@@ -557,16 +669,30 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
           </div>
 
           {/* Bangladeshi License Plate Styled Visual Box */}
-          <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 shadow-inner flex flex-col items-center justify-center space-y-1">
-            <div className="text-[11px] font-bold text-emerald-400 tracking-wider">
-              {lastDetectedPlate.metroOrDistrict || 'ঢাকা মেট্রো'} {lastDetectedPlate.vehicleClass ? `(${lastDetectedPlate.vehicleClass})` : ''}
+          <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 shadow-inner flex flex-col items-center justify-center space-y-1.5">
+            <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-400 tracking-wider">
+              <span>{lastDetectedPlate.metroOrDistrict || 'ঢাকা মেট্রো'}</span>
+              {lastDetectedPlate.vehicleClass && (
+                <span className="bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/40 text-emerald-300">
+                  {lastDetectedPlate.vehicleClass} = {BANGLA_TO_ENG_CLASS_MAP[lastDetectedPlate.vehicleClass] || lastDetectedPlate.vehicleClassEng || lastDetectedPlate.vehicleClass}
+                </span>
+              )}
             </div>
+            
             <div className="text-xl sm:text-2xl font-black text-white font-mono tracking-widest bg-slate-800/80 px-4 py-1 rounded-lg border border-slate-600">
               {lastDetectedPlate.plateTextBangla || lastDetectedPlate.plateTextStandard || 'প্লেট নম্বর'}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
-              <span>English: {lastDetectedPlate.digitsEnglish || convertBanglaToEngDigits(lastDetectedPlate.plateTextBangla)}</span>
-              {lastDetectedPlate.rawSixDigits && <span>• 6-Digits: {lastDetectedPlate.rawSixDigits}</span>}
+
+            {/* Translated English Plate Code Badge (e.g. DM-MA 11-2233, DM-U 123456, DM-AU 11-0099, DM-N 12-3456) */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono">
+              <span className="bg-blue-950/70 border border-blue-500/40 text-blue-300 font-bold px-2.5 py-0.5 rounded-md">
+                ENG: {lastDetectedPlate.plateTextEnglish || translateBanglaPlateToEnglish(lastDetectedPlate.plateTextBangla || '')}
+              </span>
+              {lastDetectedPlate.rawSixDigits && (
+                <span className="text-slate-400 text-[10px]">
+                  • 6-Digits: {lastDetectedPlate.rawSixDigits}
+                </span>
+              )}
             </div>
           </div>
 

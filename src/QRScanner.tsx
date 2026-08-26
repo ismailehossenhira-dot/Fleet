@@ -214,31 +214,35 @@ const QRScanner: React.FC = () => {
       try {
         const scanner = new Html5Qrcode("qr-reader-container");
         
-        scanner.start(
-          { facingMode: "environment" },
-          { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 }
-          },
-          (decodedText) => {
-            handleDecodedText(decodedText);
-            isStartingRef.current = false;
-            scanner.stop()
-              .then(() => {
-                setScannerActive(false);
-                scannerRef.current = null;
-                if (container) container.innerHTML = "";
-              })
-              .catch(() => {
-                setScannerActive(false);
-                scannerRef.current = null;
-                if (container) container.innerHTML = "";
-              });
-          },
-          () => {
-            // Frame scan tick, ignore
-          }
-        ).then(() => {
+        const config = { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 }
+        };
+
+        const onDecoded = (decodedText: string) => {
+          handleDecodedText(decodedText);
+          isStartingRef.current = false;
+          scanner.stop()
+            .then(() => {
+              setScannerActive(false);
+              scannerRef.current = null;
+              if (container) container.innerHTML = "";
+            })
+            .catch(() => {
+              setScannerActive(false);
+              scannerRef.current = null;
+              if (container) container.innerHTML = "";
+            });
+        };
+
+        // Try environment camera first, then user camera
+        const startPromise = scanner.start({ facingMode: "environment" }, config, onDecoded, () => {})
+          .catch((envErr) => {
+            console.warn("QR scanner environment camera rejected, attempting user/default camera...", envErr);
+            return scanner.start({ facingMode: "user" }, config, onDecoded, () => {});
+          });
+
+        startPromise.then(() => {
           scannerRef.current = scanner;
           isStartingRef.current = false;
         }).catch((err: any) => {

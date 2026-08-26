@@ -64,39 +64,56 @@ async function startServer() {
         ? `Registered Fleet Vehicles in Database for matching:\n${registeredVehicles.slice(0, 100).map((v: any) => `- ${v.vehicleNumber} (Type: ${v.type || 'N/A'})`).join("\n")}`
         : "";
 
-      const prompt = `You are an expert Automatic Number Plate Recognition (ANPR) system specializing in Bangladeshi vehicle license plates (বাংলাদেশি গাড়ির নাম্বার প্লেট).
+      const prompt = `You are an ultra-fast, high-precision Automatic Number Plate Recognition (ANPR) and Vehicle OCR engine specialized in Bangladeshi commercial and private vehicles (বাংলাদেশি গাড়ির নাম্বার প্লেট ও চলন্ত গাড়ি সনাক্তকরণ).
 
-Look closely at the image. Detect if there is a vehicle license plate.
-Bangladeshi number plates are typically written in Bengali (Bangla) script in standard BRTA format, for example:
-- "ঢাকা মেট্রো-ম ১১-২২৩৩"
-- "ঢাকা মেট্রো-ন ১২-৩৪৫৬"
-- "ঢাকা মেট্রো-উ ১২৩৪৫৬"
-- "ঢাকা মেট্রো-ঊ ১১-০০৯৯"
-- "ঢাকা মেট্রো-ড ১২-৩৩৪৪"
-- "ঢাকা মেট্রো-ট ১১-৫৫৬৬"
-- "চট্ট মেট্রো-ট ১২-৩৪৫৬"
-- "খুলনা মেট্রো-ন ১১-২২৩৩"
-- "গাজীপুর-ম ১১-২২৩৩"
-- Or English digits like "DHAKA METRO M 11-2233" or digits "12-3456" / "123456".
+CRITICAL SCANNING INSTRUCTIONS FOR MOVING VEHICLES & FRONT-FACING TRUCKS/BUSES:
+1. Examine the ENTIRE front profile of the vehicle:
+   - Front hood / bonnet (many Bangladeshi trucks/pickups have plate stickers or painted numbers on the left, right, or center of the bonnet/hood, e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭")
+   - Front bumper / number plate bracket
+   - Radiator grill and cabin body
+   - Windshield top/bottom banner
+2. Account for real-world driving & fleet conditions:
+   - Moving vehicles (চলন্ত গাড়ি) with slight angle, perspective tilt, or motion
+   - Low light, night conditions, glare from headlights or dust
+   - Surrounding vinyl stickers, artwork, stripes, or Tata / Ashok Leyland logos (e.g. decorative wings or colors around the plate)
+   - Dents, bends, or painted typography
+3. Read the complete Bengali text (BRTA format) and translate accurately to standard English code:
+   - "ঢাকা মেট্রো-ম ১১-৮৭৫৭" -> English: "DM-MA 11-8757" (ঢাকা মেট্রো ম = DM-MA)
+   - "ঢাকা মেট্রো-ম ১১-২২৩৩" -> English: "DM-MA 11-2233" (ঢাকা মেট্রো ম = DM-MA)
+   - "ঢাকা মেট্রো-উ ১২৩৪৫৬" -> English: "DM-U 123456" (ঢাকা মেট্রো উ = DM-U)
+   - "ঢাকা মেট্রো-ঊ ১১-০০৯৯" -> English: "DM-AU 11-0099" (ঢাকা মেট্রো ঊ = DM-AU)
+   - "ঢাকা মেট্রো-ন ১২-৩৪৫৬" -> English: "DM-N 12-3456" (ঢাকা মেট্রো ন = DM-N)
+   - "ঢাকা মেট্রো-ট ১১-৫৫৬৬" -> English: "DM-TA 11-5566"
+   - "ঢাকা মেট্রো-ড ১২-৩৩৪৪" -> English: "DM-DA 12-3344"
+   - "ঢাকা মেট্রো-চ ১১-২২৩৩" -> English: "DM-CHA 11-2233"
+   - "ঢাকা মেট্রো-গ ১১-২২৩৩" -> English: "DM-GA 11-2233"
+   - "ঢাকা মেট্রো-ব ১১-২২৩৩" -> English: "DM-BA 11-2233"
+   - "ঢাকা মেট্রো-ভ ১১-২২৩৩" -> English: "DM-BHA 11-2233"
+   - "চট্ট মেট্রো-ট ১২-৩৪৫৬" -> English: "CM-TA 12-3456"
+   - "খুলনা মেট্রো-ন ১১-২২৩৩" -> English: "KM-N 11-2233"
+   - "গাজীপুর-ম ১১-২২৩৩" -> English: "GZ-MA 11-2233"
 
 ${vehicleHintList}
 
-Analyze the plate precisely and return a STRICT JSON object in this exact schema:
+Analyze the image with maximum recall and return a STRICT JSON object in this schema:
 {
-  "detected": boolean, // true if a license plate or vehicle number was found
-  "plateTextBangla": string, // Full Bangla text e.g. "ঢাকা মেট্রো-ম ১১-২২৩৩" or "ঢাকা মেট্রো-উ ১২৩৪৫৬"
-  "plateTextStandard": string, // Normalized standard representation
+  "detected": boolean, // true if any vehicle license plate, bonnet sticker, or vehicle number was detected
+  "plateTextBangla": string, // Complete Bengali text e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩"
+  "plateTextEnglish": string, // Translated English text e.g. "DM-MA 11-8757", "DM-MA 11-2233", "DM-U 123456", "DM-AU 11-0099", "DM-N 12-3456"
+  "plateTextStandard": string, // Standardized normalized representation
   "metroOrDistrict": string, // e.g. "ঢাকা মেট্রো", "চট্টগ্রাম মেট্রো", "গাজীপুর", etc.
+  "metroOrDistrictEng": string, // e.g. "DM", "CM", "KM", "GZ", etc.
   "vehicleClass": string, // The Bangla letter e.g. "ম", "উ", "ঊ", "ন", "ট", "ড", "ব", "ভ", "ক", "খ", "গ", "ঘ", "চ", "ছ", "জ", "ঝ", "প", "ফ", "স", "হ", etc.
-  "digitsBangla": string, // The numbers in Bengali script e.g. "১১-২২৩৩" or "১২৩৪৫৬"
-  "digitsEnglish": string, // The numbers in English digits e.g. "11-2233" or "123456"
-  "rawSixDigits": string, // Just the 6 digits (or 4-6 digits) in English without dashes e.g. "112233"
+  "vehicleClassEng": string, // The English transliteration e.g. "MA", "U", "AU", "N", "TA", "DA", "CHA", "GA", "BA", "BHA", etc.
+  "digitsBangla": string, // Numbers in Bengali script e.g. "১১-৮৭৫৭" or "১২৩৪৫৬"
+  "digitsEnglish": string, // Numbers in English digits e.g. "11-8757" or "123456"
+  "rawSixDigits": string, // English digits without dashes e.g. "118757"
   "matchedVehicleNumber": string, // If this closely matches any vehicle from registered vehicles list, provide the exact vehicleNumber string, else empty
   "confidence": number // 0.0 to 1.0 confidence score
 }
 
-If no vehicle license plate is clearly visible, return {"detected": false, "plateTextBangla": "", "confidence": 0}.
-Output ONLY valid JSON. Do not include markdown code block syntax if possible, just the raw JSON.`;
+If no vehicle license plate or vehicle number is visible anywhere on the vehicle body, return {"detected": false, "plateTextBangla": "", "confidence": 0}.
+Output ONLY valid JSON without markdown wrapping.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
