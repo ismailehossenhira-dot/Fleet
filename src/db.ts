@@ -51,8 +51,15 @@ export const subscribeToCollection = (collName: string, callback: (data: any[]) 
     callback(data);
   }, (error) => {
     const msg = error?.message || String(error);
-    if (msg.includes('aborted') || msg.includes('cancelled') || error?.code === 'cancelled') {
-      console.warn(`Firestore subscription aborted/cancelled for ${collName}`);
+    if (
+      msg.includes('aborted') || 
+      msg.includes('cancelled') || 
+      error?.code === 'cancelled' ||
+      error?.code === 'unavailable' ||
+      msg.includes('unavailable') ||
+      msg.includes('offline')
+    ) {
+      console.warn(`Firestore subscription for ${collName} is operating in offline/cached mode.`);
       return;
     }
     handleFirestoreError(error, OperationType.LIST, collName);

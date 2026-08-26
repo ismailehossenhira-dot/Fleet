@@ -76,109 +76,168 @@ async function startServer() {
         ? `Registered Fleet Vehicles in Database for matching reference:\n${registeredVehicles.slice(0, 100).map((v: any) => `- ${v.vehicleNumber} (Type: ${v.type || 'Commercial'})`).join("\n")}`
         : "";
 
-      const prompt = `You are a world-class Automatic Number Plate Recognition (ANPR) and Vehicle OCR engine specialized in Bangladeshi commercial trucks, pickups, buses, and private vehicles (বাংলাদেশি গাড়ির নাম্বার প্লেট ও চলন্ত গাড়ি সনাক্তকরণ).
+      const prompt = `তুমি একজন অত্যন্ত দক্ষ Automatic Number Plate Recognition (ANPR / OCR) স্পেশালিস্ট এআই। তোমার কাজ হলো দেওয়া ছবি বা লাইভ ক্যামেরা ফ্রেম থেকে বাংলাদেশের গাড়ির নম্বর প্লেট অথবা বনেটে আঁকা রেজিস্ট্রেশন নম্বর নিখুঁতভাবে শনাক্ত করা।
 
-CRITICAL SCANNING INSTRUCTIONS FOR BANGLADESHI VEHICLES:
-1. Bangladeshi vehicle registration plates / numbers are commonly formatted in TWO LINES:
-   - Line 1 (District & Class): e.g. "ঢাকা মেট্রো-ম", "ঢাকা মেট্রো-উ", "ঢাকা মেট্রো-ঊ", "ঢাকা মেট্রো-ন", "ঢাকা মেট্রো-ট", "ঢাকা মেট্রো-ড", "ঢাকা মেট্রো-গ", "ঢাকা মেট্রো-চ", "চট্ট মেট্রো-ট", "গাজীপুর-ম"
-   - Line 2 (Digits): e.g. "১১-৮৭৫৭", "১১-২২৩৩", "১২-৩৪৫৬", "১২৩৪৫৬"
-   Combine both lines into the complete plate string: e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩".
+=== নির্দেশনাবলী ===
+১. ছবিতে কোনো গাড়ি, ট্রাক, পিকআপ, প্রাইভেট কার, বাস, মাইক্রোবাস, সিএনজি বা মোটরসাইকেল থাকলে সেটির নম্বর প্লেট বা রেজিস্ট্রেশন বক্স শনাক্ত করো।
+২. সাধারণত বাংলাদেশি গাড়িতে নিচের মতো ফরম্যাট থাকে:
+   - মেট্রো/জেলা: ঢাকা মেট্রো, চট্ট মেট্রো, চট্টগ্রাম, রাজশাহী, খুলনা, বরিশাল, সিলেট, রংপুর, ময়মনসিংহ, গাজীপুর, নারায়ণগঞ্জ, কুমিল্লা, ফরিদপুর, বগুড়া, ইত্যাদি।
+   - বর্ণ/ক্লাস: ম, উ, ঊ, ন, ট, ড, ক, খ, গ, ঘ, চ, ছ, জ, ঝ, ব, ভ, প, ফ, ত, থ, দ, ধ, ল, হ, ইত্যাদি।
+   - সিরিজ ও নম্বর: ১১-৮৭৫৭, ১১-২২৩৪, ১২-৩৪৫৬, ১৪-৭৮৯০, বা ৬ ডিজিট একসাথে ১২৩৪৫৬, অথবা ৪ ডিজিট ২২৩৪।
+৩. বড় বাণিজ্যিক ট্রাকের বনেটে/সামনের হুডে অনেক সময় বাংলায় স্টেনসিল দিয়ে লেখা থাকে (যেমন "ঢাকা মেট্রো-ট ১১-৮৭৫৭" বা "মায়ের দোয়া" এর নিচে নম্বর)।
+৪. যদি নম্বর প্লেট কিছুটা দূর থেকে দেখা যায় বা অস্পষ্ট থাকে, যতটুকু নম্বর নিশ্চিত পাওয়া যায় (যেমন শেষ ৪ ডিজিট বা সিরিজ ও ক্লাস) তা বের করো।
+৫. রেফারেন্স ফ্লিট লিস্টে ম্যাচিং থাকলে সেটিকে অগ্রাধিকার দাও।
 
-2. SCAN ALL VEHICLE LOCATIONS:
-   - Front bonnet / hood: Bangladeshi commercial trucks (Tata, Ashok Leyland, Mahindra, etc.) almost always have the registration painted or stickered in a white or colored box on the front bonnet/hood (e.g. left side or middle of hood).
-   - Front metal bumper & license plate bracket.
-   - Radiator grill & cabin body.
-   - Windshield top banner or visor.
-
-3. IGNORE DECORATIVE LOGOS & NON-REGISTRATION TEXT:
-   - Ignore manufacturer badges ("TATA", "ASHOK LEYLAND", "VOLVO", "TURBO").
-   - Ignore battery / sponsor stickers (e.g. "পদ্মা ব্যাটারী", "মায়ের দোয়া", "আল্লাহ সর্বশক্তিমান").
-   - Focus strictly on the official BRTA format: [District/Metro]-[Class] [Digits].
-
-4. BANGLA TO ENGLISH TRANSLATIONS:
-   - "ঢাকা মেট্রো-ম ১১-৮৭৫৭" -> English: "DM-MA 11-8757" (ম = MA)
-   - "ঢাকা মেট্রো-ম ১১-২২৩৩" -> English: "DM-MA 11-2233" (ম = MA)
-   - "ঢাকা মেট্রো-উ ১২৩৪৫৬" -> English: "DM-U 123456" (উ = U)
-   - "ঢাকা মেট্রো-ঊ ১১-০০৯৯" -> English: "DM-AU 11-0099" (ঊ = AU)
-   - "ঢাকা মেট্রো-ন ১২-৩৪৫৬" -> English: "DM-N 12-3456" (ন = N)
-   - "ঢাকা মেট্রো-ট ১১-৫৫৬৬" -> English: "DM-TA 11-5566" (ট = TA)
-   - "ঢাকা মেট্রো-ড ১২-৩৩৪৪" -> English: "DM-DA 12-3344" (ড = DA)
-   - "ঢাকা মেট্রো-চ ১১-২২৩৩" -> English: "DM-CHA 11-2233" (চ = CHA)
-   - "ঢাকা মেট্রো-গ ১১-২২৩৩" -> English: "DM-GA 11-2233" (গ = GA)
-   - "ঢাকা মেট্রো-ব ১১-২২৩৩" -> English: "DM-BA 11-2233" (ব = BA)
-   - "ঢাকা মেট্রো-ভ ১১-২২৩৩" -> English: "DM-BHA 11-2233" (ভ = BHA)
-   - "চট্ট মেট্রো-ট ১২-৩৪৫৬" -> English: "CM-TA 12-3456" (ট = TA)
-   - "খুলনা মেট্রো-ন ১১-২২৩৩" -> English: "KM-N 11-2233" (ন = N)
-   - "গাজীপুর-ম ১১-২২৩৩" -> English: "GZ-MA 11-2233" (ম = MA)
-
+=== রেফারেন্স ডেটাবেস লিস্ট ===
 ${vehicleHintList}
 
-Analyze the vehicle image with maximum sensitivity and return a STRICT JSON object in this schema:
+=== আউটপুট ফরম্যাট (কঠোরভাবে শুধুমাত্র ভ্যালিড JSON প্রদান করবে) ===
 {
-  "detected": boolean, // true if any vehicle registration number or bonnet plate was identified
-  "plateTextBangla": string, // Complete Bengali plate e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩"
-  "plateTextEnglish": string, // Translated English code e.g. "DM-MA 11-8757", "DM-MA 11-2233", "DM-U 123456"
-  "plateTextStandard": string, // Standardized representation
-  "metroOrDistrict": string, // e.g. "ঢাকা মেট্রো", "চট্টগ্রাম মেট্রো", "গাজীপুর", etc.
-  "metroOrDistrictEng": string, // e.g. "DM", "CM", "KM", "GZ"
-  "vehicleClass": string, // Bengali class letter e.g. "ম", "উ", "ঊ", "ন", "ট", "ড", "গ", "চ", "ব", "ভ", "ক", etc.
-  "vehicleClassEng": string, // English class code e.g. "MA", "U", "AU", "N", "TA", "DA", "GA", "CHA", "BA", "BHA"
-  "digitsBangla": string, // Numbers in Bengali e.g. "১১-৮৭৫৭" or "১২৩৪৫৬"
-  "digitsEnglish": string, // Numbers in English digits e.g. "11-8757" or "123456"
-  "rawSixDigits": string, // Digits only without dashes e.g. "118757"
-  "matchedVehicleNumber": string, // If this closely matches any vehicle from the registered fleet list, provide that exact vehicleNumber string, else empty
-  "confidence": number // 0.0 to 1.0 confidence score
-}
+  "total_vehicles_detected": 1,
+  "detections": [
+    {
+      "vehicle_id": 1,
+      "vehicle_type": "truck",
+      "vehicle_position": "front",
+      "plate_visible": true,
+      "plate_text_bangla": "ঢাকা মেট্রো-ম ১১-৮৭৫৭",
+      "plate_text_english": "DM-MA 11-8757",
+      "division": "ঢাকা মেট্রো",
+      "category_letter": "ম",
+      "series_number": "১১",
+      "registration_number": "৮৭৫৭",
+      "matched_vehicle_number": "ঢাকা মেট্রো-ম ১১-৮৭৫৭",
+      "confidence": "high",
+      "format_match": true,
+      "lighting_condition": "normal",
+      "notes": ""
+    }
+  ]
+}`;
 
-If no vehicle license plate or registration marking is visible anywhere on the vehicle, return {"detected": false, "plateTextBangla": "", "confidence": 0}.
-Output ONLY valid JSON.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg"
+      let response: any = null;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.7-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg"
+                  }
+                },
+                {
+                  text: prompt
                 }
-              },
-              {
-                text: prompt
-              }
-            ]
+              ]
+            }
+          ],
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.1
           }
-        ],
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.1
-        }
-      });
+        });
+      } catch (geminiPrimaryErr) {
+        console.warn("Primary gemini-3.7-flash call warning, trying fallback model...", geminiPrimaryErr);
+        response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg"
+                  }
+                },
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.1
+          }
+        });
+      }
 
       const textResponse = response.text?.trim() || "{}";
       let parsedResult: any = {};
       try {
         parsedResult = JSON.parse(textResponse);
-      } catch (parseErr) {
+      } catch {
         const cleaned = textResponse.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-        parsedResult = JSON.parse(cleaned);
+        try {
+          parsedResult = JSON.parse(cleaned);
+        } catch {
+          parsedResult = {};
+        }
       }
 
-      // Ensure English digits conversion if missing
-      if (parsedResult.digitsBangla && !parsedResult.digitsEnglish) {
-        parsedResult.digitsEnglish = convertBanglaDigitsToEnglish(parsedResult.digitsBangla);
-      }
-      if (parsedResult.digitsEnglish && !parsedResult.rawSixDigits) {
-        parsedResult.rawSixDigits = parsedResult.digitsEnglish.replace(/[^0-9]/g, "");
+      // Format primary detection for structured and backwards-compatible client usage
+      const detections = Array.isArray(parsedResult.detections) ? parsedResult.detections : (parsedResult.detection ? [parsedResult.detection] : []);
+      const primaryDetection = detections.find((d: any) => d.plate_visible && (d.plate_text_bangla || d.registration_number)) || detections[0] || (parsedResult.plate_text_bangla || parsedResult.plateTextBangla ? parsedResult : null);
+
+      let plateTextBangla = primaryDetection?.plate_text_bangla || primaryDetection?.plateTextBangla || parsedResult.plateTextBangla || parsedResult.plate_text_bangla || "";
+      let plateTextEnglish = primaryDetection?.plate_text_english || primaryDetection?.plateTextEnglish || parsedResult.plateTextEnglish || parsedResult.plate_text_english || "";
+      let metroOrDistrict = primaryDetection?.division || primaryDetection?.metroOrDistrict || parsedResult.metroOrDistrict || parsedResult.division || "";
+      let vehicleClass = primaryDetection?.category_letter || primaryDetection?.vehicleClass || parsedResult.vehicleClass || parsedResult.category_letter || "";
+      let seriesNum = primaryDetection?.series_number || primaryDetection?.seriesNumber || "";
+      let regNum = primaryDetection?.registration_number || primaryDetection?.registrationNumber || "";
+      let matchedVehicleNumber = primaryDetection?.matched_vehicle_number || primaryDetection?.matchedVehicleNumber || parsedResult.matched_vehicle_number || parsedResult.matchedVehicleNumber || "";
+
+      let digitsBangla = (seriesNum && regNum ? `${seriesNum}-${regNum}` : regNum || seriesNum) || parsedResult.digitsBangla || "";
+      let digitsEnglish = digitsBangla ? convertBanglaDigitsToEnglish(digitsBangla) : "";
+      let rawSixDigits = digitsEnglish.replace(/[^0-9]/g, "");
+
+      // If plateTextBangla is empty but components exist, assemble it cleanly
+      if (!plateTextBangla && (metroOrDistrict || vehicleClass || digitsBangla)) {
+        plateTextBangla = [metroOrDistrict, vehicleClass ? `-${vehicleClass}` : '', digitsBangla ? ` ${digitsBangla}` : ''].filter(Boolean).join('');
       }
 
-      console.log("ANPR Result:", JSON.stringify(parsedResult));
+      const isDetected = Boolean(
+        (plateTextBangla && plateTextBangla.trim().length >= 3) ||
+        (plateTextEnglish && plateTextEnglish.trim().length >= 3) ||
+        (rawSixDigits && rawSixDigits.length >= 3) ||
+        (matchedVehicleNumber && matchedVehicleNumber.trim().length > 0) ||
+        (primaryDetection && (primaryDetection.plate_visible || primaryDetection.plate_text_bangla || primaryDetection.registration_number))
+      );
+
+      const confidenceScore = primaryDetection?.confidence === 'high' ? 0.95 : primaryDetection?.confidence === 'medium' ? 0.75 : primaryDetection?.confidence === 'low' ? 0.45 : (typeof parsedResult.confidence === 'number' ? parsedResult.confidence : 0.85);
+
+      const standardPayload = {
+        detected: isDetected,
+        total_vehicles_detected: parsedResult.total_vehicles_detected || (isDetected ? 1 : 0),
+        detections: detections,
+        primary_detection: primaryDetection,
+        plateTextBangla,
+        plateTextEnglish,
+        plateTextStandard: plateTextBangla,
+        metroOrDistrict,
+        vehicleClass,
+        digitsBangla,
+        digitsEnglish,
+        rawSixDigits,
+        matchedVehicleNumber,
+        vehicle_type: primaryDetection?.vehicle_type || 'commercial',
+        vehicle_position: primaryDetection?.vehicle_position || 'সামনে',
+        confidence: confidenceScore,
+        confidence_level: primaryDetection?.confidence || 'high',
+        format_match: primaryDetection?.format_match ?? true,
+        lighting_condition: primaryDetection?.lighting_condition || 'day',
+        notes: primaryDetection?.notes || ''
+      };
 
       return res.json({
         success: true,
-        data: parsedResult
+        data: standardPayload,
+        raw_anpr: parsedResult
       });
     } catch (error: any) {
       console.error("ANPR Error:", error);

@@ -195,6 +195,23 @@ export const ENG_TO_BANGLA_CLASS_MAP: Record<string, string> = {
 export const BANGLA_METROS = Object.keys(BANGLA_TO_ENG_DISTRICT_MAP);
 export const BANGLA_VEHICLE_CLASSES = Object.keys(BANGLA_TO_ENG_CLASS_MAP);
 
+export interface VehicleDetectionItem {
+  vehicle_id?: number;
+  vehicle_type?: string;
+  vehicle_position?: string;
+  plate_visible?: boolean;
+  plate_text_bangla?: string;
+  plate_text_english?: string;
+  division?: string;
+  category_letter?: string;
+  series_number?: string;
+  registration_number?: string;
+  confidence?: 'high' | 'medium' | 'low' | string;
+  format_match?: boolean;
+  lighting_condition?: 'day' | 'night' | 'low_light' | 'overexposed' | string;
+  notes?: string;
+}
+
 export interface PlateScanData {
   detected: boolean;
   plateTextBangla: string;
@@ -209,6 +226,15 @@ export interface PlateScanData {
   rawSixDigits?: string;
   matchedVehicleNumber?: string;
   confidence?: number;
+  confidence_level?: 'high' | 'medium' | 'low' | string;
+  vehicle_type?: string;
+  vehicle_position?: string;
+  format_match?: boolean;
+  lighting_condition?: 'day' | 'night' | 'low_light' | 'overexposed' | string;
+  notes?: string;
+  total_vehicles_detected?: number;
+  detections?: VehicleDetectionItem[];
+  primary_detection?: VehicleDetectionItem;
 }
 
 export function convertBanglaToEngDigits(str: string = ''): string {
@@ -373,7 +399,7 @@ export function matchVehicleFromDatabase(
   }
 
   // 3. Match by 6 digits or 4 digits + vehicle class letter (Bangla or English code)
-  if (scannedDigits && scannedDigits.length >= 4) {
+  if (scannedDigits && scannedDigits.length >= 3) {
     const classLetterBangla = plateData.vehicleClass || '';
     const classLetterEng = plateData.vehicleClassEng || (classLetterBangla ? BANGLA_TO_ENG_CLASS_MAP[classLetterBangla] : '');
 
@@ -391,12 +417,21 @@ export function matchVehicleFromDatabase(
       if (classMatch) return classMatch;
     }
 
-    // Second try: Full digits match (e.g. 6 digits or 4 digits)
+    // Second try: Exact digits match (e.g. full 6 digits or exact registration number)
     const exactDigitsMatch = vehicles.find(v => {
       const vDigits = extractDigits(v.vehicleNumber);
-      return vDigits === scannedDigits || (scannedDigits.length >= 4 && vDigits.endsWith(scannedDigits.slice(-4)));
+      return vDigits === scannedDigits || (scannedDigits.length >= 4 && (vDigits.endsWith(scannedDigits.slice(-4)) || vDigits.endsWith(scannedDigits)));
     });
     if (exactDigitsMatch) return exactDigitsMatch;
+
+    // Third try: Substring digits match
+    const subDigitsMatches = vehicles.filter(v => {
+      const vDigits = extractDigits(v.vehicleNumber);
+      return vDigits.includes(scannedDigits) || (scannedDigits.length >= 4 && scannedDigits.includes(vDigits));
+    });
+    if (subDigitsMatches.length === 1) {
+      return subDigitsMatches[0];
+    }
   }
 
   // 4. Substring / partial text search

@@ -49,12 +49,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         if (u) {
-          // Test connection as per guidelines
+          // Test connection as per guidelines (gracefully handle offline / reconnecting state)
           try {
             await getDocFromServer(doc(db, 'system', 'connection_test'));
-          } catch (error) {
-            if(error instanceof Error && error.message.includes('the client is offline')) {
-              console.error("Please check your Firebase configuration.");
+          } catch (error: any) {
+            const errMsg = error?.message || String(error);
+            if (errMsg.includes('the client is offline') || error?.code === 'unavailable' || errMsg.includes('unavailable')) {
+              console.warn("Firestore: Client is operating in offline cache mode or reconnecting to backend.");
+            } else {
+              console.info("Firestore connection check info:", errMsg);
             }
           }
 
