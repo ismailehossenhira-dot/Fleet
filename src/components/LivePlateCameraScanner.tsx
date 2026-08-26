@@ -22,7 +22,12 @@ import {
   Eye,
   Flashlight,
   Activity,
-  Gauge
+  Gauge,
+  ZoomIn,
+  Search,
+  X,
+  FileImage,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -41,20 +46,20 @@ import { useTheme } from '../ThemeContext';
 
 interface LivePlateCameraScannerProps {
   vehicles: any[];
-  trips: any[];
+  trips?: any[];
   onVehicleMatched: (vehicle: any, action: 'IN' | 'OUT', plateData?: PlateScanData) => void;
   onDirectGateIn?: (vehicle: any) => Promise<void>;
   onDirectGateOut?: (vehicle: any) => Promise<void>;
-  canManage: boolean;
+  canManage?: boolean;
 }
 
 export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
-  vehicles,
-  trips,
+  vehicles = [],
+  trips = [],
   onVehicleMatched,
   onDirectGateIn,
   onDirectGateOut,
-  canManage
+  canManage = true
 }) => {
   const { isEmerald, isCrimson, isAmber } = useTheme();
   
@@ -73,6 +78,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
   const [motionSpeedMode, setMotionSpeedMode] = useState<'fast' | 'normal'>('fast');
   const [torchActive, setTorchActive] = useState<boolean>(false);
   const [hasTorchSupport, setHasTorchSupport] = useState<boolean>(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [autoGateCountdown, setAutoGateCountdown] = useState<number | null>(null);
@@ -84,6 +90,11 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
   const [detectionTimestamp, setDetectionTimestamp] = useState<string | null>(null);
   const [directActionExecuting, setDirectActionExecuting] = useState<boolean>(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+  const [scanFeedbackMsg, setScanFeedbackMsg] = useState<string | null>(null);
+  const [scannedImageThumbnail, setScannedImageThumbnail] = useState<string | null>(null);
+
+  // Quick manual vehicle number search query
+  const [quickQuery, setQuickQuery] = useState<string>('');
 
   // Stop camera stream cleanly
   const stopCamera = useCallback(() => {
@@ -121,10 +132,29 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     }
   };
 
+  // Adjust Zoom
+  const cycleZoom = async () => {
+    const nextZoom = zoomLevel === 1 ? 1.5 : zoomLevel === 1.5 ? 2 : zoomLevel === 2 ? 2.5 : 1;
+    setZoomLevel(nextZoom);
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      if (track && (track.getCapabilities as any)?.()?.zoom) {
+        try {
+          await (track as any).applyConstraints({
+            advanced: [{ zoom: nextZoom }]
+          });
+        } catch (e) {
+          console.warn("Hardware zoom not supported:", e);
+        }
+      }
+    }
+  };
+
   // Start camera stream (Always-on capability with multi-tier fallback)
   const startCamera = useCallback(async () => {
     setCameraLoading(true);
     setCameraError(null);
+    setScanFeedbackMsg(null);
 
     // Stop any existing tracks first
     if (stream) {
@@ -161,7 +191,17 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
         try {
           newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         } catch (tier2Err) {
-          throw tier2Err;
+          // Tier 3: Enumerate devices and select first available video input
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = devices.filter(d => d.kind === 'videoinput');
+          if (videoInputs.length > 0) {
+            newStream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: videoInputs[0].deviceId } },
+              audio: false
+            });
+          } else {
+            throw tier2Err;
+          }
         }
       }
 
@@ -175,7 +215,9 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
 
         if (videoRef.current) {
           videoRef.current.srcObject = newStream;
-          videoRef.current.play().catch(e => console.warn("Video play notice:", e));
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch(e => console.warn("Video play notice:", e));
+          };
         }
         setCameraActive(true);
       }
@@ -185,11 +227,11 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
       if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
         msg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজারে ক্যামেরা পারমিশন এলাউ করুন অথবা ছবি আপলোড করুন।";
       } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError' || String(err?.message || '').toLowerCase().includes('not found')) {
-        msg = "কোনো সংযুক্ত ক্যামেরা ডিভাইস পাওয়া যায়নি (Camera not found)। আপনি নিচের 'ছবি আপলোড' বা 'ম্যানুয়াল সার্চ' অপশন ব্যবহার করতে পারেন।";
+        msg = "কোনো সংযুক্ত ক্যামেরা ডিভাইস পাওয়া যায়নি (Camera not found)। আপনি নিচের 'ছবি আপলোড' বা 'দ্রুত গাড়ি নির্বাচন' অপশন ব্যবহার করতে পারেন।";
       } else if (err?.message === 'NOT_SUPPORTED') {
         msg = "আপনার বর্তমান ব্রাউজারে ক্যামেরা অ্যাক্সেস সাপোর্ট করে না। অনুগ্রহ করে ছবি আপলোড অথবা ম্যানুয়াল সার্চ ব্যবহার করুন।";
       } else {
-        msg = "ক্যামেরা সংযোগে সমস্যা হচ্ছে। অনুগ্রহ করে নিচে ছবি আপলোড করুন অথবা ম্যানুয়াল সার্চ ব্যবহার করুন।";
+        msg = "ক্যামেরা সংযোগে সমস্যা হচ্ছে। অনুগ্রহ করে নিচে ছবি আপলোড করুন অথবা দ্রুত গাড়ি নির্বাচন ব্যবহার করুন।";
       }
       setCameraError(msg);
       setCameraActive(false);
@@ -198,25 +240,19 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     }
   }, [facingMode, stream]);
 
-  // Auto-start camera on mount
+  // Initial camera startup
   useEffect(() => {
     startCamera();
     return () => {
       stopCamera();
     };
-  }, []); // Run on mount
+  }, [facingMode]);
 
   // Flip camera between front and back
   const toggleFacingMode = () => {
     stopCamera();
     setFacingMode(prev => (prev === 'environment' ? 'user' : 'environment'));
   };
-
-  useEffect(() => {
-    if (!cameraActive && !cameraLoading && !cameraError) {
-      startCamera();
-    }
-  }, [facingMode]);
 
   // Capture current frame from video with motion optimization & dynamic scaling
   const captureFrameBase64 = (): string | null => {
@@ -225,9 +261,9 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     const canvas = canvasRef.current;
     if (video.videoWidth === 0 || video.videoHeight === 0) return null;
 
-    // Scale to max width/height 1024 for lightning-fast recognition
+    // Scale to max width/height 1280 for crystal-clear license plate OCR
     const maxDim = Math.max(video.videoWidth, video.videoHeight);
-    const scale = maxDim > 1024 ? 1024 / maxDim : 1;
+    const scale = maxDim > 1280 ? 1280 / maxDim : 1;
     const targetW = Math.round(video.videoWidth * scale);
     const targetH = Math.round(video.videoHeight * scale);
 
@@ -237,24 +273,30 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     if (!ctx) return null;
 
     ctx.drawImage(video, 0, 0, targetW, targetH);
-    return canvas.toDataURL('image/jpeg', 0.84);
+    return canvas.toDataURL('image/jpeg', 0.90);
   };
 
   // Perform AI Plate Scan API Call
-  const performPlateScan = async (imageSrc?: string) => {
+  const performPlateScan = async (imageSrc?: string, isManualTrigger = false) => {
     if (isProcessing) return;
     const base64Img = imageSrc || captureFrameBase64();
-    if (!base64Img) return;
+    if (!base64Img) {
+      if (isManualTrigger) {
+        setScanFeedbackMsg("ক্যামেরা থেকে ফ্রেম ক্যাপচার করা যায়নি। ক্যামেরা চালু রাখুন অথবা ছবি আপলোড করুন।");
+      }
+      return;
+    }
 
     setIsProcessing(true);
     setCameraError(null);
+    setScannedImageThumbnail(base64Img);
 
     try {
       const payload = {
         image: base64Img,
         registeredVehicles: vehicles.map(v => ({
           vehicleNumber: v.vehicleNumber,
-          type: v.type || v.model || ''
+          type: v.type || v.model || 'Commercial'
         }))
       };
 
@@ -274,6 +316,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
       if (plateData && plateData.detected) {
         setLastDetectedPlate(plateData);
         setDetectionTimestamp(new Date().toLocaleTimeString('bn-BD'));
+        setScanFeedbackMsg(null);
 
         // Match with fleet vehicles
         const matched = matchVehicleFromDatabase(plateData, vehicles);
@@ -296,9 +339,16 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
         } else {
           setMatchedVehicle(null);
         }
+      } else {
+        if (isManualTrigger || imageSrc) {
+          setScanFeedbackMsg("⚠️ ছবিতে গাড়ির নাম্বার প্লেট বা বনেট সনাক্ত হয়নি। গাড়িটির সামনের হুড বা প্লেট ফ্রেমের মাঝে সোজা রেখে আবার চেষ্টা করুন।");
+        }
       }
     } catch (err: any) {
       console.warn("ANPR scan error:", err.message);
+      if (isManualTrigger || imageSrc) {
+        setScanFeedbackMsg("স্ক্যানিং ব্যর্থ: " + (err.message || 'সার্ভার যোগাযোগে সমস্যা'));
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -363,6 +413,36 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     }
   };
 
+  // Handle manual quick selection of vehicle
+  const handleSelectQuickVehicle = (vehicle: any) => {
+    setMatchedVehicle(vehicle);
+    setLastDetectedPlate({
+      detected: true,
+      plateTextBangla: vehicle.vehicleNumber,
+      plateTextEnglish: translateBanglaPlateToEnglish(vehicle.vehicleNumber),
+      plateTextStandard: vehicle.vehicleNumber,
+      metroOrDistrict: 'ঢাকা মেট্রো',
+      vehicleClass: 'ম',
+      digitsBangla: convertEngToBanglaDigits(vehicle.vehicleNumber.replace(/[^0-9]/g, '')),
+      digitsEnglish: vehicle.vehicleNumber.replace(/[^0-9]/g, ''),
+      confidence: 1.0
+    });
+    setDetectionTimestamp(new Date().toLocaleTimeString('bn-BD'));
+    const targetAction: 'IN' | 'OUT' = vehicle.status === 'On Trip' ? 'IN' : 'OUT';
+    onVehicleMatched(vehicle, targetAction);
+  };
+
+  // Filtered vehicles for quick search
+  const filteredQuickVehicles = quickQuery.trim() === ''
+    ? vehicles.slice(0, 8)
+    : vehicles.filter(v => {
+        const q = quickQuery.toLowerCase().trim();
+        const num = (v.vehicleNumber || '').toLowerCase();
+        const numDigits = num.replace(/[^0-9]/g, '');
+        const qDigits = convertBanglaToEngDigits(q).replace(/[^0-9]/g, '');
+        return num.includes(q) || (qDigits && numDigits.includes(qDigits)) || (v.type || '').toLowerCase().includes(q);
+      });
+
   // Handle image upload from gallery/device
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,7 +452,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
       if (base64) {
-        performPlateScan(base64);
+        performPlateScan(base64, true);
       }
     };
     reader.readAsDataURL(file);
@@ -432,8 +512,21 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
               title="চলন্ত গাড়ির স্পিড মোড পরিবর্তন"
             >
               <Gauge size={13} className={motionSpeedMode === 'fast' ? "text-amber-400 animate-pulse" : ""} />
-              <span>{motionSpeedMode === 'fast' ? 'চলন্ত গাড়ি মোড (Fast 1.4s)' : 'স্ট্যান্ডার্ড (2.6s)'}</span>
+              <span>{motionSpeedMode === 'fast' ? 'চলন্ত গাড়ি (1.4s)' : 'স্বাভাবিক (2.6s)'}</span>
             </button>
+
+            {/* Digital Zoom Button */}
+            {cameraActive && (
+              <button
+                type="button"
+                onClick={cycleZoom}
+                className="px-2 py-1 rounded-lg bg-black/50 hover:bg-black/70 text-emerald-300 border border-white/10 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                title="ক্যামেরা জুম করুন"
+              >
+                <ZoomIn size={13} />
+                <span>{zoomLevel}x</span>
+              </button>
+            )}
 
             {/* Flashlight / Torch Toggle */}
             {hasTorchSupport && (
@@ -491,7 +584,8 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover min-h-[320px]"
+                style={{ transform: `scale(${zoomLevel})` }}
+                className="w-full h-full object-cover min-h-[320px] transition-transform duration-200 origin-center"
               />
 
               {/* High-tech Targeting Overlay for Bangladeshi Front-Facing License Plates & Hood Stickers */}
@@ -575,6 +669,23 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
           </div>
         )}
 
+        {/* Feedback message banner if scan didn't detect plate */}
+        {scanFeedbackMsg && (
+          <div className="p-3 bg-amber-950/90 border-t border-amber-700 text-amber-200 text-xs flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={15} className="text-amber-400 shrink-0" />
+              <span>{scanFeedbackMsg}</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setScanFeedbackMsg(null)}
+              className="text-amber-400 hover:text-amber-200 p-1 cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Bottom Control Actions */}
         <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
           {/* Continuous auto-scan toggle */}
@@ -596,7 +707,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
           <button
             type="button"
             disabled={!cameraActive || isProcessing}
-            onClick={() => performPlateScan()}
+            onClick={() => performPlateScan(undefined, true)}
             className={cn(
               "flex-1 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer",
               isProcessing
@@ -780,15 +891,74 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
           ) : (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs space-y-1">
               <p className="font-bold">
-                ⚠️ এই প্লেটের গাড়িটি সিস্টেমে এখনো নিবন্ধিত নয়।
+                ⚠️ এই প্লেটের গাড়িটি সিস্টেমে এখনো নিবন্ধিত নয় ({lastDetectedPlate.plateTextBangla})।
               </p>
               <p className="text-[11px] text-amber-700">
-                আপনি Vehicle Management সেকশন থেকে গাড়িটি নতুন হিসেবে নিবন্ধন করতে পারেন।
+                আপনি Vehicle Management মেনু থেকে এই গাড়িটি নিবন্ধন করতে পারেন অথবা নিচে সরাসরি গাড়ি সিলেক্ট করুন।
               </p>
             </div>
           )}
         </motion.div>
       )}
+
+      {/* Quick Search & Select Vehicle Fallback Bar */}
+      <div className="p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800 text-white space-y-2.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-slate-300 flex items-center gap-1.5">
+            <Search size={14} className="text-emerald-400" />
+            দ্রুত গাড়ি নির্বাচন (নাম্বার বা শেষ ৪ সংখ্যা লিখে খুঁজুন):
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            মোট গাড়ি: {vehicles.length}
+          </span>
+        </div>
+
+        {/* Input */}
+        <div className="relative">
+          <input
+            type="text"
+            value={quickQuery}
+            onChange={(e) => setQuickQuery(e.target.value)}
+            placeholder="যেমন: 8757 বা ঢাকা মেট্রো-ম..."
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-emerald-500"
+          />
+          {quickQuery && (
+            <button
+              type="button"
+              onClick={() => setQuickQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Quick vehicle chips */}
+        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1">
+          {filteredQuickVehicles.map(v => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => handleSelectQuickVehicle(v)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer flex items-center gap-1.5",
+                matchedVehicle?.id === v.id
+                  ? "bg-emerald-600 border-emerald-400 text-white shadow-sm"
+                  : "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200"
+              )}
+            >
+              <Truck size={12} className={v.status === 'On Trip' ? "text-blue-400" : "text-emerald-400"} />
+              <span>{v.vehicleNumber}</span>
+              <span className={cn(
+                "text-[9px] px-1 py-0.2 rounded font-sans",
+                v.status === 'On Trip' ? "bg-blue-900 text-blue-200" : "bg-emerald-900 text-emerald-200"
+              )}>
+                {v.status === 'On Trip' ? 'On Trip' : 'Avail'}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

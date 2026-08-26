@@ -48,72 +48,90 @@ async function startServer() {
         return res.status(400).json({ success: false, message: "No image provided" });
       }
 
-      // Strip data URL prefix if present
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-      const mimeType = image.match(/^data:(image\/\w+);base64,/)?.[1] || "image/jpeg";
+      // Robust base64 and mime-type extraction
+      let base64Data = image;
+      let mimeType = "image/jpeg";
+
+      const commaIndex = image.indexOf(",");
+      if (commaIndex !== -1 && image.startsWith("data:")) {
+        const header = image.substring(0, commaIndex);
+        base64Data = image.substring(commaIndex + 1);
+        const mimeMatch = header.match(/data:([^;]+)/);
+        if (mimeMatch && mimeMatch[1]) {
+          mimeType = mimeMatch[1].trim();
+        }
+      }
+      // Remove whitespace/newlines from base64 string
+      base64Data = base64Data.replace(/[\r\n\s]/g, "");
 
       const ai = getGenAI();
       if (!ai) {
         return res.status(503).json({
           success: false,
-          message: "Gemini API key not configured on server. Please use manual or QR scan."
+          message: "Gemini API key not configured on server. Please check environment settings."
         });
       }
 
       const vehicleHintList = Array.isArray(registeredVehicles) && registeredVehicles.length > 0
-        ? `Registered Fleet Vehicles in Database for matching:\n${registeredVehicles.slice(0, 100).map((v: any) => `- ${v.vehicleNumber} (Type: ${v.type || 'N/A'})`).join("\n")}`
+        ? `Registered Fleet Vehicles in Database for matching reference:\n${registeredVehicles.slice(0, 100).map((v: any) => `- ${v.vehicleNumber} (Type: ${v.type || 'Commercial'})`).join("\n")}`
         : "";
 
-      const prompt = `You are an ultra-fast, high-precision Automatic Number Plate Recognition (ANPR) and Vehicle OCR engine specialized in Bangladeshi commercial and private vehicles (বাংলাদেশি গাড়ির নাম্বার প্লেট ও চলন্ত গাড়ি সনাক্তকরণ).
+      const prompt = `You are a world-class Automatic Number Plate Recognition (ANPR) and Vehicle OCR engine specialized in Bangladeshi commercial trucks, pickups, buses, and private vehicles (বাংলাদেশি গাড়ির নাম্বার প্লেট ও চলন্ত গাড়ি সনাক্তকরণ).
 
-CRITICAL SCANNING INSTRUCTIONS FOR MOVING VEHICLES & FRONT-FACING TRUCKS/BUSES:
-1. Examine the ENTIRE front profile of the vehicle:
-   - Front hood / bonnet (many Bangladeshi trucks/pickups have plate stickers or painted numbers on the left, right, or center of the bonnet/hood, e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭")
-   - Front bumper / number plate bracket
-   - Radiator grill and cabin body
-   - Windshield top/bottom banner
-2. Account for real-world driving & fleet conditions:
-   - Moving vehicles (চলন্ত গাড়ি) with slight angle, perspective tilt, or motion
-   - Low light, night conditions, glare from headlights or dust
-   - Surrounding vinyl stickers, artwork, stripes, or Tata / Ashok Leyland logos (e.g. decorative wings or colors around the plate)
-   - Dents, bends, or painted typography
-3. Read the complete Bengali text (BRTA format) and translate accurately to standard English code:
-   - "ঢাকা মেট্রো-ম ১১-৮৭৫৭" -> English: "DM-MA 11-8757" (ঢাকা মেট্রো ম = DM-MA)
-   - "ঢাকা মেট্রো-ম ১১-২২৩৩" -> English: "DM-MA 11-2233" (ঢাকা মেট্রো ম = DM-MA)
-   - "ঢাকা মেট্রো-উ ১২৩৪৫৬" -> English: "DM-U 123456" (ঢাকা মেট্রো উ = DM-U)
-   - "ঢাকা মেট্রো-ঊ ১১-০০৯৯" -> English: "DM-AU 11-0099" (ঢাকা মেট্রো ঊ = DM-AU)
-   - "ঢাকা মেট্রো-ন ১২-৩৪৫৬" -> English: "DM-N 12-3456" (ঢাকা মেট্রো ন = DM-N)
-   - "ঢাকা মেট্রো-ট ১১-৫৫৬৬" -> English: "DM-TA 11-5566"
-   - "ঢাকা মেট্রো-ড ১২-৩৩৪৪" -> English: "DM-DA 12-3344"
-   - "ঢাকা মেট্রো-চ ১১-২২৩৩" -> English: "DM-CHA 11-2233"
-   - "ঢাকা মেট্রো-গ ১১-২২৩৩" -> English: "DM-GA 11-2233"
-   - "ঢাকা মেট্রো-ব ১১-২২৩৩" -> English: "DM-BA 11-2233"
-   - "ঢাকা মেট্রো-ভ ১১-২২৩৩" -> English: "DM-BHA 11-2233"
-   - "চট্ট মেট্রো-ট ১২-৩৪৫৬" -> English: "CM-TA 12-3456"
-   - "খুলনা মেট্রো-ন ১১-২২৩৩" -> English: "KM-N 11-2233"
-   - "গাজীপুর-ম ১১-২২৩৩" -> English: "GZ-MA 11-2233"
+CRITICAL SCANNING INSTRUCTIONS FOR BANGLADESHI VEHICLES:
+1. Bangladeshi vehicle registration plates / numbers are commonly formatted in TWO LINES:
+   - Line 1 (District & Class): e.g. "ঢাকা মেট্রো-ম", "ঢাকা মেট্রো-উ", "ঢাকা মেট্রো-ঊ", "ঢাকা মেট্রো-ন", "ঢাকা মেট্রো-ট", "ঢাকা মেট্রো-ড", "ঢাকা মেট্রো-গ", "ঢাকা মেট্রো-চ", "চট্ট মেট্রো-ট", "গাজীপুর-ম"
+   - Line 2 (Digits): e.g. "১১-৮৭৫৭", "১১-২২৩৩", "১২-৩৪৫৬", "১২৩৪৫৬"
+   Combine both lines into the complete plate string: e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩".
+
+2. SCAN ALL VEHICLE LOCATIONS:
+   - Front bonnet / hood: Bangladeshi commercial trucks (Tata, Ashok Leyland, Mahindra, etc.) almost always have the registration painted or stickered in a white or colored box on the front bonnet/hood (e.g. left side or middle of hood).
+   - Front metal bumper & license plate bracket.
+   - Radiator grill & cabin body.
+   - Windshield top banner or visor.
+
+3. IGNORE DECORATIVE LOGOS & NON-REGISTRATION TEXT:
+   - Ignore manufacturer badges ("TATA", "ASHOK LEYLAND", "VOLVO", "TURBO").
+   - Ignore battery / sponsor stickers (e.g. "পদ্মা ব্যাটারী", "মায়ের দোয়া", "আল্লাহ সর্বশক্তিমান").
+   - Focus strictly on the official BRTA format: [District/Metro]-[Class] [Digits].
+
+4. BANGLA TO ENGLISH TRANSLATIONS:
+   - "ঢাকা মেট্রো-ম ১১-৮৭৫৭" -> English: "DM-MA 11-8757" (ম = MA)
+   - "ঢাকা মেট্রো-ম ১১-২২৩৩" -> English: "DM-MA 11-2233" (ম = MA)
+   - "ঢাকা মেট্রো-উ ১২৩৪৫৬" -> English: "DM-U 123456" (উ = U)
+   - "ঢাকা মেট্রো-ঊ ১১-০০৯৯" -> English: "DM-AU 11-0099" (ঊ = AU)
+   - "ঢাকা মেট্রো-ন ১২-৩৪৫৬" -> English: "DM-N 12-3456" (ন = N)
+   - "ঢাকা মেট্রো-ট ১১-৫৫৬৬" -> English: "DM-TA 11-5566" (ট = TA)
+   - "ঢাকা মেট্রো-ড ১২-৩৩৪৪" -> English: "DM-DA 12-3344" (ড = DA)
+   - "ঢাকা মেট্রো-চ ১১-২২৩৩" -> English: "DM-CHA 11-2233" (চ = CHA)
+   - "ঢাকা মেট্রো-গ ১১-২২৩৩" -> English: "DM-GA 11-2233" (গ = GA)
+   - "ঢাকা মেট্রো-ব ১১-২২৩৩" -> English: "DM-BA 11-2233" (ব = BA)
+   - "ঢাকা মেট্রো-ভ ১১-২২৩৩" -> English: "DM-BHA 11-2233" (ভ = BHA)
+   - "চট্ট মেট্রো-ট ১২-৩৪৫৬" -> English: "CM-TA 12-3456" (ট = TA)
+   - "খুলনা মেট্রো-ন ১১-২২৩৩" -> English: "KM-N 11-2233" (ন = N)
+   - "গাজীপুর-ম ১১-২২৩৩" -> English: "GZ-MA 11-2233" (ম = MA)
 
 ${vehicleHintList}
 
-Analyze the image with maximum recall and return a STRICT JSON object in this schema:
+Analyze the vehicle image with maximum sensitivity and return a STRICT JSON object in this schema:
 {
-  "detected": boolean, // true if any vehicle license plate, bonnet sticker, or vehicle number was detected
-  "plateTextBangla": string, // Complete Bengali text e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩"
-  "plateTextEnglish": string, // Translated English text e.g. "DM-MA 11-8757", "DM-MA 11-2233", "DM-U 123456", "DM-AU 11-0099", "DM-N 12-3456"
-  "plateTextStandard": string, // Standardized normalized representation
+  "detected": boolean, // true if any vehicle registration number or bonnet plate was identified
+  "plateTextBangla": string, // Complete Bengali plate e.g. "ঢাকা মেট্রো-ম ১১-৮৭৫৭" or "ঢাকা মেট্রো-ম ১১-২২৩৩"
+  "plateTextEnglish": string, // Translated English code e.g. "DM-MA 11-8757", "DM-MA 11-2233", "DM-U 123456"
+  "plateTextStandard": string, // Standardized representation
   "metroOrDistrict": string, // e.g. "ঢাকা মেট্রো", "চট্টগ্রাম মেট্রো", "গাজীপুর", etc.
-  "metroOrDistrictEng": string, // e.g. "DM", "CM", "KM", "GZ", etc.
-  "vehicleClass": string, // The Bangla letter e.g. "ম", "উ", "ঊ", "ন", "ট", "ড", "ব", "ভ", "ক", "খ", "গ", "ঘ", "চ", "ছ", "জ", "ঝ", "প", "ফ", "স", "হ", etc.
-  "vehicleClassEng": string, // The English transliteration e.g. "MA", "U", "AU", "N", "TA", "DA", "CHA", "GA", "BA", "BHA", etc.
-  "digitsBangla": string, // Numbers in Bengali script e.g. "১১-৮৭৫৭" or "১২৩৪৫৬"
+  "metroOrDistrictEng": string, // e.g. "DM", "CM", "KM", "GZ"
+  "vehicleClass": string, // Bengali class letter e.g. "ম", "উ", "ঊ", "ন", "ট", "ড", "গ", "চ", "ব", "ভ", "ক", etc.
+  "vehicleClassEng": string, // English class code e.g. "MA", "U", "AU", "N", "TA", "DA", "GA", "CHA", "BA", "BHA"
+  "digitsBangla": string, // Numbers in Bengali e.g. "১১-৮৭৫৭" or "১২৩৪৫৬"
   "digitsEnglish": string, // Numbers in English digits e.g. "11-8757" or "123456"
-  "rawSixDigits": string, // English digits without dashes e.g. "118757"
-  "matchedVehicleNumber": string, // If this closely matches any vehicle from registered vehicles list, provide the exact vehicleNumber string, else empty
+  "rawSixDigits": string, // Digits only without dashes e.g. "118757"
+  "matchedVehicleNumber": string, // If this closely matches any vehicle from the registered fleet list, provide that exact vehicleNumber string, else empty
   "confidence": number // 0.0 to 1.0 confidence score
 }
 
-If no vehicle license plate or vehicle number is visible anywhere on the vehicle body, return {"detected": false, "plateTextBangla": "", "confidence": 0}.
-Output ONLY valid JSON without markdown wrapping.`;
+If no vehicle license plate or registration marking is visible anywhere on the vehicle, return {"detected": false, "plateTextBangla": "", "confidence": 0}.
+Output ONLY valid JSON.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -124,7 +142,7 @@ Output ONLY valid JSON without markdown wrapping.`;
               {
                 inlineData: {
                   data: base64Data,
-                  mimeType: mimeType
+                  mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg"
                 }
               },
               {
@@ -144,7 +162,6 @@ Output ONLY valid JSON without markdown wrapping.`;
       try {
         parsedResult = JSON.parse(textResponse);
       } catch (parseErr) {
-        // Clean markdown backticks if any
         const cleaned = textResponse.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
         parsedResult = JSON.parse(cleaned);
       }
@@ -156,6 +173,8 @@ Output ONLY valid JSON without markdown wrapping.`;
       if (parsedResult.digitsEnglish && !parsedResult.rawSixDigits) {
         parsedResult.rawSixDigits = parsedResult.digitsEnglish.replace(/[^0-9]/g, "");
       }
+
+      console.log("ANPR Result:", JSON.stringify(parsedResult));
 
       return res.json({
         success: true,
