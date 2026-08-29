@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
 import { ThemeProvider } from './ThemeContext';
 import { WarehouseProvider } from './WarehouseContext';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
 import Dashboard from './Dashboard';
 import Vehicles from './Vehicles';
