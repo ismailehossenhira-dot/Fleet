@@ -10,10 +10,16 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function hasRole(role) {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+      return isSignedIn() && hasUserDoc() && getUserDoc().role == role;
     }
     
     function isSuperAdmin() {
@@ -31,22 +37,33 @@ service cloud.firestore {
         hasRole('Admin')
       ); 
     }
+
     function isSubAdmin() { return hasRole('Sub Admin'); }
-    function isChecker() { return hasRole('Checker'); }
+    function isOCC() { return hasRole('OCC'); }
     function isLineSupervisor() { return hasRole('Line Supervisor'); }
-    function canManage() { return isAdmin() || isSubAdmin(); }
+    function isChecker() { return hasRole('Checker'); }
+
+    function hasPermission(moduleKey) {
+      return isSignedIn() && (
+        isAdmin() || 
+        (hasUserDoc() && (
+          getUserDoc().get('allPermissions', false) == true ||
+          moduleKey in getUserDoc().get('permissions', [])
+        ))
+      );
+    }
+
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
     // User Profiles
     match /users/{userId} {
       allow read: if true;
-      allow create: if isAdmin() || (isSubAdmin() && incoming().role == 'Sub Admin') || (request.auth.uid == userId);
+      allow create: if isAdmin() || (request.auth.uid == userId);
       allow update: if isSuperAdmin() 
         || (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny(['isSuspended']))
-        || (isSubAdmin() && incoming().role == 'Sub Admin' && existing().role == 'Sub Admin' && !incoming().diff(existing()).affectedKeys().hasAny(['isSuspended']))
-        || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuspended']));
-      allow delete: if isSuperAdmin();
+        || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuspended', 'permissions', 'allPermissions']));
+      allow delete: if isSuperAdmin() || isAdmin();
     }
 
     // System Check
@@ -64,14 +81,15 @@ service cloud.firestore {
 
     match /vehicles/{vehicleId} {
       allow read: if isSignedIn();
-      allow create: if canManage() && isValidVehicle(incoming());
+      // Adding new vehicles and deleting restricted strictly to Admin
+      allow create: if isAdmin() && isValidVehicle(incoming());
       allow update: if isSignedIn() && (
         // Action: Status Update (during Trip start/end, Maintenance, or making Available)
-        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes'])) ||
-        // Action: Full Update
-        (canManage() && isValidVehicle(incoming()))
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes', 'warehouse', 'previousWarehouse', 'transferredAt'])) ||
+        // Action: Full Update by Admin
+        (isAdmin() && isValidVehicle(incoming()))
       );
-      allow delete: if canManage();
+      allow delete: if isAdmin();
     }
 
     // Driver/Staff Validation
@@ -84,9 +102,11 @@ service cloud.firestore {
 
     match /drivers/{driverId} {
       allow read: if isSignedIn();
-      allow create: if canManage();
-      allow update: if canManage();
-      allow delete: if canManage();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() && incoming().diff(existing()).affectedKeys().hasAny(['warehouse', 'previousWarehouse', 'transferredAt', 'updatedAt', 'updatedBy'])
+      );
+      allow delete: if isAdmin();
     }
 
     // Trip Validation
@@ -101,23 +121,23 @@ service cloud.firestore {
 
     match /trips/{tripId} {
       allow read: if isSignedIn();
-      allow create: if canManage() || isLineSupervisor();
+      allow create: if isAdmin() || hasPermission('new_trip') || hasPermission('trips') || isSubAdmin() || isLineSupervisor();
       allow update: if isSignedIn() && (
         // Action: Complete/Cancel Trip (Status change, return inspection, or cancellation)
         (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'inspectionOnReturn', 'updatedAt', 'updatedBy'])) ||
         // Action: Assign Case
         (incoming().diff(existing()).affectedKeys().hasOnly(['caseDetails'])) ||
         // Action: Generic Update
-        canManage() || isLineSupervisor()
+        isAdmin() || hasPermission('trips') || isSubAdmin() || isLineSupervisor()
       );
-      allow delete: if canManage() || (isLineSupervisor() && existing().status in ['Pending', 'Cancelled']);
+      allow delete: if isAdmin();
     }
 
     match /cases/{caseId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if canManage();
-      allow delete: if canManage();
+      allow update: if isAdmin() || hasPermission('cases');
+      allow delete: if isAdmin();
     }
 
     // Missing Reports Validation
@@ -153,17 +173,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidMissingReport(incoming());
       allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     match /missing_reports_history/{reportId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow delete: if canManage();
+      allow delete: if isAdmin();
     }
 
     match /requests/{requestId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     match /vehicle_status_logs/{logId} {
@@ -185,14 +208,14 @@ service cloud.firestore {
     match /morning_preps/{prepId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidMorningPrep(incoming());
-      allow update: if isSignedIn() && canManage();
-      allow delete: if isSignedIn() && canManage();
+      allow update: if isAdmin() || hasPermission('morning_prep');
+      allow delete: if isAdmin();
     }
 
     match /maintenance/{maintenanceId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
-      allow delete: if canManage() || isLineSupervisor();
+      allow delete: if isAdmin();
     }
 
     match /staff_notes/{noteId} {
@@ -211,7 +234,7 @@ service cloud.firestore {
     match /gps_devices/{deviceId} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn() && isValidGPSDevice(incoming());
-      allow delete: if canManage() || isLineSupervisor();
+      allow delete: if isAdmin();
     }
 
     // Vehicle Models (Managed exclusively by Admins & Super Admins)
@@ -222,9 +245,16 @@ service cloud.firestore {
 
     match /vehicle_models/{modelId} {
       allow read: if isSignedIn();
-      allow create: if (isAdmin() || isSuperAdmin()) && isValidVehicleModel(incoming());
-      allow update: if (isAdmin() || isSuperAdmin()) && isValidVehicleModel(incoming());
-      allow delete: if (isAdmin() || isSuperAdmin());
+      allow create: if isAdmin() && isValidVehicleModel(incoming());
+      allow update: if isAdmin() && isValidVehicleModel(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /transfers/{transferId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer, User } from 'lucide-react';
+import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer, User, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown, StaffProfileButton, StaffProfileModal } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
 import { STAFF_ROLES, cn, sanitizePhoneNumber } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
+import { useWarehouse, SUPPORTED_WAREHOUSES, WarehouseBadge } from './WarehouseContext';
+import { StaffTransferModal } from './components/StaffTransferModal';
 import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
 
 const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
@@ -60,12 +62,15 @@ const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
 const Drivers: React.FC = () => {
   const { isAdmin, isSubAdmin, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
-  const canManage = isAdmin || isSubAdmin;
+  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
+  const canManage = isAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editingDriver, setEditingDriver] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTransferStaff, setSelectedTransferStaff] = useState<any | null>(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   useEffect(() => {
     setSearchTerm(searchQuery);
@@ -78,7 +83,8 @@ const Drivers: React.FC = () => {
     licenseNo: '',
     address: '',
     familyPhone: '',
-    role: 'Driver' as 'Driver' | 'Helper'
+    role: 'Driver' as 'Driver' | 'Helper',
+    warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
   });
 
   useEffect(() => {
@@ -165,7 +171,8 @@ const Drivers: React.FC = () => {
       licenseNo: '', 
       address: '', 
       familyPhone: '', 
-      role: 'Driver' 
+      role: 'Driver',
+      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
     });
     localStorage.removeItem('drivers_newDriver');
     localStorage.removeItem('drivers_showAdd');
@@ -176,7 +183,8 @@ const Drivers: React.FC = () => {
     if (!newDriver.driverId || !newDriver.name) return;
     const normalizedDriver = {
       ...newDriver,
-      driverId: newDriver.driverId.trim().toUpperCase()
+      driverId: newDriver.driverId.trim().toUpperCase(),
+      warehouse: newDriver.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
     };
     await addDriver(normalizedDriver, profile);
     setNewDriver({ 
@@ -186,7 +194,8 @@ const Drivers: React.FC = () => {
       licenseNo: '', 
       address: '', 
       familyPhone: '', 
-      role: 'Driver' 
+      role: 'Driver',
+      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
     });
     setShowAdd(false);
     localStorage.removeItem('drivers_newDriver');
@@ -222,7 +231,9 @@ const Drivers: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'All' | 'Driver' | 'Helper'>('All');
 
-  const filtered = drivers.filter(d => 
+  const warehouseFiltered = filterByWarehouse(drivers);
+
+  const filtered = warehouseFiltered.filter(d => 
     d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     d.driverId.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -245,6 +256,7 @@ const Drivers: React.FC = () => {
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Employee ID</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Full Name</th>
+              <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">ডিপো (Warehouse)</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Join Date</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
@@ -267,6 +279,15 @@ const Drivers: React.FC = () => {
                   )}
                 </td>
                 <td className="px-5 py-3">
+                  <div className="flex items-center gap-1.5">
+                    {driver.warehouse ? (
+                      <WarehouseBadge warehouse={driver.warehouse} />
+                    ) : (
+                      <span className="text-[11px] text-slate-400 italic font-medium">অনির্ধারিত</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-5 py-3">
                   <div className="flex items-center gap-2 text-slate-500">
                     <Phone size={14} className="opacity-50" />
                     <span className="font-medium tracking-tight">{driver.phoneNumber}</span>
@@ -277,6 +298,17 @@ const Drivers: React.FC = () => {
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTransferStaff(driver);
+                        setIsTransferModalOpen(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors"
+                      title="ডিপো বদলি ও ট্রান্সফার (Transfer Staff)"
+                    >
+                      <ArrowLeftRight size={12} />
+                    </button>
                     <StaffProfileButton 
                       staff={driver} 
                       className="p-1.5 bg-white border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 hover:bg-blue-50 rounded-lg shadow-2xs" 
@@ -322,7 +354,7 @@ const Drivers: React.FC = () => {
             ))}
             {data.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-12 text-center text-slate-400 italic bg-slate-50/30">
+                <td colSpan={6} className="px-5 py-12 text-center text-slate-400 italic bg-slate-50/30">
                   No {title.toLowerCase()} found matching criteria.
                 </td>
               </tr>
@@ -498,6 +530,22 @@ const Drivers: React.FC = () => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ডিপো / কর্মক্ষেত্র (Assigned Warehouse)
+                  </label>
+                  <select 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                    value={newDriver.warehouse || 'মোহাম্মদপুর'}
+                    onChange={e => setNewDriver({ ...newDriver, warehouse: e.target.value })}
+                  >
+                    {SUPPORTED_WAREHOUSES.map(w => (
+                      <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn}) - {w.region}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">স্টাফ এই ডিপোর নির্ধারিত কর্মীবাহিনীতে কাজ করবেন</p>
+                </div>
+
                 <div className="flex gap-3 pt-4 border-t border-slate-100">
                   <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
                     <Plus size={18} />
@@ -626,6 +674,21 @@ const Drivers: React.FC = () => {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ডিপো / কর্মক্ষেত্র (Assigned Warehouse)
+                  </label>
+                  <select 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                    value={editingDriver.warehouse || 'মোহাম্মদপুর'}
+                    onChange={e => setEditingDriver({ ...editingDriver, warehouse: e.target.value })}
+                  >
+                    {SUPPORTED_WAREHOUSES.map(w => (
+                      <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn}) - {w.region}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Suspension Control Section */}
                 <div className="p-4 rounded-xl border border-slate-150 bg-slate-50/70 space-y-3">
                   <div className="flex items-center justify-between">
@@ -731,18 +794,34 @@ const Drivers: React.FC = () => {
 
       <Card>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3 bg-[#f8fafc] p-2 px-4 rounded-xl border border-border flex-1">
-            <Search size={16} className="text-text-muted" />
-            <input 
-              type="text"
-              placeholder="Search staff by ID or name..."
-              className="bg-transparent border-none outline-none w-full text-xs py-1"
-              value={searchTerm}
-              onChange={e => {
-                setSearchTerm(e.target.value);
-                setSearchQuery(e.target.value);
-              }}
-            />
+          <div className="flex items-center gap-3 flex-1 flex-wrap">
+            <div className="flex items-center gap-3 bg-[#f8fafc] p-2 px-4 rounded-xl border border-border flex-1 min-w-[200px]">
+              <Search size={16} className="text-text-muted" />
+              <input 
+                type="text"
+                placeholder="Search staff by ID or name..."
+                className="bg-transparent border-none outline-none w-full text-xs py-1"
+                value={searchTerm}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setSearchQuery(e.target.value);
+                }}
+              />
+            </div>
+
+            {/* Warehouse Filter */}
+            <div className="relative">
+              <select
+                value={selectedWarehouse}
+                onChange={(e) => setSelectedWarehouse(e.target.value)}
+                className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+              >
+                <option value="all">🏢 সকল ডিপো (All Hubs - 10)</option>
+                {SUPPORTED_WAREHOUSES.map(w => (
+                  <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
+                ))}
+              </select>
+            </div>
           </div>
           
           <div className="flex p-1 bg-slate-100 rounded-xl">
@@ -773,6 +852,16 @@ const Drivers: React.FC = () => {
           )}
         </div>
       </Card>
+
+      {/* Staff Transfer / Exchange Modal */}
+      <StaffTransferModal 
+        isOpen={isTransferModalOpen}
+        onClose={() => {
+          setIsTransferModalOpen(false);
+          setSelectedTransferStaff(null);
+        }}
+        staff={selectedTransferStaff}
+      />
     </div>
   );
 };

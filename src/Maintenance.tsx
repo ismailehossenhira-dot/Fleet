@@ -886,7 +886,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
               </div>
 
               {/* Master Select All and Bulk Actions */}
-              {canManage && filteredRecords.length > 0 && (
+              {isAdmin && filteredRecords.length > 0 && (
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1068,7 +1068,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                           </button>
                         )}
 
-                        {canManage && (
+                        {isAdmin && (
                           <button
                             type="button"
                             onClick={() => setRecordToDelete(rec)}
@@ -1104,7 +1104,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
-                      {canManage && (
+                      {isAdmin && (
                         <th className="p-3 w-10 text-center">
                           <button
                             type="button"
@@ -1142,7 +1142,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                             isSelected && "bg-blue-50/40"
                           )}
                         >
-                          {canManage && (
+                          {isAdmin && (
                             <td className="p-3 text-center">
                               <button
                                 type="button"
@@ -1234,7 +1234,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                                 </button>
                               )}
 
-                              {canManage && (
+                              {isAdmin && (
                                 <button
                                   type="button"
                                   onClick={() => setRecordToDelete(rec)}

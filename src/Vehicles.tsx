@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench, Layers, ShieldCheck } from 'lucide-react';
+import { Truck, Plus, Search, Trash2, Settings2, Edit2, QrCode, Download, Printer, Info, Wrench, Layers, ShieldCheck, Building2, ArrowLeftRight } from 'lucide-react';
 import { Card, Button, AuditDetailsDropdown, VehicleProfileButton, VehicleProfileModal } from './components/Common';
 import { VehicleModelManagementModal } from './components/VehicleModelManagement';
+import { VehicleTransferModal } from './components/VehicleTransferModal';
+import { useWarehouse, SUPPORTED_WAREHOUSES, WarehouseBadge } from './WarehouseContext';
 import { addVehicle, updateVehicle, deleteVehicle, subscribeToCollection, updateVehicleStatus, VehicleModelRecord } from './db';
 import { VEHICLE_TYPES, VEHICLE_STATUSES, VehicleType, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
@@ -11,14 +13,17 @@ import { QRCodeCanvas } from 'qrcode.react';
 const Vehicles: React.FC = () => {
   const { isAdmin, isSubAdmin, isSuperAdmin, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
-  const canManage = isAdmin || isSubAdmin;
-  const canManageModels = isAdmin || isSuperAdmin;
+  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
+  const canManage = isAdmin;
+  const canManageModels = isAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [customModels, setCustomModels] = useState<VehicleModelRecord[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showModelManagement, setShowModelManagement] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
+  const [selectedTransferVehicle, setSelectedTransferVehicle] = useState<any | null>(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -29,7 +34,8 @@ const Vehicles: React.FC = () => {
     vehicleNumber: '',
     type: 'Dost Plus' as VehicleType,
     status: 'Available' as 'Available' | 'Maintenance',
-    maintenanceNotes: ''
+    maintenanceNotes: '',
+    warehouse: 'মোহাম্মদপুর'
   });
 
   const [selectedQRVehicle, setSelectedQRVehicle] = useState<any | null>(null);
@@ -151,7 +157,7 @@ const Vehicles: React.FC = () => {
 
   const handleCancel = () => {
     setShowAdd(false);
-    setNewVehicle({ vehicleNumber: '', type: 'Dost Plus', status: 'Available', maintenanceNotes: '' });
+    setNewVehicle({ vehicleNumber: '', type: 'Dost Plus', status: 'Available', maintenanceNotes: '', warehouse: '' });
     localStorage.removeItem('vehicles_newVehicle');
     localStorage.removeItem('vehicles_showAdd');
   };
@@ -161,13 +167,20 @@ const Vehicles: React.FC = () => {
     if (!newVehicle.vehicleNumber) return;
     const normalizedVehicle = {
       ...newVehicle,
-      vehicleNumber: newVehicle.vehicleNumber.trim().toUpperCase()
+      vehicleNumber: newVehicle.vehicleNumber.trim().toUpperCase(),
+      warehouse: newVehicle.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
     };
     if (normalizedVehicle.status !== 'Maintenance') {
       normalizedVehicle.maintenanceNotes = '';
     }
     await addVehicle(normalizedVehicle, profile);
-    setNewVehicle({ vehicleNumber: '', type: 'Dost Plus', status: 'Available', maintenanceNotes: '' });
+    setNewVehicle({ 
+      vehicleNumber: '', 
+      type: 'Dost Plus', 
+      status: 'Available', 
+      maintenanceNotes: '',
+      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
+    });
     setShowAdd(false);
     localStorage.removeItem('vehicles_newVehicle');
     localStorage.removeItem('vehicles_showAdd');
@@ -217,7 +230,9 @@ const Vehicles: React.FC = () => {
     return { ...v, status: 'Available' };
   });
 
-  const filtered = computedVehicles.filter(v => 
+  const warehouseFiltered = filterByWarehouse(computedVehicles);
+
+  const filtered = warehouseFiltered.filter(v => 
     (v.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (typeFilter === 'All' || v.type === typeFilter)
   );
@@ -227,9 +242,26 @@ const Vehicles: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Vehicle Management</h2>
-          <p className="text-slate-500">Register and manage your fleet inventory.</p>
+          <p className="text-slate-500">
+            ১০টি ওয়ারহাউজের ফ্লিট গাড়ি ব্যবস্থাপনা ও ইন্টার-ডিপো স্থানান্তর ({filtered.length} টি গাড়ি)
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Warehouse Filter */}
+          <div className="relative">
+            <select
+              value={selectedWarehouse}
+              onChange={(e) => setSelectedWarehouse(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+            >
+              <option value="all">🏢 সকল ডিপো (All Hubs - 10)</option>
+              {SUPPORTED_WAREHOUSES.map(w => (
+                <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Model Filter */}
           <div className="relative">
             <select
               value={typeFilter}
@@ -337,6 +369,22 @@ const Vehicles: React.FC = () => {
                     </select>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ওয়ারহাউজ / ডিপো (Base Warehouse)
+                  </label>
+                  <select 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                    value={newVehicle.warehouse || 'মোহাম্মদপুর'}
+                    onChange={e => setNewVehicle({ ...newVehicle, warehouse: e.target.value })}
+                  >
+                    {SUPPORTED_WAREHOUSES.map(w => (
+                      <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn}) - {w.region}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500 mt-1">গাড়িটি এই ডিপোর নির্ধারিত স্থায়ী ফ্লিটে যুক্ত হবে</p>
+                </div>
                 {newVehicle.status === 'Maintenance' && (
                   <div className="animate-in fade-in duration-200">
                     <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট</label>
@@ -439,6 +487,21 @@ const Vehicles: React.FC = () => {
                     </select>
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    ওয়ারহাউজ / ডিপো (Assigned Warehouse)
+                  </label>
+                  <select 
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
+                    value={editingVehicle.warehouse || 'মোহাম্মদপুর'}
+                    onChange={e => setEditingVehicle({ ...editingVehicle, warehouse: e.target.value })}
+                  >
+                    {SUPPORTED_WAREHOUSES.map(w => (
+                      <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn}) - {w.region}</option>
+                    ))}
+                  </select>
+                </div>
                 {editingVehicle.status === 'Maintenance' && (
                   <div className="animate-in fade-in duration-200">
                     <label className="block text-sm font-medium text-slate-700 mb-1">গাড়ির সমস্যা / মেইনটেনেন্স নোট</label>
@@ -508,8 +571,13 @@ const Vehicles: React.FC = () => {
                       {vehicle.type}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <VehicleProfileButton vehicle={vehicle} />
+                    {vehicle.warehouse ? (
+                      <WarehouseBadge warehouse={vehicle.warehouse} />
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-medium">ডিপো: অনির্ধারিত</span>
+                    )}
                     <AuditDetailsDropdown createdBy={vehicle.createdBy} updatedBy={vehicle.updatedBy} />
                   </div>
                 </div>
@@ -536,14 +604,29 @@ const Vehicles: React.FC = () => {
               )}
 
               {/* Mobile Action Buttons Bar */}
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                <button 
-                  onClick={() => setSelectedQRVehicle(vehicle)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                >
-                  <QrCode size={14} className="stroke-[2.2]" />
-                  <span>QR কোড</span>
-                </button>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-1 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setSelectedQRVehicle(vehicle)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  >
+                    <QrCode size={14} className="stroke-[2.2]" />
+                    <span>QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTransferVehicle(vehicle);
+                      setIsTransferModalOpen(true);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    title="ডিপো স্থানান্তর বা গাড়ি এক্সচেঞ্জ"
+                  >
+                    <ArrowLeftRight size={13} />
+                    <span>ট্রান্সফার</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-1.5">
                   <VehicleProfileButton 
@@ -604,6 +687,7 @@ const Vehicles: React.FC = () => {
               <tr className="bg-[#f8fafc] border-b border-border">
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Vehicle ID</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Type</th>
+                <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">ডিপো (Warehouse)</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Status</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -619,6 +703,15 @@ const Vehicles: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-text-muted">{vehicle.type}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-1.5">
+                      {vehicle.warehouse ? (
+                        <WarehouseBadge warehouse={vehicle.warehouse} />
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic font-medium">অনির্ধারিত</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-5 py-3">
                     <div className="flex flex-col gap-1">
                       <span className={cn(
@@ -639,6 +732,17 @@ const Vehicles: React.FC = () => {
                   </td>
                    <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setSelectedTransferVehicle(vehicle);
+                          setIsTransferModalOpen(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors"
+                        title="ডিপো বদলি ও এক্সচেঞ্জ (Transfer / Exchange)"
+                      >
+                        <ArrowLeftRight size={13} />
+                      </button>
                       <VehicleProfileButton 
                         vehicle={vehicle} 
                         className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-colors" 
@@ -834,6 +938,16 @@ const Vehicles: React.FC = () => {
             setEditingVehicle((prev: any) => prev ? ({ ...prev, type: selectedModelName }) : prev);
           }
         }}
+      />
+
+      {/* Vehicle Transfer / Exchange Modal */}
+      <VehicleTransferModal 
+        isOpen={isTransferModalOpen}
+        onClose={() => {
+          setIsTransferModalOpen(false);
+          setSelectedTransferVehicle(null);
+        }}
+        vehicle={selectedTransferVehicle}
       />
     </div>
   );

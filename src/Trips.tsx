@@ -34,11 +34,13 @@ import {
 import { DOCUMENT_TYPES, cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
+import { useWarehouse, SUPPORTED_WAREHOUSES } from './WarehouseContext';
 
 import MapComponent from './components/MapComponent';
 
 const Trips: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, isLineSupervisor, profile } = useAuth();
+  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
   const { searchQuery, setSearchQuery } = useSearch();
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
   const [trips, setTrips] = useState<any[]>([]);

@@ -26,13 +26,15 @@ import {
   Sparkles,
   Search,
   Wrench,
-  Radio
+  Radio,
+  Building2
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { signOut } from '../firebase';
 import { useAuth, UserRole } from '../AuthContext';
 import { useSearch } from '../SearchContext';
 import { useTheme, THEME_OPTIONS, ThemeMode } from '../ThemeContext';
+import { WarehouseSelector } from './WarehouseSelector';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscribeToCollection } from '../db';
@@ -48,33 +50,45 @@ interface NavItem {
   to: string;
   icon: any;
   label: string;
-  roles: UserRole[];
+  moduleKey: string;
   subItems?: NavSubItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/qr-scanner', icon: QrCode, label: 'QR Scanner', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/vehicles', icon: Truck, label: 'Vehicles', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/requests', icon: ClipboardList, label: 'Requests', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/drivers', icon: Users, label: 'Drivers', roles: ['Admin', 'Sub Admin'] },
-  { to: '/new-trip', icon: PlusCircle, label: 'New Trip', roles: ['Admin', 'Sub Admin', 'Line Supervisor'] },
-  { to: '/trips', icon: MapPin, label: 'Trips', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/morning-prep', icon: Sunrise, label: 'Morning Prep', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', moduleKey: 'dashboard' },
+  { to: '/warehouses', icon: Building2, label: 'Warehouses', moduleKey: 'warehouses' },
+  { to: '/qr-scanner', icon: QrCode, label: 'QR Scanner', moduleKey: 'qr_scanner' },
+  { to: '/vehicles', icon: Truck, label: 'Vehicles', moduleKey: 'vehicles' },
+  { to: '/requests', icon: ClipboardList, label: 'Requests', moduleKey: 'requests' },
+  { to: '/drivers', icon: Users, label: 'Drivers', moduleKey: 'drivers' },
+  { to: '/new-trip', icon: PlusCircle, label: 'New Trip', moduleKey: 'new_trip' },
+  { to: '/trips', icon: MapPin, label: 'Trips', moduleKey: 'trips' },
+  { to: '/morning-prep', icon: Sunrise, label: 'Morning Prep', moduleKey: 'morning_prep' },
   { 
     to: '/maintenance', 
     icon: Wrench, 
     label: 'Maintenance', 
-    roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'],
+    moduleKey: 'maintenance',
     subItems: [
       { to: '/maintenance', label: 'সার্ভিস ও মেরামত (Records)', icon: Wrench },
       { to: '/maintenance/gps', label: 'GPS Device (ADL / BDT)', icon: Radio, badge: 'GPS' }
     ]
   },
-  { to: '/cases', icon: FileWarning, label: 'Cases', roles: ['Admin', 'Sub Admin', 'Checker'] },
-  { to: '/reports', icon: History, label: 'Reports', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
-  { to: '/users', icon: Users, label: 'Users', roles: ['Admin', 'Sub Admin', 'Checker', 'Line Supervisor'] },
+  { to: '/cases', icon: FileWarning, label: 'Cases', moduleKey: 'cases' },
+  { to: '/reports', icon: History, label: 'Reports', moduleKey: 'reports' },
+  { to: '/users', icon: Users, label: 'Users', moduleKey: 'users' },
 ];
+
+export const getRoleBangla = (role?: string) => {
+  switch (role) {
+    case 'Admin': return 'অ্যাডমিন';
+    case 'Sub Admin': return 'সাব অ্যাডমিন';
+    case 'OCC': return 'ওসিসি (OCC)';
+    case 'Line Supervisor': return 'লাইন সুপারভাইজার';
+    case 'Checker': return 'চেকার';
+    default: return role || 'ইউজার';
+  }
+};
 
 interface ReturnNotification {
   id: string;
@@ -84,7 +98,7 @@ interface ReturnNotification {
 }
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile } = useAuth();
+  const { user, profile, canAccessModule, isAdmin } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const { theme, setTheme, toggleTheme, isEmerald, isOcean, isCrimson, isAmber, currentThemeOption } = useTheme();
   const location = useLocation();
@@ -266,8 +280,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
-    if (!profile?.role) return false;
-    return item.roles.includes(profile.role);
+    if (isAdmin) return true;
+    return canAccessModule(item.moduleKey);
   });
 
   return (
@@ -347,7 +361,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <p className="text-xs font-bold text-white truncate">{profile?.displayName || user?.displayName || 'User'}</p>
                     <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 font-semibold mt-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {profile?.role === 'Admin' ? 'অ্যাডমিন' : (profile?.role || 'User')}
+                      {getRoleBangla(profile?.role)}
                     </span>
                   </div>
                 </div>
@@ -755,9 +769,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-bg relative">
         {/* Top Header Bar (Adaptive for Mobile & Desktop) */}
         <header className="h-14 sm:h-16 flex items-center justify-between px-3.5 sm:px-6 md:px-8 bg-surface border-b border-border flex-shrink-0 z-30 shadow-2xs">
-          {/* Mobile Header Left Brand */}
+          {/* Mobile Header Left Brand & Warehouse Selector */}
           <div className="flex items-center gap-2 lg:hidden">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <div className={cn(
                 "w-7 h-7 rounded-lg p-0.5 shadow-xs flex items-center justify-center bg-gradient-to-br",
                 isEmerald 
@@ -772,10 +786,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <Compass size={14} className="text-white" />
                 </div>
               </div>
-              <span className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight leading-tight">
+              <span className="font-extrabold text-sm text-slate-900 tracking-tight leading-tight hidden xs:inline">
                 FleetManager
               </span>
             </div>
+            
+            {/* Mobile Compact Warehouse Selector */}
+            <WarehouseSelector compact={true} />
           </div>
 
           {/* Desktop Search Bar */}
@@ -830,6 +847,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <QrCode size={19} className="stroke-[2.3]" />
             </NavLink>
 
+            {/* Desktop Warehouse Selector */}
+            <div className="hidden lg:block">
+              <WarehouseSelector />
+            </div>
+
             {/* User Profile Trigger & Dropdown Menu */}
             <div className="relative" ref={profileMenuRef}>
               <button
@@ -869,7 +891,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
                             : "text-blue-700 bg-blue-50 border-blue-200"
                     )}>
-                      {profile?.role || 'User'}
+                      {getRoleBangla(profile?.role)}
                     </span>
                   </div>
                 </div>
@@ -925,7 +947,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           {profile?.displayName || user?.displayName || 'User'}
                         </h4>
                         <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                          {profile?.role === 'Admin' ? 'অ্যাডমিন' : profile?.role}
+                          {getRoleBangla(profile?.role)}
                         </p>
                       </div>
                     </div>

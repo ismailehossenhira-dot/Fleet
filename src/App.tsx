@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
 import { ThemeProvider } from './ThemeContext';
+import { WarehouseProvider } from './WarehouseContext';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
 import Dashboard from './Dashboard';
@@ -21,6 +22,7 @@ import QRScanner from './QRScanner';
 import UsersManagement from './UsersManagement';
 import Requests from './Requests';
 import Maintenance from './Maintenance';
+import { WarehousesManagement } from './WarehousesManagement';
 import { AppPreloader } from './components/AppPreloader';
 import { loginWithUsernameAndPassword } from './db';
 import { Compass, KeyRound, User, AlertCircle, Loader2 } from 'lucide-react';
@@ -151,9 +153,11 @@ const Login: React.FC = () => {
   );
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+const ProtectedRoute: React.FC<{ children: React.ReactNode; moduleKey?: string }> = ({ children, moduleKey }) => {
+  const { user, profile, loading, canAccessModule, isAdmin } = useAuth();
   
+  const hasPermission = !moduleKey || isAdmin || canAccessModule(moduleKey);
+
   return (
     <>
       <AnimatePresence>
@@ -167,7 +171,34 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       </AnimatePresence>
 
       {!loading && !user && <Navigate to="/login" replace />}
-      {!loading && user && (
+      {!loading && user && !hasPermission && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="min-h-screen w-full"
+        >
+          <Layout>
+            <div className="p-8 max-w-lg mx-auto my-16 text-center bg-white rounded-2xl border border-slate-200 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                <AlertCircle size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800">অ্যাক্সেস অনুমোদিত নয়</h2>
+              <p className="text-slate-600 text-sm mt-2 leading-relaxed">
+                আপনার বর্তমান রোল ({profile?.role || 'User'}) এই মডিউলটি চালানোর জন্য অনুমোদিত নয়। এই মডিউলে প্রবেশের অনুমতির জন্য সিস্টেম অ্যাডমিনের সাথে যোগাযোগ করুন।
+              </p>
+              <div className="mt-6 flex justify-center">
+                <a
+                  href="#/"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-xs"
+                >
+                  ড্যাশবোর্ডে ফিরে যান
+                </a>
+              </div>
+            </div>
+          </Layout>
+        </motion.div>
+      )}
+      {!loading && user && hasPermission && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -185,28 +216,31 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <SearchProvider>
-          <HashRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
-              <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-              <Route path="/trips" element={<ProtectedRoute><Trips /></ProtectedRoute>} />
-              <Route path="/new-trip" element={<ProtectedRoute><NewTrip /></ProtectedRoute>} />
-              <Route path="/morning-prep" element={<ProtectedRoute><MorningPrep /></ProtectedRoute>} />
-              <Route path="/maintenance" element={<ProtectedRoute><Maintenance /></ProtectedRoute>} />
-              <Route path="/maintenance/gps" element={<ProtectedRoute><Maintenance defaultTab="gps" /></ProtectedRoute>} />
-              <Route path="/maintenance/gps-device" element={<ProtectedRoute><Maintenance defaultTab="gps" /></ProtectedRoute>} />
-              <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
-              <Route path="/cases" element={<ProtectedRoute><CaseManagement /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-              <Route path="/qr-scanner" element={<ProtectedRoute><QRScanner /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute><UsersManagement /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </HashRouter>
-        </SearchProvider>
+        <WarehouseProvider>
+          <SearchProvider>
+            <HashRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute moduleKey="dashboard"><Dashboard /></ProtectedRoute>} />
+                <Route path="/warehouses" element={<ProtectedRoute moduleKey="warehouses"><WarehousesManagement /></ProtectedRoute>} />
+                <Route path="/vehicles" element={<ProtectedRoute moduleKey="vehicles"><Vehicles /></ProtectedRoute>} />
+                <Route path="/requests" element={<ProtectedRoute moduleKey="requests"><Requests /></ProtectedRoute>} />
+                <Route path="/trips" element={<ProtectedRoute moduleKey="trips"><Trips /></ProtectedRoute>} />
+                <Route path="/new-trip" element={<ProtectedRoute moduleKey="new_trip"><NewTrip /></ProtectedRoute>} />
+                <Route path="/morning-prep" element={<ProtectedRoute moduleKey="morning_prep"><MorningPrep /></ProtectedRoute>} />
+                <Route path="/maintenance" element={<ProtectedRoute moduleKey="maintenance"><Maintenance /></ProtectedRoute>} />
+                <Route path="/maintenance/gps" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
+                <Route path="/maintenance/gps-device" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
+                <Route path="/drivers" element={<ProtectedRoute moduleKey="drivers"><Drivers /></ProtectedRoute>} />
+                <Route path="/cases" element={<ProtectedRoute moduleKey="cases"><CaseManagement /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute moduleKey="reports"><Reports /></ProtectedRoute>} />
+                <Route path="/qr-scanner" element={<ProtectedRoute moduleKey="qr_scanner"><QRScanner /></ProtectedRoute>} />
+                <Route path="/users" element={<ProtectedRoute moduleKey="users"><UsersManagement /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </HashRouter>
+          </SearchProvider>
+        </WarehouseProvider>
       </AuthProvider>
     </ThemeProvider>
   );

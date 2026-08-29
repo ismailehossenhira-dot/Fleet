@@ -9,7 +9,7 @@ import { useSearch } from './SearchContext';
 const CaseManagement: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
   const { searchQuery } = useSearch();
-  const canManageItems = isAdmin || isSubAdmin;
+  const canManageItems = isAdmin;
   const canSubmit = isAdmin || isSubAdmin || isChecker;
   const [cases, setCases] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);

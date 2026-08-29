@@ -76,8 +76,10 @@ const getUserString = (profile?: any) => {
 
 export const addVehicle = async (vehicle: any, profile?: any) => {
   try {
+    const assignedWarehouse = vehicle.warehouse || (profile?.warehouse && profile.warehouse !== 'all' ? profile.warehouse : 'মোহাম্মদপুর');
     const docRef = await addDoc(collection(db, 'vehicles'), {
       ...vehicle,
+      warehouse: assignedWarehouse,
       createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -89,7 +91,7 @@ export const addVehicle = async (vehicle: any, profile?: any) => {
       vehiclePlate: vehicle.vehicleNumber,
       oldStatus: 'None',
       newStatus: vehicle.status || 'Available',
-      notes: vehicle.maintenanceNotes || 'Initial registration',
+      notes: vehicle.maintenanceNotes || `Initial registration (Warehouse: ${assignedWarehouse})`,
       createdBy: getUserString(profile),
       createdAt: serverTimestamp()
     });
@@ -352,8 +354,10 @@ export const deleteVehicle = async (id: string) => {
 // Drivers
 export const addDriver = async (driver: any, profile?: any) => {
   try {
+    const assignedWarehouse = driver.warehouse || (profile?.warehouse && profile.warehouse !== 'all' ? profile.warehouse : 'মোহাম্মদপুর');
     return await addDoc(collection(db, 'drivers'), {
       ...driver,
+      warehouse: assignedWarehouse,
       createdBy: getUserString(profile),
       createdAt: serverTimestamp(),
     });
@@ -932,9 +936,24 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
   }
 };
 
-export const createUserAccount = async (displayName: string, usernameInput: string, passwordInput: string, role: UserRole) => {
+export const createUserAccount = async (
+  displayName: string, 
+  usernameInput: string, 
+  passwordInput: string, 
+  role: UserRole,
+  warehouse: string = 'মোহাম্মদপুর',
+  permissions: string[] = [],
+  allPermissions: boolean = false,
+  creatorProfile?: any
+) => {
   const username = usernameInput.toLowerCase().trim();
   const password = passwordInput.trim();
+
+  // If creator is not global Super Admin and has an assigned warehouse, new user automatically inherits creator's warehouse
+  const isCreatorGlobal = !creatorProfile?.warehouse || creatorProfile?.warehouse === 'all' || creatorProfile?.role === 'Admin' && creatorProfile?.email === 'ismailehossenhira@gmail.com';
+  const assignedWarehouse = (!isCreatorGlobal && creatorProfile?.warehouse)
+    ? creatorProfile.warehouse
+    : (warehouse || 'মোহাম্মদপুর');
 
   // 1. Verify username is unique
   const q = query(collection(db, 'users'), where('username', '==', username));
@@ -963,22 +982,90 @@ export const createUserAccount = async (displayName: string, usernameInput: stri
       displayName,
       password,
       role,
-      createdAt: serverTimestamp()
+      warehouse: assignedWarehouse,
+      permissions,
+      allPermissions,
+      createdBy: getUserString(creatorProfile),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
   } catch (err: any) {
     handleFirestoreError(err, OperationType.CREATE, `users/${uid}`);
   }
 };
 
-export const updateUserAccount = async (uid: string, data: { displayName: string; password?: string; role: UserRole }) => {
+export const updateUserAccount = async (
+  uid: string, 
+  data: { 
+    displayName: string; 
+    password?: string; 
+    role: UserRole;
+    warehouse?: string;
+    permissions?: string[];
+    allPermissions?: boolean;
+  },
+  profile?: any
+) => {
   try {
     const userRef = doc(db, 'users', uid);
     await updateDoc(userRef, {
       ...data,
+      updatedBy: getUserString(profile),
       updatedAt: serverTimestamp()
     });
   } catch (err: any) {
     handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
+  }
+};
+
+export const updateUserPermissions = async (
+  uid: string, 
+  permissions: string[], 
+  allPermissions: boolean
+) => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, {
+      permissions,
+      allPermissions,
+      updatedAt: serverTimestamp()
+    });
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
+  }
+};
+
+export const cleanupLegacyRoles = async (fallbackRole: UserRole = 'Checker') => {
+  const validRoles: UserRole[] = ['Admin', 'Sub Admin', 'OCC', 'Line Supervisor', 'Checker'];
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    let migratedCount = 0;
+    const batch = writeBatch(db);
+    
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      const currentRole = data.role;
+      // Do not touch Admin
+      if (currentRole === 'Admin' || d.id === 'ismailehossenhira@gmail.com' || data.email === 'ismailehossenhira@gmail.com') {
+        return;
+      }
+      if (!validRoles.includes(currentRole)) {
+        // Normalize outdated/unknown roles to fallbackRole
+        batch.update(doc(db, 'users', d.id), {
+          role: fallbackRole,
+          updatedAt: serverTimestamp()
+        });
+        migratedCount++;
+      }
+    });
+
+    if (migratedCount > 0) {
+      await batch.commit();
+    }
+    return migratedCount;
+  } catch (err) {
+    console.error("Error running cleanupLegacyRoles:", err);
+    return 0;
   }
 };
 
@@ -1337,3 +1424,180 @@ export const deleteVehicleModel = async (id: string) => {
     handleFirestoreError(error, OperationType.DELETE, `vehicle_models/${id}`);
   }
 };
+
+// Warehouse Transfers & Exchanges
+export interface WarehouseTransferRecord {
+  id?: string;
+  type: 'vehicle' | 'staff' | 'exchange';
+  targetId: string;
+  targetName: string;
+  targetRole?: string;
+  fromWarehouse: string;
+  toWarehouse: string;
+  exchangeVehicleId?: string;
+  exchangeVehiclePlate?: string;
+  reason?: string;
+  transferredBy?: string;
+  createdAt?: any;
+}
+
+export const transferVehicle = async (
+  vehicleId: string, 
+  toWarehouse: string, 
+  reason: string = '', 
+  profile?: any,
+  exchangeVehicleId?: string
+) => {
+  try {
+    const vRef = doc(db, 'vehicles', vehicleId);
+    const vSnap = await getDoc(vRef);
+    if (!vSnap.exists()) {
+      throw new Error(`Vehicle ${vehicleId} not found`);
+    }
+    const vData = vSnap.data();
+    const fromWarehouse = vData.warehouse || 'অনির্ধারিত';
+    const vehiclePlate = vData.vehicleNumber || 'Unknown';
+
+    // Check if exchange vehicle is selected
+    let exchangePlate = '';
+    let exchangeFromWarehouse = '';
+    if (exchangeVehicleId) {
+      const exRef = doc(db, 'vehicles', exchangeVehicleId);
+      const exSnap = await getDoc(exRef);
+      if (exSnap.exists()) {
+        const exData = exSnap.data();
+        exchangePlate = exData.vehicleNumber || 'Unknown';
+        exchangeFromWarehouse = exData.warehouse || toWarehouse;
+
+        // Update exchange vehicle to move to fromWarehouse
+        await updateDoc(exRef, {
+          warehouse: fromWarehouse,
+          previousWarehouse: exchangeFromWarehouse,
+          transferredAt: serverTimestamp(),
+          updatedBy: getUserString(profile),
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    // Update main vehicle to target warehouse
+    await updateDoc(vRef, {
+      warehouse: toWarehouse,
+      previousWarehouse: fromWarehouse,
+      transferredAt: serverTimestamp(),
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp()
+    });
+
+    // Log to transfers collection
+    const transferPayload: any = {
+      type: exchangeVehicleId ? 'exchange' : 'vehicle',
+      targetId: vehicleId,
+      targetName: vehiclePlate,
+      targetRole: 'Vehicle',
+      fromWarehouse,
+      toWarehouse,
+      reason: reason.trim(),
+      transferredBy: getUserString(profile),
+      createdAt: serverTimestamp()
+    };
+
+    if (exchangeVehicleId) {
+      transferPayload.exchangeVehicleId = exchangeVehicleId;
+      transferPayload.exchangeVehiclePlate = exchangePlate;
+    }
+
+    const transferDoc = await addDoc(collection(db, 'transfers'), transferPayload);
+
+    // Also add to vehicle status log for record keeping
+    await addDoc(collection(db, 'vehicle_status_logs'), {
+      vehicleId,
+      vehiclePlate,
+      oldStatus: vData.status || 'Available',
+      newStatus: vData.status || 'Available',
+      notes: `Warehouse Transfer: ${fromWarehouse} ➔ ${toWarehouse}. Reason: ${reason || 'N/A'}`,
+      createdBy: getUserString(profile),
+      createdAt: serverTimestamp()
+    });
+
+    return transferDoc;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `vehicles/${vehicleId}/transfer`);
+    throw error;
+  }
+};
+
+export const transferStaff = async (
+  staffDocId: string, 
+  toWarehouse: string, 
+  reason: string = '', 
+  profile?: any
+) => {
+  try {
+    const sRef = doc(db, 'drivers', staffDocId);
+    const sSnap = await getDoc(sRef);
+    if (!sSnap.exists()) {
+      throw new Error(`Staff ${staffDocId} not found`);
+    }
+    const sData = sSnap.data();
+    const fromWarehouse = sData.warehouse || 'অনির্ধারিত';
+    const staffName = sData.name || 'Unknown Staff';
+    const staffRole = sData.role || 'Driver';
+    const staffId = sData.driverId || '';
+
+    // Update driver/helper doc
+    await updateDoc(sRef, {
+      warehouse: toWarehouse,
+      previousWarehouse: fromWarehouse,
+      transferredAt: serverTimestamp(),
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp()
+    });
+
+    // Log to transfers collection
+    const transferDoc = await addDoc(collection(db, 'transfers'), {
+      type: 'staff',
+      targetId: staffDocId,
+      targetName: `${staffName} (${staffId})`,
+      targetRole: staffRole,
+      fromWarehouse,
+      toWarehouse,
+      reason: reason.trim(),
+      transferredBy: getUserString(profile),
+      createdAt: serverTimestamp()
+    });
+
+    return transferDoc;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `drivers/${staffDocId}/transfer`);
+    throw error;
+  }
+};
+
+export const batchAssignWarehouse = async (
+  collectionName: 'vehicles' | 'drivers', 
+  itemIds: string[], 
+  warehouse: string, 
+  profile?: any
+) => {
+  try {
+    const batch = writeBatch(db);
+    const timestamp = serverTimestamp();
+    const userStr = getUserString(profile);
+
+    itemIds.forEach(id => {
+      const ref = doc(db, collectionName, id);
+      batch.update(ref, {
+        warehouse,
+        updatedBy: userStr,
+        updatedAt: timestamp
+      });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${collectionName}/batchAssign`);
+    throw error;
+  }
+};
+

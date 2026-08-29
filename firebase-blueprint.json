@@ -8,6 +8,9 @@
         "vehicleNumber": { "type": "string" },
         "type": { "type": "string" },
         "status": { "type": "string", "enum": ["Available", "On Trip", "Maintenance", "Pending Out Scan"] },
+        "warehouse": { "type": "string" },
+        "previousWarehouse": { "type": "string" },
+        "transferredAt": { "type": "string", "format": "date-time" },
         "maintenanceNotes": { "type": "string" },
         "tools": {
           "type": "object",
@@ -48,6 +51,9 @@
         "driverId": { "type": "string" },
         "name": { "type": "string" },
         "role": { "type": "string", "enum": ["Driver", "Helper"] },
+        "warehouse": { "type": "string" },
+        "previousWarehouse": { "type": "string" },
+        "transferredAt": { "type": "string", "format": "date-time" },
         "phoneNumber": { "type": "string" },
         "licenseNo": { "type": "string" },
         "address": { "type": "string" },
@@ -92,6 +98,8 @@
           }
         },
         "tollAmount": { "type": "number" },
+        "originWarehouse": { "type": "string" },
+        "destinationWarehouse": { "type": "string" },
         "startTime": { "type": "string", "format": "date-time" },
         "endTime": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["Running", "Completed"] },
@@ -279,6 +287,25 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["vehiclePlate", "provider"]
+    },
+    "WarehouseTransfer": {
+      "title": "Warehouse Transfer",
+      "description": "Represents inter-warehouse transfers and exchanges of vehicles, drivers, and helpers",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["vehicle", "staff", "exchange"] },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "targetRole": { "type": "string" },
+        "fromWarehouse": { "type": "string" },
+        "toWarehouse": { "type": "string" },
+        "exchangeVehicleId": { "type": "string" },
+        "exchangeVehiclePlate": { "type": "string" },
+        "reason": { "type": "string" },
+        "transferredBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "targetId", "targetName", "fromWarehouse", "toWarehouse"]
     }
   },
   "firestore": {
@@ -329,6 +356,10 @@
     "vehicle_models": {
       "schema": "VehicleModel",
       "description": "Collection of dynamic vehicle models and categories managed by Admins"
+    },
+    "transfers": {
+      "schema": "WarehouseTransfer",
+      "description": "Collection of inter-warehouse transfers and exchanges of vehicles and staff"
     }
   }
 }

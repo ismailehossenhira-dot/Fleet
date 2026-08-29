@@ -42,9 +42,11 @@ import {
 } from './db';
 import { cn, DOCUMENT_TYPES } from './lib/utils';
 import { useAuth } from './AuthContext';
+import { useWarehouse, SUPPORTED_WAREHOUSES, WarehouseBadge } from './WarehouseContext';
 
 const NewTrip: React.FC = () => {
   const { isAdmin, isSubAdmin, isLineSupervisor, profile } = useAuth();
+  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryVehicleId = searchParams.get('vehicleId');
@@ -65,6 +67,7 @@ const NewTrip: React.FC = () => {
     return saved ? JSON.parse(saved) : {
       vehicleId: '',
       vehiclePlate: '',
+      warehouse: 'মোহাম্মদপুর',
       driverId: 'DRV-',
       driverName: '',
       driverPhone: '',
@@ -134,7 +137,8 @@ const NewTrip: React.FC = () => {
     setFormData({ 
       ...formData, 
       vehicleId: val, 
-      vehiclePlate: vehicle?.vehicleNumber || '' 
+      vehiclePlate: vehicle?.vehicleNumber || '',
+      warehouse: vehicle?.warehouse || formData.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
     });
     setSubmitError(null);
   };
@@ -278,11 +282,17 @@ const NewTrip: React.FC = () => {
     }
 
     try {
-      await createTrip(formData, profile);
+      const selectedVeh = vehicles.find(v => v.id === formData.vehicleId);
+      const tripData = {
+        ...formData,
+        warehouse: formData.warehouse || selectedVeh?.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
+      };
+      await createTrip(tripData, profile);
       setVehicleSearch('');
       setFormData({
         vehicleId: '',
         vehiclePlate: '',
+        warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর',
         driverId: 'DRV-',
         driverName: '',
         driverPhone: '',
@@ -449,6 +459,26 @@ const NewTrip: React.FC = () => {
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="md:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">🏢 ট্রিপ অপারেটিং ডিপো (Dispatch Warehouse):</span>
+                    <select
+                      value={formData.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')}
+                      onChange={e => {
+                        setFormData(prev => ({ ...prev, warehouse: e.target.value }));
+                      }}
+                      className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                    >
+                      {SUPPORTED_WAREHOUSES.map(w => (
+                        <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {formData.warehouse && <WarehouseBadge warehouse={formData.warehouse} />}
+                  </div>
+                </div>
+
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3.5 p-3.5 bg-blue-50/60 rounded-xl border-2 border-blue-200 shadow-2xs">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Search Vehicle (Last 4 digits)</label>
@@ -488,7 +518,9 @@ const NewTrip: React.FC = () => {
                     >
                       <option value="">-- Manual Selection --</option>
                       {availableVehicles.map(v => (
-                        <option key={v.id} value={v.id}>{v.vehicleNumber} ({v.type})</option>
+                        <option key={v.id} value={v.id}>
+                          [{v.warehouse || 'মোহাম্মদপুর'}] {v.vehicleNumber} ({v.type})
+                        </option>
                       ))}
                     </select>
                     {formData.vehiclePlate && (

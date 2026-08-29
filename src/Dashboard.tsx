@@ -42,6 +42,7 @@ import { useSearch } from './SearchContext';
 import { cn, VEHICLE_TYPES } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
+import { useWarehouse, SUPPORTED_WAREHOUSES } from './WarehouseContext';
 
 const StatCard: React.FC<{ 
   label: string, 
@@ -84,6 +85,7 @@ const StatCard: React.FC<{
 
 const Dashboard: React.FC = () => {
   const { profile, isAdmin, isSuperAdmin } = useAuth();
+  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
   const canManageModels = isAdmin || isSuperAdmin;
   const { isEmerald, isCrimson, isAmber, currentThemeOption } = useTheme();
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -190,16 +192,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Filter collections by selected warehouse
+  const warehouseVehicles = filterByWarehouse(vehicles);
+  const warehouseTrips = filterByWarehouse(trips);
+  const warehouseDrivers = filterByWarehouse(drivers);
+
   // Dynamically calculate operational status for display consistency and resilience
-  const computedVehicles = vehicles.map(v => {
+  const computedVehicles = warehouseVehicles.map(v => {
     if (v.status === 'Maintenance') {
       return v;
     }
-    const hasRunningTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Running');
+    const hasRunningTrip = warehouseTrips.some(t => t.vehicleId === v.id && t.status === 'Running');
     if (hasRunningTrip) {
       return { ...v, status: 'On Trip' as const };
     }
-    const hasPendingTrip = trips.some(t => t.vehicleId === v.id && t.status === 'Pending');
+    const hasPendingTrip = warehouseTrips.some(t => t.vehicleId === v.id && t.status === 'Pending');
     if (hasPendingTrip) {
       return { ...v, status: 'Pending Out Scan' as const };
     }
@@ -222,14 +229,24 @@ const Dashboard: React.FC = () => {
     availableVehicles: computedVehicles.filter(v => v.status === 'Available').length,
     onTripVehicles: computedVehicles.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan').length,
     maintenanceVehicles: computedVehicles.filter(v => v.status === 'Maintenance').length,
-    runningTrips: trips.filter(t => t.status === 'Running').length,
-    completedTrips: trips.filter(t => t.status === 'Completed').length,
-    totalDrivers: drivers.length,
+    runningTrips: warehouseTrips.filter(t => t.status === 'Running').length,
+    completedTrips: warehouseTrips.filter(t => t.status === 'Completed').length,
+    totalDrivers: warehouseDrivers.length,
     typeBreakdown: allTypesList.reduce((acc, type) => {
       acc[type] = computedVehicles.filter(v => v.type === type).length;
       return acc;
     }, {} as Record<string, number>)
   };
+
+  const depotSummaries = useMemo(() => {
+    return SUPPORTED_WAREHOUSES.map(w => {
+      const hubVehicles = vehicles.filter(v => (v.warehouse || 'মোহাম্মদপুর') === w.name);
+      return {
+        ...w,
+        count: hubVehicles.length
+      };
+    });
+  }, [vehicles]);
 
   const modelAnalyticsList = useMemo(() => {
     const list = allTypesList.map(type => {
@@ -280,12 +297,12 @@ const Dashboard: React.FC = () => {
       v.vehicleNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.id?.toLowerCase().includes(searchQuery.toLowerCase())
     ),
-    drivers: drivers.filter(d => 
+    drivers: warehouseDrivers.filter(d => 
       d.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.driverId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.role?.toLowerCase().includes(searchQuery.toLowerCase())
     ),
-    trips: trips.filter(t => 
+    trips: warehouseTrips.filter(t => 
       t.driverName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.vehicleId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.location?.toLowerCase().includes(searchQuery.toLowerCase())

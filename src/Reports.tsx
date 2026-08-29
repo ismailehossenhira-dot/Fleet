@@ -37,7 +37,7 @@ import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
 const Reports: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
-  const canManageReports = isAdmin || isSubAdmin;
+  const canManageReports = isAdmin;
   const canResolveReports = isAdmin || isSubAdmin || isChecker;
   const [trips, setTrips] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);

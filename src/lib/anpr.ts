@@ -195,6 +195,78 @@ export const ENG_TO_BANGLA_CLASS_MAP: Record<string, string> = {
 export const BANGLA_METROS = Object.keys(BANGLA_TO_ENG_DISTRICT_MAP);
 export const BANGLA_VEHICLE_CLASSES = Object.keys(BANGLA_TO_ENG_CLASS_MAP);
 
+/**
+ * OpenALPR Pattern / Regex definitions for Bangladesh
+ * Format 1: [DISTRICT] [METRO] - [CLASS_CHAR] [SERIES]-[NUMBER] (e.g., ঢাকা মেট্রো-ম ১১-৮৭৫৭)
+ * Format 2: [DISTRICT] - [CLASS_CHAR] [SERIES]-[NUMBER] (e.g., চট্টগ্রাম-খ ১২-৩৪৫৬)
+ * Format 3: [DISTRICT] [METRO] - [CLASS_CHAR] [6-DIGITS] (e.g., ঢাকা মেট্রো-উ ১২৩৪৫৬)
+ * Format 4: [DISTRICT_ENG]-[CLASS_ENG] [SERIES]-[NUMBER] (e.g., DM-MA 11-8757, DM-U 123456)
+ */
+export const OPENALPR_BD_PATTERNS = [
+  // Metro Standard 2-digit series + 4-digit number: ঢাকা মেট্রো-ম ১১-৮৭৫৭
+  {
+    pattern: 'metro_standard',
+    regex: /(ঢাকা|চট্টগ্রাম|চট্ট|খুলনা|রাজশাহী|সিলেট|বরিশাল|রংপুর|ময়মনসিংহ|ময়মন|গাজীপুর|নারায়ণগঞ্জ|কুমিল্লা|বগুড়া|যশোর|দিনাজপুর|ফরিদপুর|পাবনা|কুষ্টিয়া|টাঙ্গাইল)\s*(মেট্রো|জেলা)?[\s\-_]*([মউঊনটডঢচছজঝকখগঘবভপফতথদধশষসহলরযড়ঢ়য়])[\s\-_]*([০-৯0-9]{2})[\s\-_]*([০-৯0-9]{4})/i,
+    description: 'Bangla Metro Standard (Series + Reg Number)'
+  },
+  // Metro 6 digits continuous: ঢাকা মেট্রো-উ ১২৩৪৫৬
+  {
+    pattern: 'metro_six_digit',
+    regex: /(ঢাকা|চট্টগ্রাম|চট্ট|খুলনা|রাজশাহী|সিলেট|বরিশাল|রংপুর|ময়মনসিংহ|ময়মন|গাজীপুর|নারায়ণগঞ্জ|কুমিল্লা|বগুড়া|যশোর|দিনাজপুর|ফরিদপুর|পাবনা|কুষ্টিয়া|টাঙ্গাইল)\s*(মেট্রো|জেলা)?[\s\-_]*([মউঊনটডঢচছজঝকখগঘবভপফতথদধশষসহলরযড়ঢ়য়])[\s\-_]*([০-৯0-9]{6})/i,
+    description: 'Bangla Metro 6-Digits'
+  },
+  // English OpenALPR Code: DM-MA 11-8757 or DM-U 123456
+  {
+    pattern: 'openalpr_eng_standard',
+    regex: /(DM|CM|KM|RM|SM|BM|RPM|GZM|GZ|NG|COM|BOG|MYM|JAS|DIN|FAR|PAB|KUS|TAN|DHAKA|CTG)[\s\-_]+([A-Z]{1,4})[\s\-_]+([0-9]{2})[\s\-_]*([0-9]{4})/i,
+    description: 'OpenALPR English Standard'
+  },
+  {
+    pattern: 'openalpr_eng_six_digit',
+    regex: /(DM|CM|KM|RM|SM|BM|RPM|GZM|GZ|NG|COM|BOG|MYM|JAS|DIN|FAR|PAB|KUS|TAN|DHAKA|CTG)[\s\-_]+([A-Z]{1,4})[\s\-_]+([0-9]{6})/i,
+    description: 'OpenALPR English 6-Digits'
+  }
+];
+
+export interface OpenAlprPlateCandidate {
+  plate: string;
+  plate_bangla: string;
+  plate_english: string;
+  confidence: number;
+  matches_template: number;
+}
+
+export interface OpenAlprCoordinate {
+  x: number;
+  y: number;
+}
+
+export interface OpenAlprPlateResult {
+  plate: string;
+  confidence: number;
+  matches_template: number;
+  plate_index: number;
+  region: string;
+  region_confidence: number;
+  processing_time_ms: number;
+  requested_topn: number;
+  coordinates: OpenAlprCoordinate[];
+  candidates: OpenAlprPlateCandidate[];
+  vehicle_region?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  vehicle?: {
+    body_type: string;
+    make: string;
+    model: string;
+    color: string;
+    orientation: string;
+  };
+}
+
 export interface VehicleDetectionItem {
   vehicle_id?: number;
   vehicle_type?: string;
@@ -207,9 +279,12 @@ export interface VehicleDetectionItem {
   series_number?: string;
   registration_number?: string;
   confidence?: 'high' | 'medium' | 'low' | string;
+  confidence_score?: number;
   format_match?: boolean;
   lighting_condition?: 'day' | 'night' | 'low_light' | 'overexposed' | string;
   notes?: string;
+  coordinates?: OpenAlprCoordinate[];
+  openalpr_result?: OpenAlprPlateResult;
 }
 
 export interface PlateScanData {
@@ -233,8 +308,10 @@ export interface PlateScanData {
   lighting_condition?: 'day' | 'night' | 'low_light' | 'overexposed' | string;
   notes?: string;
   total_vehicles_detected?: number;
+  processing_time_ms?: number;
   detections?: VehicleDetectionItem[];
   primary_detection?: VehicleDetectionItem;
+  openalpr_results?: OpenAlprPlateResult[];
 }
 
 export function convertBanglaToEngDigits(str: string = ''): string {

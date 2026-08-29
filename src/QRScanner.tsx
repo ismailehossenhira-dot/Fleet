@@ -3,7 +3,8 @@ import {
   QrCode, Camera, Truck, User as UserIcon, Users, 
   CheckCircle, XCircle, AlertTriangle, ClipboardCheck, 
   Calendar, MapPin, RotateCcw, FileText, CheckCircle2, Wrench, Search,
-  ChevronDown, ChevronUp, ShieldAlert, Scale, Info, Sparkles, Scan, LogIn, LogOut
+  ChevronDown, ChevronUp, ShieldAlert, Scale, Info, Sparkles, Scan, LogIn, LogOut,
+  Clock
 } from 'lucide-react';
 import { 
   Card, Button, StaffProfileButton, VehicleProfileButton,
@@ -11,7 +12,6 @@ import {
   getDefaultVehicleTools, getDefaultVehicleDocs,
   AuditDetailsDropdown
 } from './components/Common';
-import { LivePlateCameraScanner } from './components/LivePlateCameraScanner';
 import { 
   subscribeToCollection, 
   findStaffById, 
@@ -75,7 +75,7 @@ const QRScanner: React.FC = () => {
   const [selectedSimVehicleId, setSelectedSimVehicleId] = useState('');
   const [selectedSimAction, setSelectedSimAction] = useState<'IN' | 'OUT'>('OUT');
   const [manualVehicleSearch, setManualVehicleSearch] = useState('');
-  const [activeScanMode, setActiveScanMode] = useState<'plate_camera' | 'qr_camera' | 'manual'>('plate_camera');
+  const [activeScanMode, setActiveScanMode] = useState<'plate_camera' | 'qr_camera' | 'manual'>('manual');
 
   // Dispatch Form State (for IN Scan when Available)
   const [dispatchForm, setDispatchForm] = useState({
@@ -601,30 +601,6 @@ const QRScanner: React.FC = () => {
       console.error("Return error:", err);
       setReturnStatus('error');
     }
-  };
-
-  // Direct Gate In (Return Entry) from ANPR Camera
-  const handleDirectGateIn = async (vehicle: any) => {
-    const activeTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Running');
-    if (activeTrip) {
-      await completeTrip(activeTrip.id, vehicle.id, {
-        missingDocuments: [],
-        missingTools: [],
-        notes: 'AI ANPR Camera Instant Gate In'
-      }, profile);
-    } else {
-      await updateVehicleStatus(vehicle.id, 'Available', 'AI ANPR Camera Instant Gate In', profile);
-    }
-    triggerScanResult('IN', vehicle.id);
-  };
-
-  // Direct Gate Out (Dispatch) from ANPR Camera
-  const handleDirectGateOut = async (vehicle: any) => {
-    const pendingTrip = trips.find(t => t.vehicleId === vehicle.id && t.status === 'Pending');
-    if (pendingTrip) {
-      await startPendingTrip(pendingTrip.id, vehicle.id, {}, profile);
-    }
-    triggerScanResult('OUT', vehicle.id);
   };
 
   // Render scan details
@@ -1811,11 +1787,11 @@ const QRScanner: React.FC = () => {
               type="button"
               onClick={() => {
                 stopCameraScanner();
-                setActiveScanMode('plate_camera');
+                setActiveScanMode('manual');
               }}
               className={cn(
                 "flex-1 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                activeScanMode === 'plate_camera'
+                activeScanMode === 'manual'
                   ? (isEmerald ? "bg-white text-[#1b6b54] shadow-xs border border-emerald-200" :
                      isCrimson ? "bg-white text-[#be123c] shadow-xs border border-rose-200" :
                      isAmber ? "bg-white text-[#92400e] shadow-xs border border-amber-200" :
@@ -1823,12 +1799,12 @@ const QRScanner: React.FC = () => {
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              <Sparkles size={14} className={
-                activeScanMode === 'plate_camera'
+              <Search size={14} className={
+                activeScanMode === 'manual'
                   ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
                   : "text-slate-400"
               } />
-              <span>নাম্বার প্লেট (AI)</span>
+              <span>ম্যানুয়াল সার্চ</span>
             </button>
 
             <button
@@ -1858,11 +1834,11 @@ const QRScanner: React.FC = () => {
               type="button"
               onClick={() => {
                 stopCameraScanner();
-                setActiveScanMode('manual');
+                setActiveScanMode('plate_camera');
               }}
               className={cn(
                 "flex-1 py-2 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                activeScanMode === 'manual'
+                activeScanMode === 'plate_camera'
                   ? (isEmerald ? "bg-white text-[#1b6b54] shadow-xs border border-emerald-200" :
                      isCrimson ? "bg-white text-[#be123c] shadow-xs border border-rose-200" :
                      isAmber ? "bg-white text-[#92400e] shadow-xs border border-amber-200" :
@@ -1870,25 +1846,83 @@ const QRScanner: React.FC = () => {
                   : "text-slate-600 hover:text-slate-900"
               )}
             >
-              <Search size={14} className={
-                activeScanMode === 'manual'
+              <Sparkles size={14} className={
+                activeScanMode === 'plate_camera'
                   ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
                   : "text-slate-400"
               } />
-              <span>ম্যানুয়াল সার্চ</span>
+              <span>নাম্বার প্লেট</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-200 hidden sm:inline-block">
+                কাজ চলছে
+              </span>
             </button>
           </div>
 
           {activeScanMode === 'plate_camera' ? (
-            <Card title="এআই নাম্বার প্লেট স্ক্যানার (Live Plate OCR)">
-              <LivePlateCameraScanner 
-                vehicles={computedVehicles}
-                trips={trips}
-                onVehicleMatched={(v, action) => triggerScanResult(action, v.id)}
-                onDirectGateIn={handleDirectGateIn}
-                onDirectGateOut={handleDirectGateOut}
-                canManage={canManage}
-              />
+            <Card 
+              title="এআই নাম্বার প্লেট স্ক্যানার (AI Plate Recognition)"
+              className={cn(
+                "border shadow-xs",
+                isEmerald ? "border-emerald-200" :
+                isCrimson ? "border-rose-200" :
+                isAmber ? "border-amber-200" :
+                "border-blue-200"
+              )}
+            >
+              <div className="py-8 px-4 text-center space-y-4">
+                <div className={cn(
+                  "relative mx-auto w-16 h-16 rounded-2xl flex items-center justify-center shadow-xs border",
+                  isEmerald ? "bg-emerald-50 border-emerald-200 text-[#1b6b54]" :
+                  isCrimson ? "bg-rose-50 border-rose-200 text-[#be123c]" :
+                  isAmber ? "bg-amber-50 border-amber-200 text-[#92400e]" :
+                  "bg-blue-50 border-blue-200 text-blue-600"
+                )}>
+                  <Wrench size={30} className="animate-pulse" />
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-[9px] text-white font-black items-center justify-center">!</span>
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-w-sm mx-auto">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/90 border border-amber-200 text-amber-900 font-bold text-xs">
+                    <Clock size={13} className="text-amber-700" />
+                    <span>কাজ চলমান রয়েছে</span>
+                  </div>
+
+                  <h3 className="text-base font-black text-slate-800 pt-1">
+                    এই ফিচারের কাজ বর্তমানে চলমান রয়েছে
+                  </h3>
+
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    এআই ভেহিকেল নাম্বার প্লেট স্ক্যানার ফিচারের উন্নয়ন কাজ চলছে। অতি তাড়াতাড়ি এটি সরাসরি কাজের জন্য সবার জন্য উন্মুক্ত হবে।
+                  </p>
+
+                  <p className="text-[11px] text-slate-500 font-medium pt-1">
+                    ততক্ষণ পর্যন্ত অনুগ্রহ করে <strong>ম্যানুয়াল সার্চ</strong> অথবা <strong>কিউআর কোড</strong> স্ক্যানার ব্যবহার করুন।
+                  </p>
+                </div>
+
+                <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                  <Button 
+                    type="button"
+                    onClick={() => setActiveScanMode('manual')}
+                    className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5"
+                  >
+                    <Search size={14} />
+                    <span>ম্যানুয়াল সার্চে যান</span>
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setActiveScanMode('qr_camera')}
+                    className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-1.5"
+                  >
+                    <QrCode size={14} />
+                    <span>কিউআর কোড স্ক্যানার</span>
+                  </Button>
+                </div>
+              </div>
             </Card>
           ) : activeScanMode === 'qr_camera' ? (
             <Card title="কিউআর কোড ক্যামেরা (Live QR Stream)">
