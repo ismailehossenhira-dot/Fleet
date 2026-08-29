@@ -133,6 +133,27 @@ export const WarehousesManagement: React.FC = () => {
     return map;
   }, [warehouses, vehicles, drivers, trips]);
 
+  // Overall aggregate stats
+  const totalStats = useMemo(() => {
+    let totalVehicles = vehicles.length;
+    let availableVehicles = vehicles.filter(v => v.status === 'Available').length;
+    let onTripVehicles = vehicles.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan').length;
+    let maintenanceVehicles = vehicles.filter(v => v.status === 'Maintenance').length;
+    let totalDrivers = drivers.filter(d => d.role !== 'Helper').length;
+    let totalHelpers = drivers.filter(d => d.role === 'Helper').length;
+    let activeTrips = trips.filter(t => t.status === 'Running').length;
+
+    return {
+      totalVehicles,
+      availableVehicles,
+      onTripVehicles,
+      maintenanceVehicles,
+      totalDrivers,
+      totalHelpers,
+      activeTrips
+    };
+  }, [vehicles, drivers, trips]);
+
   // Unassigned items count (items without warehouse or marked 'অনির্ধারিত')
   const unassignedVehicles = useMemo(() => {
     return vehicles.filter(v => !v.warehouse || v.warehouse === 'অনির্ধারিত');
@@ -192,6 +213,10 @@ export const WarehousesManagement: React.FC = () => {
     navigate(targetPath);
   };
 
+  // Selected warehouse object & stats
+  const activeWhObj = warehouses.find(w => w.name === selectedWarehouse);
+  const activeStats = activeWhObj ? warehouseStats[activeWhObj.name] : null;
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
@@ -200,19 +225,27 @@ export const WarehousesManagement: React.FC = () => {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-2xs">
                 <Building2 size={13} />
-                <span>মাল্টি-ওয়ারহাউজ ফ্লিট সিস্টেম</span>
+                <span>মাল্টি-ওয়্যারহাউজ ফ্লিট সিস্টেম</span>
               </span>
-              <span className="text-xs text-slate-400 font-bold">১০টি জোন ও ডিপো</span>
+              <span className="text-xs text-slate-300 font-bold bg-white/10 px-2.5 py-0.5 rounded-full">
+                ১০টি জোন ও ডিপো হাব
+              </span>
+              {selectedWarehouse !== 'all' && (
+                <span className="text-xs text-emerald-300 font-bold bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Check size={12} />
+                  <span>বর্তমান ফিল্টার: {selectedWarehouse}</span>
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              ওয়ারহাউজ ব্যবস্থাপনা ও ট্রান্সফার হাব
+              ওয়্যারহাউজ ব্যবস্থাপনা ও ট্রান্সফার হাব (Warehouse Hub)
             </h1>
             <p className="text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              মোহাম্মদপুর, সাভার, ভাঙ্গা, কুমিল্লা, চিটাগাং, রংপুর, সিলেট, মিরপুর, খুলনা ও যশোর ডিপোর গাড়ি, ড্রাইভার ও হেলপার আলাদাভাবে পর্যবেক্ষণ ও পারস্পরিক বদলি (Exchange / Transfer) করুন।
+              মোহাম্মদপুর, সাভার, ভাঙ্গা, কুমিল্লা, চিটাগাং, রংপুর, সিলেট, মিরপুর, খুলনা ও যশোর ডিপোর গাড়ি, ড্রাইভার ও হেলপার আলাদাভাবে পর্যবেক্ষণ, ফিল্টার ও পারস্পরিক বদলি (Exchange / Transfer) করুন।
             </p>
           </div>
 
@@ -223,7 +256,7 @@ export const WarehousesManagement: React.FC = () => {
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-black shadow-md flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
               <Truck size={16} />
-              <span>গাড়ি ট্রান্সফার / এক্সচেঞ্জ</span>
+              <span>গাড়ি ট্রান্সফার / বদলি</span>
             </button>
 
             <button
@@ -239,19 +272,19 @@ export const WarehousesManagement: React.FC = () => {
         {/* Global Stats bar inside header */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
           <div className="bg-white/5 backdrop-blur-xs rounded-xl p-3 border border-white/10">
-            <div className="text-[10px] uppercase font-bold text-slate-400">মোট ডিপো</div>
-            <div className="text-2xl font-black text-white mt-0.5">১০টি</div>
+            <div className="text-[10px] uppercase font-bold text-slate-400">মোট সক্রিয় ডিপো</div>
+            <div className="text-2xl font-black text-white mt-0.5">১০টি ডিপো</div>
           </div>
           <div className="bg-white/5 backdrop-blur-xs rounded-xl p-3 border border-white/10">
-            <div className="text-[10px] uppercase font-bold text-slate-400">মোট ফ্লিট গাড়ি</div>
-            <div className="text-2xl font-black text-blue-300 mt-0.5">{vehicles.length} টি</div>
+            <div className="text-[10px] uppercase font-bold text-slate-400">মোট নিবন্ধিত গাড়ি</div>
+            <div className="text-2xl font-black text-blue-300 mt-0.5">{totalStats.totalVehicles} টি</div>
           </div>
           <div className="bg-white/5 backdrop-blur-xs rounded-xl p-3 border border-white/10">
-            <div className="text-[10px] uppercase font-bold text-slate-400">মোট ড্রাইভার ও সহকারী</div>
+            <div className="text-[10px] uppercase font-bold text-slate-400">মোট চালক ও সহকারী</div>
             <div className="text-2xl font-black text-purple-300 mt-0.5">{drivers.length} জন</div>
           </div>
           <div className="bg-white/5 backdrop-blur-xs rounded-xl p-3 border border-white/10">
-            <div className="text-[10px] uppercase font-bold text-slate-400">মোট ট্রান্সফার রেকর্ড</div>
+            <div className="text-[10px] uppercase font-bold text-slate-400">মোট সম্পন্ন বদলি লগ</div>
             <div className="text-2xl font-black text-emerald-300 mt-0.5">{transfers.length} টি</div>
           </div>
         </div>
@@ -291,25 +324,254 @@ export const WarehousesManagement: React.FC = () => {
         </div>
       )}
 
-      {/* 10 Warehouses Hub Grid */}
+      {/* Master Warehouse Switcher & Options Tab Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <Building2 size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900">ওয়্যারহাউজ অপশন ও দ্রুত ফিল্টার (Depot Selector)</h3>
+              <p className="text-[11px] text-slate-500">যেকোনো ডিপোতে ক্লিক করে এক ক্লিকে পুরো সিস্টেমের ভিউ পরিবর্তন করুন</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500">সিলেক্টেড মোড:</span>
+            <span className={cn(
+              "px-3 py-1 rounded-xl text-xs font-black border",
+              selectedWarehouse === 'all'
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-blue-50 text-blue-800 border-blue-200"
+            )}>
+              {selectedWarehouse === 'all' ? '🌐 সকল ডিপো (Global View)' : `🏢 ${selectedWarehouse}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Horizontal Tab Pills Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {/* All Warehouses Option Button */}
+          <button
+            type="button"
+            onClick={() => setSelectedWarehouse('all')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer shrink-0 shadow-2xs",
+              selectedWarehouse === 'all'
+                ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+            )}
+          >
+            <span>🌐</span>
+            <span>সকল ডিপো (All Warehouses)</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold",
+              selectedWarehouse === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+            )}>
+              {vehicles.length}
+            </span>
+          </button>
+
+          {/* 10 Individual Depot Buttons */}
+          {warehouses.map((wh) => {
+            const isSelected = selectedWarehouse === wh.name;
+            const stats = warehouseStats[wh.name];
+            return (
+              <button
+                key={wh.id}
+                type="button"
+                onClick={() => setSelectedWarehouse(wh.name)}
+                className={cn(
+                  "px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 border cursor-pointer shrink-0 shadow-2xs",
+                  isSelected
+                    ? `${wh.bgColor} ${wh.borderColor} ${wh.textColor} ring-2 ring-blue-500 shadow-md`
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                )}
+              >
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded text-[9px] font-mono font-bold border",
+                  isSelected ? `${wh.bgColor} ${wh.borderColor} ${wh.textColor}` : "bg-slate-100 text-slate-600 border-slate-200"
+                )}>
+                  {wh.code}
+                </span>
+                <span>{wh.name}</span>
+                {stats && (
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[10px] font-mono",
+                    isSelected ? "bg-black/10 text-current font-bold" : "bg-slate-100 text-slate-500"
+                  )}>
+                    {stats.totalVehicles}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected Warehouse Detailed Drilldown Panel */}
+      {activeWhObj && activeStats && selectedWarehouse !== 'all' ? (
+        <div className="bg-white rounded-2xl border-2 border-blue-400/80 p-5 shadow-md animate-in fade-in duration-200">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={cn(
+                  "px-2.5 py-1 rounded-lg text-xs font-black border",
+                  activeWhObj.bgColor, activeWhObj.borderColor, activeWhObj.textColor
+                )}>
+                  {activeWhObj.code}
+                </span>
+                <h3 className="text-xl font-black text-slate-900">
+                  {activeWhObj.name} ডিপো বিস্তারিত ({activeWhObj.nameEn})
+                </h3>
+                <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                  <MapPin size={12} className="text-slate-400" />
+                  <span>জোন: {activeWhObj.region}</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                এই ডিপোর বর্তমান ফ্লিট গাড়ি সংখ্যা, ড্রাইভার/সহকারী স্টাফ এবং চলমান অপারেশন রিপোর্ট
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseAndNavigate(activeWhObj.name, '/vehicles')}
+                className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Truck size={14} />
+                <span>এই ডিপোর গাড়ি ({activeStats.totalVehicles})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseAndNavigate(activeWhObj.name, '/drivers')}
+                className="px-3.5 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Users size={14} />
+                <span>এই ডিপোর স্টাফ ({activeStats.totalDrivers + activeStats.totalHelpers})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseAndNavigate(activeWhObj.name, '/new-trip')}
+                className="px-3.5 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Send size={14} />
+                <span>নতুন ট্রিপ শুরু</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedWarehouse('all')}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+              >
+                <span>সব ডিপো দেখুন</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="text-[11px] font-bold text-slate-500 block">মোট ফ্লিট গাড়ি</span>
+              <span className="text-xl font-black text-slate-900 mt-0.5 block">{activeStats.totalVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100">
+              <span className="text-[11px] font-bold text-emerald-700 block">উপলব্ধ (Available)</span>
+              <span className="text-xl font-black text-emerald-700 mt-0.5 block">{activeStats.availableVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100">
+              <span className="text-[11px] font-bold text-blue-700 block">ট্রিপে আছে (On Trip)</span>
+              <span className="text-xl font-black text-blue-700 mt-0.5 block">{activeStats.onTripVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-100">
+              <span className="text-[11px] font-bold text-amber-700 block">মেইনটেন্যান্স (Maint.)</span>
+              <span className="text-xl font-black text-amber-700 mt-0.5 block">{activeStats.maintenanceVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100">
+              <span className="text-[11px] font-bold text-purple-700 block">চালকের সংখ্যা</span>
+              <span className="text-xl font-black text-purple-700 mt-0.5 block">{activeStats.totalDrivers} জন</span>
+            </div>
+            <div className="p-3 bg-teal-50/70 rounded-xl border border-teal-100">
+              <span className="text-[11px] font-bold text-teal-700 block">সহকারী (Helpers)</span>
+              <span className="text-xl font-black text-teal-700 mt-0.5 block">{activeStats.totalHelpers} জন</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Global Overview when All Warehouses is selected */
+        <div className="bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-200/80 rounded-2xl p-5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shadow-xs">
+                🌐
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">
+                  সকল ডিপো একনজরে (Global Depots Consolidated View)
+                </h3>
+                <p className="text-xs text-slate-600">
+                  বর্তমানে সকল ১০টি ডিপোর সামগ্রিক গাড়িবহর ও স্টাফ তথ্য প্রদর্শিত হচ্ছে
+                </p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-600 font-bold bg-white px-3 py-1.5 rounded-xl border border-blue-100">
+              মোট হাব: <span className="text-blue-700 font-black">১০টি</span> | মোট গাড়ি: <span className="text-blue-700 font-black">{totalStats.totalVehicles}টি</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-slate-500 block">মোট সক্রিয় গাড়ি</span>
+              <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalStats.totalVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-emerald-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-emerald-700 block">Available (ফ্রি)</span>
+              <span className="text-xl font-black text-emerald-700 mt-0.5 block">{totalStats.availableVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-blue-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-blue-700 block">চলমান ট্রিপে আছে</span>
+              <span className="text-xl font-black text-blue-700 mt-0.5 block">{totalStats.onTripVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-amber-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-amber-700 block">মেরামতাধীন</span>
+              <span className="text-xl font-black text-amber-700 mt-0.5 block">{totalStats.maintenanceVehicles} টি</span>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-purple-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-purple-700 block">মোট ড্রাইভার</span>
+              <span className="text-xl font-black text-purple-700 mt-0.5 block">{totalStats.totalDrivers} জন</span>
+            </div>
+            <div className="p-3 bg-white rounded-xl border border-teal-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-teal-700 block">মোট হেলপার</span>
+              <span className="text-xl font-black text-teal-700 mt-0.5 block">{totalStats.totalHelpers} জন</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10 Warehouses Hub Grid - আগের মতো সাজানো গোছানো কার্ড ভিউ */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
               <Building2 size={20} className="text-blue-600" />
-              <span>১০টি আঞ্চলিক ডিপোর ফ্লিট ও স্টাফ সামারি</span>
+              <span>১০টি আঞ্চলিক ডিপোর ফ্লিট ও স্টাফ সামারি কার্ড</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              যেকোনো ডিপো কার্ডে ক্লিক করে সেই ডিপোর ফিল্টার করা তথ্য দেখুন
+              প্রতিটি কার্ডে ডিপোর নাম, জোন, গাড়ি উপস্থিতি এবং ড্রাইভারের সংখ্যা সাজানো রয়েছে
             </p>
           </div>
 
           {selectedWarehouse !== 'all' && (
             <button
               onClick={() => setSelectedWarehouse('all')}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200"
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 cursor-pointer"
             >
-              <span>ফিল্টার ক্লিয়ার করুন (সকল ডিপো)</span>
+              <span>ফিল্টার রিসেট (সকল ডিপো)</span>
             </button>
           )}
         </div>
@@ -341,7 +603,7 @@ export const WarehousesManagement: React.FC = () => {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2.5">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-sm font-black text-slate-900">{wh.name}</span>
                         <span className={cn(
                           "text-[10px] font-black px-1.5 py-0.5 rounded border shadow-2xs",
@@ -371,17 +633,17 @@ export const WarehousesManagement: React.FC = () => {
                         <Truck size={13} className="text-slate-400" />
                         <span>মোট গাড়ি</span>
                       </span>
-                      <span className="font-black text-slate-900 text-sm">{stats.totalVehicles}</span>
+                      <span className="font-black text-slate-900 text-sm">{stats.totalVehicles} টি</span>
                     </div>
 
                     {/* Breakdown */}
                     <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-200/60 text-center">
                       <div className="p-1 rounded bg-white border border-slate-100">
-                        <span className="text-[9px] text-slate-400 block font-bold">Available</span>
+                        <span className="text-[9px] text-slate-400 block font-bold">Free</span>
                         <span className="text-xs font-black text-emerald-600">{stats.availableVehicles}</span>
                       </div>
                       <div className="p-1 rounded bg-white border border-slate-100">
-                        <span className="text-[9px] text-slate-400 block font-bold">On Trip</span>
+                        <span className="text-[9px] text-slate-400 block font-bold">Trip</span>
                         <span className="text-xs font-black text-blue-600">{stats.onTripVehicles}</span>
                       </div>
                       <div className="p-1 rounded bg-white border border-slate-100">
@@ -416,7 +678,7 @@ export const WarehousesManagement: React.FC = () => {
                         : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                     )}
                   >
-                    {isSelected ? 'নির্বাচিত ডিপো' : 'ফিল্টার সেট করুন'}
+                    {isSelected ? 'নির্বাচিত ডিপো' : 'ফিল্টার করুন'}
                   </button>
 
                   <button
@@ -450,10 +712,10 @@ export const WarehousesManagement: React.FC = () => {
           <div>
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
               <History size={18} className="text-indigo-600" />
-              <span>ইন্টার-ডিপো ট্রান্সফার ও এক্সচেঞ্জ হিস্ট্রি</span>
+              <span>ইন্টার-ডিপো ট্রান্সফার ও এক্সচেঞ্জ হিস্ট্রি (Transfer Logs)</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              কোন গাড়ি বা স্টাফ কোন ওয়ারহাউজ থেকে কোথায় বদলি বা এক্সচেঞ্জ করা হয়েছে তার সম্পূর্ণ লগ
+              কোন গাড়ি বা স্টাফ কোন ডিপো থেকে কোথায় বদলি বা এক্সচেঞ্জ করা হয়েছে তার সম্পূর্ণ লগ
             </p>
           </div>
 
@@ -621,7 +883,7 @@ export const WarehousesManagement: React.FC = () => {
               </h3>
               <button 
                 onClick={() => setIsQuickVehiclePickerOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -638,7 +900,7 @@ export const WarehousesManagement: React.FC = () => {
                       setIsQuickVehiclePickerOpen(false);
                       setIsVehicleTransferOpen(true);
                     }}
-                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 flex items-center justify-between text-left transition-all group"
+                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 flex items-center justify-between text-left transition-all group cursor-pointer"
                   >
                     <div>
                       <span className="font-black text-xs text-slate-900 block group-hover:text-blue-700">
@@ -680,7 +942,7 @@ export const WarehousesManagement: React.FC = () => {
               </h3>
               <button 
                 onClick={() => setIsQuickStaffPickerOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -697,7 +959,7 @@ export const WarehousesManagement: React.FC = () => {
                       setIsQuickStaffPickerOpen(false);
                       setIsStaffTransferOpen(true);
                     }}
-                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 flex items-center justify-between text-left transition-all group"
+                    className="w-full p-3 rounded-xl border border-slate-200 hover:border-purple-400 hover:bg-purple-50/50 flex items-center justify-between text-left transition-all group cursor-pointer"
                   >
                     <div>
                       <div className="flex items-center gap-1.5">
