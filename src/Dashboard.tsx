@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { 
   Truck, 
   Users, 
@@ -125,10 +125,23 @@ const Dashboard: React.FC = () => {
   });
   const [modelSortBy, setModelSortBy] = useState<'count_desc' | 'name_asc' | 'available_desc' | 'ontrip_desc'>('count_desc');
   const [modelSearchFilter, setModelSearchFilter] = useState<string>('');
+  const [modelStatusQuickFilter, setModelStatusQuickFilter] = useState<'all' | 'has_available' | 'has_ontrip' | 'has_maintenance'>('all');
   const [selectedModelFilter, setSelectedModelFilter] = useState<string | null>(null);
   const [drilldownVehicleSearch, setDrilldownVehicleSearch] = useState<string>('');
+  const [drilldownStatusFilter, setDrilldownStatusFilter] = useState<'all' | 'Available' | 'On Trip' | 'Maintenance'>('all');
+  const drilldownRef = useRef<HTMLDivElement>(null);
   const [customModels, setCustomModels] = useState<VehicleModelRecord[]>([]);
   const [showModelManagement, setShowModelManagement] = useState<boolean>(false);
+
+  // Auto-scroll to drilldown when a model is selected on phone/mobile
+  useEffect(() => {
+    if (selectedModelFilter && drilldownRef.current) {
+      const timer = setTimeout(() => {
+        drilldownRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedModelFilter]);
 
   const toggleShowVehicleModels = () => {
     setShowVehicleModels(prev => {
@@ -275,6 +288,14 @@ const Dashboard: React.FC = () => {
     });
 
     let filtered = list;
+    if (modelStatusQuickFilter === 'has_available') {
+      filtered = filtered.filter(item => item.available > 0);
+    } else if (modelStatusQuickFilter === 'has_ontrip') {
+      filtered = filtered.filter(item => item.onTrip > 0);
+    } else if (modelStatusQuickFilter === 'has_maintenance') {
+      filtered = filtered.filter(item => item.maintenance > 0);
+    }
+
     if (modelSearchFilter.trim()) {
       const q = modelSearchFilter.toLowerCase();
       filtered = filtered.filter(item => 
@@ -290,7 +311,31 @@ const Dashboard: React.FC = () => {
       if (modelSortBy === 'ontrip_desc') return b.onTrip - a.onTrip || b.total - a.total;
       return 0;
     });
-  }, [allTypesList, computedVehicles, stats.totalVehicles, modelSearchFilter, modelSortBy]);
+  }, [allTypesList, computedVehicles, stats.totalVehicles, modelSearchFilter, modelSortBy, modelStatusQuickFilter]);
+
+  // Memoized drilldown vehicles list with search and status tab filtering
+  const drilldownVehicles = useMemo(() => {
+    if (!selectedModelFilter) return [];
+    let list = computedVehicles.filter(v => v.type === selectedModelFilter);
+    if (drilldownStatusFilter !== 'all') {
+      if (drilldownStatusFilter === 'Available') {
+        list = list.filter(v => v.status === 'Available');
+      } else if (drilldownStatusFilter === 'On Trip') {
+        list = list.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan');
+      } else if (drilldownStatusFilter === 'Maintenance') {
+        list = list.filter(v => v.status === 'Maintenance');
+      }
+    }
+    if (drilldownVehicleSearch.trim()) {
+      const q = drilldownVehicleSearch.toLowerCase();
+      list = list.filter(v => 
+        v.vehicleNumber?.toLowerCase().includes(q) ||
+        v.id?.toLowerCase().includes(q) ||
+        warehouseTrips.some(t => t.vehicleId === v.id && (t.driverName?.toLowerCase().includes(q) || t.location?.toLowerCase().includes(q)))
+      );
+    }
+    return list;
+  }, [selectedModelFilter, computedVehicles, drilldownStatusFilter, drilldownVehicleSearch, warehouseTrips]);
 
   const filteredSearch = {
     vehicles: computedVehicles.filter(v => 
@@ -867,87 +912,131 @@ const Dashboard: React.FC = () => {
               )}
             </AnimatePresence>
                          {/* Vehicle Models Breakdown / Category Section with Show/Hide Toggle */}
-      <div className="mt-6 bg-surface border border-border rounded-xl shadow-xs transition-all overflow-hidden">
+      <div className="mt-5 sm:mt-6 bg-surface border border-border rounded-2xl shadow-xs transition-all overflow-hidden">
         {/* Top Header Bar */}
-        <div className="p-4 sm:p-5 border-b border-border bg-slate-50/50">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            {/* Title & Stats Badges */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 border border-accent/20">
-                <Layers size={20} />
+        <div className="p-3.5 sm:p-5 border-b border-border bg-slate-50/70">
+          {/* Header Row: Title & Action Controls */}
+          <div className="flex items-center justify-between gap-2.5 flex-wrap">
+            {/* Title & Micro Stats Badges */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 border border-accent/20 shadow-3xs">
+                <Layers size={18} className="sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h3 className="font-bold text-sm sm:text-base text-text-main tracking-tight">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-sm sm:text-base text-text-main tracking-tight truncate">
                     গাড়ির মডেল ও ক্যাটাগরি বিশ্লেষণ
                   </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono border border-slate-200">
-                    {allTypesList.length} Models
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono border border-slate-200 shrink-0">
+                    {allTypesList.length} মডেল
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-accent/10 text-accent border border-accent/20">
-                    {stats.totalVehicles} Vehicles
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-accent/10 text-accent border border-accent/20 shrink-0">
+                    {stats.totalVehicles} গাড়ি
                   </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1 text-[11px] text-text-muted flex-wrap">
-                  <span>সচল সক্ষমতা: <strong className="text-emerald-600 font-mono">{stats.totalVehicles > 0 ? Math.round((stats.availableVehicles / stats.totalVehicles) * 100) : 0}%</strong> ({stats.availableVehicles}টি)</span>
-                  <span>•</span>
-                  <span>ট্রিপে: <strong className="text-accent font-mono">{stats.onTripVehicles}টি</strong></span>
-                  {stats.maintenanceVehicles > 0 && (
-                    <>
-                      <span>•</span>
-                      <span>মেরামতে: <strong className="text-amber-600 font-mono">{stats.maintenanceVehicles}টি</strong></span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right Header Action Controls */}
-            <div className="flex items-center gap-2 flex-wrap ml-auto">
+            {/* Right Header Action Controls (Touch-friendly for phones) */}
+            <div className="flex items-center gap-2 ml-auto shrink-0">
               {canManageModels && (
                 <button
                   type="button"
                   onClick={() => setShowModelManagement(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95 bg-surface hover:bg-slate-100 text-text-main border-border"
+                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95 bg-surface hover:bg-slate-100 text-text-main border-border min-h-[36px]"
                   title="গাড়ির মডেল যুক্ত বা কনফিগার করুন"
                 >
-                  <Layers size={14} className="text-accent" />
-                  <span>মডেল কনফিগার</span>
-                  <span className="text-[9px] bg-accent/10 text-accent font-bold px-1.5 py-0.2 rounded-sm ml-0.5">Admin</span>
+                  <Layers size={14} className="text-accent shrink-0" />
+                  <span className="hidden xs:inline">মডেল কনফিগার</span>
+                  <span className="xs:hidden">মডেল</span>
+                  <span className="text-[9px] bg-accent/10 text-accent font-bold px-1.5 py-0.2 rounded-sm hidden sm:inline">Admin</span>
                 </button>
               )}
               <button
                 type="button"
                 onClick={toggleShowVehicleModels}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95",
+                  "flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95 min-h-[36px]",
                   showVehicleModels
                     ? "bg-surface hover:bg-slate-100 text-text-muted hover:text-text-main border-border"
-                    : "bg-accent text-white hover:opacity-90 border-transparent"
+                    : "bg-accent text-white hover:opacity-90 border-transparent shadow-xs"
                 )}
                 title={showVehicleModels ? "গাড়ির মডেলসমূহ হাইড করুন" : "সকল মডেলের তালিকা খুলুন"}
               >
                 {showVehicleModels ? (
                   <>
-                    <EyeOff size={14} />
-                    <span>মডেল হাইড করুন</span>
+                    <EyeOff size={14} className="shrink-0" />
+                    <span className="hidden xs:inline">হাইড করুন</span>
+                    <span className="xs:hidden">হাইড</span>
                   </>
                 ) : (
                   <>
-                    <Eye size={14} />
-                    <span>সকল মডেল দেখুন</span>
+                    <Eye size={14} className="shrink-0" />
+                    <span className="hidden xs:inline">মডেল দেখুন</span>
+                    <span className="xs:hidden">দেখুন</span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
+          {/* Phone-Optimized Fleet Metrics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 pt-3 border-t border-border/70">
+            <div className="bg-white/80 p-2 sm:p-2.5 rounded-xl border border-border/80 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                <Layers size={13} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] text-text-muted block font-medium">মোট মডেল</span>
+                <span className="text-xs sm:text-sm font-black text-text-main font-mono">{allTypesList.length} প্রকার</span>
+              </div>
+            </div>
+
+            <div className="bg-white/80 p-2 sm:p-2.5 rounded-xl border border-border/80 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Truck size={13} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] text-text-muted block font-medium">মোট ফ্লিট</span>
+                <span className="text-xs sm:text-sm font-black text-text-main font-mono">{stats.totalVehicles} টি গাড়ি</span>
+              </div>
+            </div>
+
+            <div className="bg-white/80 p-2 sm:p-2.5 rounded-xl border border-border/80 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Check size={13} strokeWidth={2.5} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] text-text-muted block font-medium">সচল সক্ষমতা</span>
+                <span className="text-xs sm:text-sm font-black text-emerald-600 font-mono">
+                  {stats.totalVehicles > 0 ? Math.round((stats.availableVehicles / stats.totalVehicles) * 100) : 0}% ({stats.availableVehicles})
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white/80 p-2 sm:p-2.5 rounded-xl border border-border/80 flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                <Zap size={13} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] text-text-muted block font-medium">ট্রিপে / সার্ভিসিং</span>
+                <span className="text-xs sm:text-sm font-black text-text-main font-mono">
+                  <span className="text-accent">{stats.onTripVehicles}</span>
+                  <span className="text-slate-300 mx-1">/</span>
+                  <span className={stats.maintenanceVehicles > 0 ? "text-amber-600" : "text-slate-400"}>
+                    {stats.maintenanceVehicles}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Compact Mini Pill Bar when Collapsed */}
           {!showVehicleModels && (
-            <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar max-w-full">
-                <span className="text-[11px] font-bold text-text-muted shrink-0 mr-1">সংক্ষিপ্ত রূপ:</span>
-                {allTypesList.slice(0, 7).map(type => {
+            <div className="mt-3 pt-3 border-t border-border/60 flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar max-w-full touch-pan-x -mx-1 px-1">
+                <span className="text-[11px] font-bold text-text-muted shrink-0 mr-0.5">মডেলসমূহ:</span>
+                {allTypesList.slice(0, 8).map(type => {
                   const count = computedVehicles.filter(v => v.type === type).length;
                   return (
                     <button
@@ -957,28 +1046,28 @@ const Dashboard: React.FC = () => {
                         setShowVehicleModels(true);
                         setSelectedModelFilter(type);
                       }}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium border border-border bg-surface hover:border-accent/40 text-text-main shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
+                      className="px-2.5 py-1.5 rounded-xl text-[11px] font-medium border border-border bg-white hover:border-accent/40 text-text-main shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-3xs active:scale-95"
                     >
-                      <span>{type}</span>
+                      <span className="truncate max-w-[120px]">{type}</span>
                       <span className="font-mono font-bold px-1.5 py-0.2 rounded bg-accent/10 text-accent text-[10px]">
                         {count}
                       </span>
                     </button>
                   );
                 })}
-                {allTypesList.length > 7 && (
+                {allTypesList.length > 8 && (
                   <span className="text-[10px] text-text-muted font-bold px-1 shrink-0">
-                    +{allTypesList.length - 7} more
+                    +{allTypesList.length - 8}টি
                   </span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => setShowVehicleModels(true)}
-                className="text-[11px] font-bold text-accent hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                className="text-xs font-bold text-accent hover:underline flex items-center justify-center gap-1 shrink-0 cursor-pointer py-1 bg-accent/5 xs:bg-transparent rounded-lg"
               >
                 <span>সম্পূর্ণ বিস্তারিত খুলুন</span>
-                <ChevronDown size={13} />
+                <ChevronDown size={14} />
               </button>
             </div>
           )}
@@ -993,39 +1082,40 @@ const Dashboard: React.FC = () => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25 }}
-              className="overflow-hidden p-4 sm:p-5 bg-slate-50/40"
+              className="overflow-hidden p-3.5 sm:p-5 bg-slate-50/40 space-y-3.5 sm:space-y-4"
             >
-              {/* Secondary Sub-Controls: Search, Sorting & View Toggle */}
-              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap bg-surface p-2.5 rounded-lg border border-border shadow-2xs">
-                {/* Search Input */}
-                <div className="relative flex-1 min-w-[200px] max-w-md">
+              {/* Secondary Sub-Controls: Search, Sorting, Quick Status & View Toggle */}
+              <div className="bg-surface p-3 sm:p-3.5 rounded-2xl border border-border shadow-2xs space-y-2.5">
+                {/* Search Box (Full-width for phones) */}
+                <div className="relative w-full">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                   <input
                     type="text"
                     value={modelSearchFilter}
                     onChange={(e) => setModelSearchFilter(e.target.value)}
-                    placeholder="মডেল বা গাড়ির নম্বর দিয়ে ফিল্টার করুন..."
-                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50/70 border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-accent/30 focus:border-accent text-text-main placeholder:text-text-muted/60 font-medium"
+                    placeholder="মডেলের নাম বা গাড়ির নম্বর লিখে খুঁজুন..."
+                    className="w-full pl-8.5 pr-8 py-2 text-xs sm:text-sm bg-slate-50/90 border border-border rounded-xl focus:outline-hidden focus:ring-2 focus:ring-accent/30 focus:border-accent text-text-main placeholder:text-text-muted/70 font-medium transition-all"
                   />
                   {modelSearchFilter && (
                     <button
                       type="button"
                       onClick={() => setModelSearchFilter('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-slate-200/80 text-text-muted hover:text-text-main cursor-pointer"
                     >
-                      <X size={12} />
+                      <X size={11} />
                     </button>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap ml-auto">
+                {/* Sub-row: Sort dropdown + View Mode Switcher */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
                   {/* Sorting dropdown */}
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-text-muted text-[11px] font-medium hidden sm:inline">সাজান:</span>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-[150px] max-w-[260px]">
+                    <span className="text-text-muted text-[11px] font-medium shrink-0">সাজান:</span>
                     <select
                       value={modelSortBy}
                       onChange={(e) => setModelSortBy(e.target.value as any)}
-                      className="text-xs bg-slate-50/80 border border-border rounded-md px-2.5 py-1.5 text-text-main font-medium focus:outline-hidden cursor-pointer"
+                      className="w-full text-xs bg-slate-50/90 border border-border rounded-xl px-2.5 py-1.5 text-text-main font-medium focus:outline-hidden cursor-pointer"
                     >
                       <option value="count_desc">সর্বোচ্চ গাড়ি</option>
                       <option value="name_asc">নাম অনুযায়ী</option>
@@ -1035,42 +1125,100 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   {/* View Mode Switcher */}
-                  <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200">
+                  <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200 ml-auto shrink-0">
                     <button
                       type="button"
                       onClick={() => handleSetModelViewMode('grid')}
                       className={cn(
-                        "flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer",
+                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                         modelViewMode === 'grid'
                           ? "bg-surface text-accent shadow-xs border border-border/80"
                           : "text-text-muted hover:text-text-main"
                       )}
                       title="কার্ড গ্রিড ভিউ"
                     >
-                      <LayoutGrid size={12} />
-                      <span className="hidden sm:inline">কার্ড</span>
+                      <LayoutGrid size={13} />
+                      <span>কার্ড</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSetModelViewMode('bars')}
                       className={cn(
-                        "flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer",
+                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                         modelViewMode === 'bars'
                           ? "bg-surface text-accent shadow-xs border border-border/80"
                           : "text-text-muted hover:text-text-main"
                       )}
                       title="অ্যানালিটিক্স বার ভিউ"
                     >
-                      <BarChart3 size={12} />
-                      <span className="hidden sm:inline">বার</span>
+                      <BarChart3 size={13} />
+                      <span>বার</span>
                     </button>
                   </div>
                 </div>
+
+                {/* Quick Status Filter Pills (Optimized for Mobile One-Tap Filtering) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar touch-pan-x -mx-1 px-1 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setModelStatusQuickFilter('all')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border",
+                      modelStatusQuickFilter === 'all'
+                        ? "bg-slate-900 text-white border-slate-900 shadow-3xs"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    )}
+                  >
+                    সকল মডেল ({allTypesList.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModelStatusQuickFilter('has_available')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1",
+                      modelStatusQuickFilter === 'has_available'
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-3xs"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>সচল গাড়ি আছে</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModelStatusQuickFilter('has_ontrip')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1",
+                      modelStatusQuickFilter === 'has_ontrip'
+                        ? "bg-accent text-white border-accent shadow-3xs"
+                        : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    <span>ট্রিপে আছে</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModelStatusQuickFilter('has_maintenance')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border flex items-center gap-1",
+                      modelStatusQuickFilter === 'has_maintenance'
+                        ? "bg-amber-600 text-white border-amber-600 shadow-3xs"
+                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>মেরামতে আছে</span>
+                  </button>
+                </div>
               </div>
 
-              {/* View Mode: Grid Cards */}
+              {/* View Mode: Grid Cards (Engineered for Phones & Desktops) */}
               {modelViewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-3.5">
                   {modelAnalyticsList.map(item => {
                     const isSelected = selectedModelFilter === item.type;
 
@@ -1079,9 +1227,9 @@ const Dashboard: React.FC = () => {
                         key={item.type} 
                         onClick={() => setSelectedModelFilter(isSelected ? null : item.type)}
                         className={cn(
-                          "p-3.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer select-none border relative group overflow-hidden",
+                          "p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between transition-all cursor-pointer select-none border relative group overflow-hidden active:scale-[0.99] touch-manipulation",
                           isSelected
-                            ? "bg-accent/5 border-accent ring-2 ring-accent/20 shadow-xs scale-[1.01]"
+                            ? "bg-accent/5 border-accent ring-2 ring-accent/25 shadow-xs"
                             : "bg-surface border-border hover:border-accent/40 hover:shadow-xs"
                         )}
                         title={`${item.type}: মোট ${item.total} টি গাড়ি। ক্লিক করে বিস্তারিত দেখুন`}
@@ -1090,19 +1238,19 @@ const Dashboard: React.FC = () => {
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <div className={cn(
-                              "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-3xs",
+                              "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-3xs",
                               isSelected 
                                 ? "bg-accent text-white"
                                 : "bg-slate-100 text-slate-600 group-hover:text-accent group-hover:bg-accent/10"
                             )}>
-                              <Truck size={14} />
+                              <Truck size={15} />
                             </div>
-                            <span className="text-xs font-bold text-text-main truncate" title={item.type}>
+                            <span className="text-xs sm:text-sm font-bold text-text-main truncate" title={item.type}>
                               {item.type}
                             </span>
                           </div>
                           <span className={cn(
-                            "text-[10px] font-bold font-mono px-1.5 py-0.5 rounded shrink-0 border",
+                            "text-[10px] font-bold font-mono px-2 py-0.5 rounded-md shrink-0 border",
                             isSelected
                               ? "bg-accent/15 text-accent border-accent/30"
                               : "bg-slate-100 text-slate-600 border-slate-200/60"
@@ -1111,19 +1259,19 @@ const Dashboard: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Middle Row: Big Count & Label */}
-                        <div className="flex items-baseline justify-between my-1">
+                        {/* Middle Row: Big Count & Availability */}
+                        <div className="flex items-baseline justify-between my-1.5">
                           <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl font-bold text-text-main font-mono tracking-tight">{item.total}</span>
-                            <span className="text-[10px] font-medium text-text-muted">টি গাড়ি</span>
+                            <span className="text-2xl sm:text-3xl font-bold text-text-main font-mono tracking-tight">{item.total}</span>
+                            <span className="text-xs font-medium text-text-muted">টি গাড়ি</span>
                           </div>
-                          <span className="text-[10px] font-semibold text-emerald-600 font-mono">
+                          <span className="text-[11px] font-bold text-emerald-600 font-mono bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                             {Math.round(item.availableRatio)}% সচল
                           </span>
                         </div>
 
                         {/* Segmented Capacity Progress Bar */}
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex my-2">
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex my-2 shadow-inner">
                           {item.available > 0 && (
                             <div 
                               style={{ width: `${item.availableRatio}%` }} 
@@ -1148,32 +1296,47 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bottom Row: Micro Status Badges */}
-                        <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-border/60 text-[10px] font-medium">
-                          <span className="text-emerald-700 font-mono font-bold flex items-center gap-0.5" title={`সচল: ${item.available}টি`}>
-                            <Check size={11} className="text-emerald-600 shrink-0" />
-                            <span>{item.available}</span>
-                          </span>
-                          <span className="text-slate-200">•</span>
-                          <span className="text-accent font-mono font-bold flex items-center gap-0.5" title={`ট্রিপে: ${item.onTrip}টি`}>
-                            <Zap size={11} className="text-accent shrink-0" />
-                            <span>{item.onTrip}</span>
-                          </span>
-                          <span className="text-slate-200">•</span>
-                          <span className={cn(
-                            "font-mono font-bold flex items-center gap-0.5",
-                            item.maintenance > 0 ? "text-amber-700" : "text-slate-400 opacity-60"
-                          )} title={`মেরামতে: ${item.maintenance}টি`}>
-                            <Wrench size={10} className="shrink-0" />
-                            <span>{item.maintenance}</span>
-                          </span>
+                        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-border/60 text-center">
+                          <div className="bg-emerald-50/70 py-1 px-1 rounded-lg border border-emerald-100">
+                            <span className="text-[9px] text-emerald-700 block font-medium">সচল</span>
+                            <span className="text-xs font-black text-emerald-800 font-mono">{item.available}</span>
+                          </div>
+                          <div className="bg-blue-50/70 py-1 px-1 rounded-lg border border-blue-100">
+                            <span className="text-[9px] text-blue-700 block font-medium">ট্রিপে</span>
+                            <span className="text-xs font-black text-blue-800 font-mono">{item.onTrip}</span>
+                          </div>
+                          <div className={cn(
+                            "py-1 px-1 rounded-lg border",
+                            item.maintenance > 0 
+                              ? "bg-amber-50/70 border-amber-200 text-amber-800" 
+                              : "bg-slate-50 border-slate-100 text-slate-400"
+                          )}>
+                            <span className="text-[9px] block font-medium">মেরামত</span>
+                            <span className="text-xs font-black font-mono">{item.maintenance}</span>
+                          </div>
+                        </div>
+
+                        {/* Mobile Click Affordance Indicator */}
+                        <div className="mt-2 pt-2 border-t border-dashed border-border/80 text-center">
+                          {isSelected ? (
+                            <span className="text-[11px] font-bold text-accent flex items-center justify-center gap-1">
+                              <Check size={12} strokeWidth={2.5} />
+                              <span>নির্বাচিত মডেল (তালিকা নিচে ↓)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-text-muted group-hover:text-accent flex items-center justify-center gap-1">
+                              <span>গাড়ির তালিকা দেখুন</span>
+                              <ChevronDown size={12} />
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                /* View Mode: Analytical Progress Bars */
-                <div className="bg-surface rounded-xl border border-border overflow-hidden divide-y divide-border">
+                /* View Mode: Analytical Progress Bars (Mobile Stacked List) */
+                <div className="bg-surface rounded-2xl border border-border overflow-hidden divide-y divide-border">
                   {modelAnalyticsList.map(item => {
                     const isSelected = selectedModelFilter === item.type;
 
@@ -1182,33 +1345,37 @@ const Dashboard: React.FC = () => {
                         key={item.type}
                         onClick={() => setSelectedModelFilter(isSelected ? null : item.type)}
                         className={cn(
-                          "p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none",
+                          "p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer select-none active:bg-slate-100",
                           isSelected && "bg-accent/5 border-l-4 border-accent"
                         )}
                       >
-                        {/* Left: Model Name & Count */}
-                        <div className="flex items-center gap-3 min-w-[200px]">
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                            isSelected ? "bg-accent text-white" : "bg-slate-100 text-slate-600"
-                          )}>
-                            <Truck size={15} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-xs text-text-main">{item.type}</h4>
-                              <span className="text-[10px] font-bold font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
-                                {Math.round(item.percentOfTotal)}%
-                              </span>
+                        {/* Top/Left: Model Name & Count */}
+                        <div className="flex items-center justify-between sm:justify-start gap-3 min-w-[200px]">
+                          <div className="flex items-center gap-2.5">
+                            <div className={cn(
+                              "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-3xs",
+                              isSelected ? "bg-accent text-white" : "bg-slate-100 text-slate-600"
+                            )}>
+                              <Truck size={15} />
                             </div>
-                            <p className="text-[10px] text-text-muted font-mono mt-0.5">
-                              মোট: <strong className="text-text-main">{item.total}টি</strong> গাড়ি
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-xs sm:text-sm text-text-main">{item.type}</h4>
+                                <span className="text-[10px] font-bold font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                  {Math.round(item.percentOfTotal)}%
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-text-muted font-mono mt-0.5">
+                                মোট: <strong className="text-text-main">{item.total}টি</strong> গাড়ি
+                              </p>
+                            </div>
                           </div>
+
+                          <ChevronRight size={16} className={cn("text-text-muted sm:hidden transition-transform", isSelected && "rotate-90 text-accent")} />
                         </div>
 
                         {/* Middle: Tri-color Progress Bar */}
-                        <div className="flex-1 max-w-md mx-0 sm:mx-4">
+                        <div className="flex-1 w-full sm:max-w-md sm:mx-4">
                           <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                             {item.available > 0 && (
                               <div 
@@ -1235,19 +1402,19 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Right: Quick Status Chips */}
-                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-[10px] font-mono font-bold">
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-between sm:justify-end">
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-[10px] font-mono font-bold">
                             সচল: {item.available}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold border bg-accent/10 text-accent border-accent/20">
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border bg-accent/10 text-accent border-accent/20">
                             ট্রিপে: {item.onTrip}
                           </span>
                           {item.maintenance > 0 && (
-                            <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-mono font-bold">
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-mono font-bold">
                               মেরামত: {item.maintenance}
                             </span>
                           )}
-                          <ChevronRight size={14} className={cn("text-text-muted transition-transform", isSelected && "rotate-90 text-accent")} />
+                          <ChevronRight size={15} className={cn("text-text-muted hidden sm:inline transition-transform", isSelected && "rotate-90 text-accent")} />
                         </div>
                       </div>
                     );
@@ -1257,17 +1424,20 @@ const Dashboard: React.FC = () => {
 
               {/* Zero State if Filter Yields Nothing */}
               {modelAnalyticsList.length === 0 && (
-                <div className="p-8 text-center bg-surface rounded-xl border border-dashed border-border my-2">
-                  <Truck size={28} className="mx-auto text-text-muted/60 mb-2" />
-                  <p className="text-xs text-text-muted font-medium">
-                    "{modelSearchFilter}" দিয়ে কোনো মডেল বা গাড়ি পাওয়া যায়নি।
+                <div className="p-8 text-center bg-surface rounded-2xl border border-dashed border-border my-2">
+                  <Truck size={30} className="mx-auto text-text-muted/60 mb-2" />
+                  <p className="text-xs sm:text-sm text-text-muted font-medium">
+                    ফিল্টারের শর্ত অনুযায়ী কোনো মডেল পাওয়া যায়নি।
                   </p>
                   <button
                     type="button"
-                    onClick={() => setModelSearchFilter('')}
-                    className="mt-2 text-xs text-accent font-bold hover:underline cursor-pointer"
+                    onClick={() => {
+                      setModelSearchFilter('');
+                      setModelStatusQuickFilter('all');
+                    }}
+                    className="mt-2.5 text-xs text-accent font-bold hover:underline cursor-pointer bg-accent/10 px-3 py-1.5 rounded-xl border border-accent/20"
                   >
-                    ফিল্টার মুছুন
+                    সকল ফিল্টার মুছুন
                   </button>
                 </div>
               )}
@@ -1276,47 +1446,52 @@ const Dashboard: React.FC = () => {
               <AnimatePresence>
                 {selectedModelFilter && (
                   <motion.div
+                    ref={drilldownRef}
                     key="selected-model-drilldown"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.2 }}
-                    className="mt-4 p-4 sm:p-5 bg-surface border border-accent/30 rounded-xl shadow-xs space-y-3"
+                    className="mt-4 p-3.5 sm:p-5 bg-surface border-2 border-accent/30 rounded-2xl shadow-sm space-y-3.5 scroll-mt-20"
                   >
                     {/* Header of Drilldown */}
-                    <div className="flex items-center justify-between gap-3 flex-wrap border-b border-border pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-lg bg-accent/10 text-accent font-bold shrink-0">
-                          <Truck size={16} />
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center font-bold shrink-0 shadow-3xs border border-accent/20">
+                          <Truck size={18} />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-text-main">
-                              {selectedModelFilter} মডেলের বিস্তারিত গাড়ি তালিকা
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm sm:text-base font-bold text-text-main">
+                              {selectedModelFilter}
                             </h4>
                             <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
                               মোট {computedVehicles.filter(v => v.type === selectedModelFilter).length}টি গাড়ি
                             </span>
                           </div>
                           <p className="text-[11px] text-text-muted mt-0.5">
-                            নিচে এই মডেলের সকল নিবন্ধিত গাড়ির বর্তমান লাইভ স্ট্যাটাস প্রদর্শিত হচ্ছে:
+                            এই মডেলের লাইভ স্ট্যাটাস ও ট্রিপ তথ্য নিচে প্রদর্শিত হচ্ছে:
                           </p>
                         </div>
                       </div>
 
                       {/* Close & Action Buttons */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                         <Link
                           to={`/vehicles?type=${encodeURIComponent(selectedModelFilter)}`}
-                          className="text-xs font-bold px-3 py-1.5 rounded-lg border border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors flex items-center gap-1"
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors flex items-center gap-1 min-h-[34px]"
                         >
-                          <span>গাড়ির খাতায় দেখুন</span>
+                          <span>খাতায় দেখুন</span>
                           <ArrowRight size={12} />
                         </Link>
                         <button
                           type="button"
-                          onClick={() => setSelectedModelFilter(null)}
-                          className="text-xs font-bold text-text-muted hover:text-text-main bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                          onClick={() => {
+                            setSelectedModelFilter(null);
+                            setDrilldownVehicleSearch('');
+                            setDrilldownStatusFilter('all');
+                          }}
+                          className="text-xs font-bold text-text-muted hover:text-text-main bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors cursor-pointer flex items-center gap-1 min-h-[34px]"
                         >
                           <X size={13} />
                           <span>বন্ধ করুন</span>
@@ -1324,59 +1499,166 @@ const Dashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Vehicle Plate Tags Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 pt-1">
-                      {computedVehicles
-                        .filter(v => v.type === selectedModelFilter)
-                        .map(v => {
-                          const activeTrip = trips.find(t => (t.status === 'Running' || t.status === 'Pending') && t.vehicleId === v.id);
+                    {/* Drilldown Filter Controls for Phone */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
+                      {/* Search in model vehicles */}
+                      <div className="relative flex-1">
+                        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                        <input
+                          type="text"
+                          value={drilldownVehicleSearch}
+                          onChange={(e) => setDrilldownVehicleSearch(e.target.value)}
+                          placeholder="গাড়ির নম্বর বা চালক দিয়ে খুঁজুন..."
+                          className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-border rounded-xl focus:outline-hidden focus:border-accent font-medium text-text-main"
+                        />
+                        {drilldownVehicleSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setDrilldownVehicleSearch('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main"
+                          >
+                            <X size={11} />
+                          </button>
+                        )}
+                      </div>
 
-                          return (
-                            <div
-                              key={v.id}
-                              className={cn(
-                                "p-2.5 rounded-xl border flex flex-col justify-between gap-1.5 transition-all shadow-3xs",
-                                v.status === 'Available'
-                                  ? "bg-emerald-50/40 border-emerald-200/80"
-                                  : v.status === 'On Trip' || v.status === 'Pending Out Scan'
-                                  ? "bg-accent/5 border-accent/20"
-                                  : "bg-amber-50/40 border-amber-200/80"
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-1.5">
-                                <span className="font-mono font-bold text-xs text-text-main tracking-tight">
-                                  {v.vehicleNumber}
-                                </span>
-                                <span className={cn(
-                                  "px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase shrink-0",
-                                  v.status === 'Available'
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : v.status === 'On Trip'
-                                    ? "bg-accent text-white"
-                                    : v.status === 'Pending Out Scan'
-                                    ? "bg-amber-100 text-amber-800 animate-pulse"
-                                    : "bg-orange-100 text-orange-800"
-                                )}>
-                                  {v.status === 'Available' ? 'সচল' : v.status === 'On Trip' ? 'ট্রিপে' : v.status === 'Pending Out Scan' ? 'পেন্ডিং' : 'মেরামত'}
-                                </span>
-                              </div>
-
-                              {activeTrip && (
-                                <div className="text-[10px] text-text-muted bg-surface/90 p-1.5 rounded-md flex items-center justify-between gap-1 border border-border">
-                                  <span className="truncate">চালক: <strong className="text-text-main">{activeTrip.driverName}</strong></span>
-                                  <span className="text-[9px] text-accent font-bold truncate shrink-0">📍 {activeTrip.location}</span>
-                                </div>
-                              )}
-
-                              {v.maintenanceNotes && (
-                                <p className="text-[10px] text-amber-800 truncate bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
-                                  🔧 {v.maintenanceNotes}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                      {/* Status Tabs inside Drilldown */}
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownStatusFilter('all')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors border",
+                            drilldownStatusFilter === 'all'
+                              ? "bg-slate-800 text-white border-slate-800"
+                              : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          সকল ({computedVehicles.filter(v => v.type === selectedModelFilter).length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownStatusFilter('Available')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors border",
+                            drilldownStatusFilter === 'Available'
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          )}
+                        >
+                          সচল ({computedVehicles.filter(v => v.type === selectedModelFilter && v.status === 'Available').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownStatusFilter('On Trip')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors border",
+                            drilldownStatusFilter === 'On Trip'
+                              ? "bg-accent text-white border-accent"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          )}
+                        >
+                          ট্রিপে ({computedVehicles.filter(v => v.type === selectedModelFilter && (v.status === 'On Trip' || v.status === 'Pending Out Scan')).length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownStatusFilter('Maintenance')}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors border",
+                            drilldownStatusFilter === 'Maintenance'
+                              ? "bg-amber-600 text-white border-amber-600"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          )}
+                        >
+                          মেরামত ({computedVehicles.filter(v => v.type === selectedModelFilter && v.status === 'Maintenance').length})
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Vehicle Cards Grid (Optimized for phones: clean borders and information) */}
+                    <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 pt-1">
+                      {drilldownVehicles.map(v => {
+                        const activeTrip = trips.find(t => (t.status === 'Running' || t.status === 'Pending') && t.vehicleId === v.id);
+
+                        return (
+                          <div
+                            key={v.id}
+                            className={cn(
+                              "p-3 rounded-2xl border flex flex-col justify-between gap-2 transition-all shadow-3xs",
+                              v.status === 'Available'
+                                ? "bg-emerald-50/40 border-emerald-200/80"
+                                : v.status === 'On Trip' || v.status === 'Pending Out Scan'
+                                ? "bg-accent/5 border-accent/20"
+                                : "bg-amber-50/40 border-amber-200/80"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-1.5">
+                              <span className="font-mono font-black text-xs sm:text-sm text-text-main tracking-tight">
+                                {v.vehicleNumber}
+                              </span>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase shrink-0",
+                                v.status === 'Available'
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : v.status === 'On Trip'
+                                  ? "bg-accent text-white"
+                                  : v.status === 'Pending Out Scan'
+                                  ? "bg-amber-100 text-amber-800 animate-pulse"
+                                  : "bg-orange-100 text-orange-800"
+                              )}>
+                                {v.status === 'Available' ? 'সচল' : v.status === 'On Trip' ? 'ট্রিপে' : v.status === 'Pending Out Scan' ? 'পেন্ডিং' : 'মেরামত'}
+                              </span>
+                            </div>
+
+                            {activeTrip && (
+                              <div className="text-[10px] text-text-muted bg-white/95 p-2 rounded-xl border border-border space-y-0.5">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="truncate">চালক: <strong className="text-text-main">{activeTrip.driverName}</strong></span>
+                                </div>
+                                <div className="text-[9px] text-accent font-bold truncate flex items-center gap-1">
+                                  <span>📍 {activeTrip.location}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {v.maintenanceNotes && (
+                              <p className="text-[10px] text-amber-800 truncate bg-amber-50/90 px-2 py-1 rounded-xl border border-amber-200">
+                                🔧 {v.maintenanceNotes}
+                              </p>
+                            )}
+
+                            {/* Depot location tag */}
+                            <div className="flex items-center justify-between text-[10px] text-text-muted pt-1 border-t border-black/5">
+                              <span className="truncate">ডিপো: {v.warehouse || 'মোহাম্মদপুর'}</span>
+                              <Link
+                                to={`/vehicles?search=${encodeURIComponent(v.vehicleNumber || '')}`}
+                                className="text-accent font-bold hover:underline shrink-0 text-[10px]"
+                              >
+                                বিস্তারিত →
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {drilldownVehicles.length === 0 && (
+                      <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 my-1">
+                        <p className="text-xs text-text-muted font-medium">
+                          এই ফিল্টারে কোনো গাড়ি পাওয়া যায়নি।
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDrilldownVehicleSearch('');
+                            setDrilldownStatusFilter('all');
+                          }}
+                          className="mt-2 text-xs text-accent font-bold hover:underline"
+                        >
+                          ফিল্টার রিসেট করুন
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
