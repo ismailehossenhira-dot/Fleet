@@ -231,7 +231,7 @@ export const VehicleTransferModal: React.FC<VehicleTransferModalProps> = ({
                 )}
               >
                 <Send size={15} />
-                <span>একক ট্রান্সফার (Direct)</span>
+                <span>একক ট্রান্সফার</span>
               </button>
 
               <button
@@ -245,20 +245,20 @@ export const VehicleTransferModal: React.FC<VehicleTransferModalProps> = ({
                 )}
               >
                 <Repeat size={15} />
-                <span>গাড়ি এক্সচেঞ্জ (Swap)</span>
+                <span>গাড়ি এক্সচেঞ্জ</span>
               </button>
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
               {mode === 'transfer' 
                 ? 'শুধুমাত্র এই গাড়িটি অন্য ওয়ারহাউজে পাঠিয়ে দেওয়া হবে।' 
-                : 'অন্য ওয়ারহাউজের আরেকটি গাড়ির সাথে এই গাড়িটি অদলবদল (Exchange) করা হবে।'}
+                : 'অন্য ওয়ারহাউজের আরেকটি গাড়ির সাথে এই গাড়িটি অদলবদল করা হবে।'}
             </p>
           </div>
 
           {/* Destination Warehouse */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              গন্তব্য ওয়ারহাউজ (To Warehouse) <span className="text-red-500">*</span>
+              গন্তব্য ওয়ারহাউজ <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

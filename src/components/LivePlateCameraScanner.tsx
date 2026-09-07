@@ -254,9 +254,9 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
       console.warn("Camera device initialization note:", err?.name || err?.message || err);
       let msg = "ক্যামেরা চালু করা সম্ভব হয়নি।";
       if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
-        msg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজারে ক্যামেরা পারমিশন এলাউ করুন অথবা ছবি আপলোড করুন।";
+        msg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি। অনুগ্রহ করে ব্রাউজারে ক্যামেরা পারমিশন এলাউ করুন অথবা ছবি আপলোড করুন।";
       } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError' || String(err?.message || '').toLowerCase().includes('not found')) {
-        msg = "কোনো সংযুক্ত ক্যামেরা ডিভাইস পাওয়া যায়নি (Camera not found)। আপনি নিচের 'ছবি আপলোড' বা 'দ্রুত গাড়ি নির্বাচন' অপশন ব্যবহার করতে পারেন।";
+        msg = "কোনো সংযুক্ত ক্যামেরা ডিভাইস পাওয়া যায়নি। আপনি নিচের 'ছবি আপলোড' বা 'দ্রুত গাড়ি নির্বাচন' অপশন ব্যবহার করতে পারেন।";
       } else if (err?.message === 'NOT_SUPPORTED') {
         msg = "আপনার বর্তমান ব্রাউজারে ক্যামেরা অ্যাক্সেস সাপোর্ট করে না। অনুগ্রহ করে ছবি আপলোড অথবা ম্যানুয়াল সার্চ ব্যবহার করুন।";
       } else {
@@ -448,10 +448,10 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
     try {
       if (type === 'IN' && onDirectGateIn) {
         await onDirectGateIn(matchedVehicle);
-        setActionSuccessMsg(`✓ গাড়ি ${matchedVehicle.vehicleNumber} সফলভাবে গেট ইন (Return) হয়েছে!`);
+        setActionSuccessMsg(`✓ গাড়ি ${matchedVehicle.vehicleNumber} সফলভাবে গেট ইন হয়েছে!`);
       } else if (type === 'OUT' && onDirectGateOut) {
         await onDirectGateOut(matchedVehicle);
-        setActionSuccessMsg(`✓ গাড়ি ${matchedVehicle.vehicleNumber} সফলভাবে গেট আউট (Dispatch) হয়েছে!`);
+        setActionSuccessMsg(`✓ গাড়ি ${matchedVehicle.vehicleNumber} সফলভাবে গেট আউট হয়েছে!`);
       } else {
         onVehicleMatched(matchedVehicle, type, lastDetectedPlate || undefined);
       }
@@ -590,7 +590,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                   "p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border",
                   torchActive ? "bg-amber-400 text-slate-950 border-amber-300 shadow-md" : "bg-black/40 text-slate-300 border-white/10"
                 )}
-                title={torchActive ? "ফ্ল্যাশলাইট বন্ধ করুন" : "ফ্ল্যাশলাইট চালু করুন (Night Mode)"}
+                title={torchActive ? "ফ্ল্যাশলাইট বন্ধ করুন" : "ফ্ল্যাশলাইট চালু করুন"}
               >
                 <Flashlight size={15} />
               </button>
@@ -612,7 +612,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
               type="button"
               onClick={toggleFacingMode}
               className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
-              title="ক্যামেরা পরিবর্তন (Front / Back)"
+              title="ক্যামেরা পরিবর্তন"
             >
               <RotateCw size={15} />
             </button>
@@ -727,7 +727,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2 mx-auto"
               >
                 <Camera size={16} />
-                <span>ক্যামেরা চালু করুন (Start Live Camera)</span>
+                <span>ক্যামেরা চালু করুন</span>
               </button>
             </div>
           )}
@@ -772,7 +772,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
             )}
           >
             <Zap size={14} className={isContinuousAutoScan ? "text-emerald-400 fill-emerald-400" : "text-slate-400"} />
-            <span>অটো-ডিটেক্ট: {isContinuousAutoScan ? 'চালু (Active)' : 'বন্ধ'}</span>
+            <span>অটো-ডিটেক্ট: {isContinuousAutoScan ? 'চালু' : 'বন্ধ'}</span>
           </button>
 
           {/* Manual Snapshot Scan Button */}
@@ -788,7 +788,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
             )}
           >
             <Sparkles size={15} className={isProcessing ? "animate-spin" : ""} />
-            <span>{isProcessing ? 'নাম্বার প্লেট স্ক্যান হচ্ছে...' : 'এখনই স্ক্যান করুন (Capture Now)'}</span>
+            <span>{isProcessing ? 'নাম্বার প্লেট স্ক্যান হচ্ছে...' : 'এখনই স্ক্যান করুন'}</span>
           </button>
 
           {/* Camera Restart/Stop Button */}
@@ -832,7 +832,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-xs font-bold text-slate-800">
-                    সনাক্তকৃত নাম্বার প্লেট (OpenALPR BD Engine)
+                    সনাক্তকৃত নাম্বার প্লেট
                   </h4>
                   <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold">
                     OpenALPR v2.8
@@ -963,7 +963,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
               {/* Direct Instant Gate IN / OUT Action Buttons */}
               <div className="pt-2 border-t border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span className="font-bold">সরাসরি গেট অপারেশন (Direct Gate Action):</span>
+                  <span className="font-bold">সরাসরি গেট অপারেশন:</span>
                   {autoGateCountdown !== null && (
                     <span className="text-emerald-700 font-mono font-bold animate-pulse text-[11px]">
                       অটো অ্যাকশন: {autoGateCountdown}s ...
@@ -985,7 +985,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                     )}
                   >
                     <LogOut size={16} />
-                    <span>গেট আউট (Gate Out)</span>
+                    <span>গেট আউট</span>
                   </button>
 
                   {/* Gate IN Button */}
@@ -1001,7 +1001,7 @@ export const LivePlateCameraScanner: React.FC<LivePlateCameraScannerProps> = ({
                     )}
                   >
                     <LogIn size={16} />
-                    <span>গেট ইন (Gate In)</span>
+                    <span>গেট ইন</span>
                   </button>
                 </div>
               </div>

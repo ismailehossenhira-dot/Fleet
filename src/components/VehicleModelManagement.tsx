@@ -34,14 +34,14 @@ interface VehicleModelManagementModalProps {
 }
 
 const PRESET_CATEGORIES = [
-  'Pickup (পিকআপ)',
-  'Mini Truck (মিনি ট্রাক)',
-  'Medium Covered Van (মাঝারি কাভার্ড ভ্যান)',
-  'Heavy Open Truck (ভারী উন্মুক্ত ট্রাক)',
-  'Trailer / Long Vehicle (ট্রেইলার)',
-  'Freezer Van (হিমায়িত ভ্যান)',
-  'Electric Truck / EV (ইলেকট্রিক যান)',
-  'Other / Specialized (অন্যান্য)'
+  'পিকআপ',
+  'মিনি ট্রাক',
+  'মাঝারি কাভার্ড ভ্যান',
+  'ভারী উন্মুক্ত ট্রাক',
+  'ট্রেইলার / লং ভেহিকেল',
+  'ফ্রিজার ভ্যান',
+  'ইলেকট্রিক যান',
+  'অন্যান্য'
 ];
 
 const PRESET_CAPACITIES = [
@@ -143,7 +143,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
     setFormSuccess(null);
 
     if (!canManage) {
-      setFormError('শুধুমাত্র অ্যাডমিনরা নতুন মডেল সংযুক্ত করতে পারেন। (Only Admins can add vehicle models)');
+      setFormError('শুধুমাত্র অ্যাডমিনরা নতুন মডেল সংযুক্ত করতে পারেন।');
       return;
     }
 
@@ -243,7 +243,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-slate-900 text-base md:text-lg">
-                  গাড়ির মডেল ম্যানেজমেন্ট (Vehicle Models)
+                  গাড়ির মডেল ম্যানেজমেন্ট
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 inline-flex items-center gap-1">
                   <ShieldAlert size={11} />
@@ -269,7 +269,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
           <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2 text-xs text-amber-800 font-medium">
             <Info size={16} className="shrink-0 text-amber-600" />
             <span>
-              অনুমতি সতর্কতা: নতুন গাড়ির মডেল তৈরি বা এডিট করার ক্ষমতা শুধুমাত্র অনুমোদিত অ্যাডমিন (Admin / Super Admin) একাউন্টে সংরক্ষিত।
+              অনুমতি সতর্কতা: নতুন গাড়ির মডেল তৈরি বা এডিট করার ক্ষমতা শুধুমাত্র অনুমোদিত অ্যাডমিন একাউন্টে সংরক্ষিত।
             </span>
           </div>
         )}
@@ -337,7 +337,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  মডেলের নাম (Vehicle Model Name) <span className="text-rose-500">*</span>
+                  মডেলের নাম <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -352,7 +352,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    বডি / ক্যাটাগরি (Body Type)
+                    বডি / ক্যাটাগরি
                   </label>
                   <select
                     value={category}
@@ -367,7 +367,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    ধারণ ক্ষমতা / টনেজ (Capacity)
+                    ধারণ ক্ষমতা / টনেজ
                   </label>
                   <select
                     value={capacity}
@@ -401,7 +401,7 @@ export const VehicleModelManagementModal: React.FC<VehicleModelManagementModalPr
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-blue-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Plus size={16} />
-                  <span>{isSubmitting ? 'সংরক্ষণ হচ্ছে...' : 'মডেল সংরক্ষণ করুন (Save Model)'}</span>
+                  <span>{isSubmitting ? 'সংরক্ষণ হচ্ছে...' : 'মডেল সংরক্ষণ করুন'}</span>
                 </button>
                 <button
                   type="button"

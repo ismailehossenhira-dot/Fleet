@@ -28,7 +28,12 @@ export const getCollectionData = async (collName: string) => {
     const q = query(collection(db, collName), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    if (error?.code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline')) {
+      console.warn(`Firestore getCollectionData for ${collName}: offline or reconnecting.`);
+      return [];
+    }
     handleFirestoreError(error, OperationType.LIST, collName);
   }
 };
@@ -38,7 +43,12 @@ export const getDocDataById = async (collName: string, id: string) => {
     const docRef = doc(db, collName, id);
     const docSnap = await getDoc(docRef);
     return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    if (error?.code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline')) {
+      console.warn(`Firestore getDocDataById for ${collName}/${id}: offline or reconnecting.`);
+      return null;
+    }
     handleFirestoreError(error, OperationType.GET, `${collName}/${id}`);
   }
 };
@@ -425,11 +435,11 @@ export const createTrip = async (trip: any, profile?: any) => {
     // 1. Verify that the vehicle is currently available
     const vehicleSnap = await getDoc(doc(db, 'vehicles', trip.vehicleId));
     if (!vehicleSnap.exists()) {
-      throw new Error("গাড়িটি ডাটাবেজে খুঁজে পাওয়া যায়নি। (Vehicle not found in database.)");
+      throw new Error("গাড়িটি ডাটাবেজে খুঁজে পাওয়া যায়নি।");
     }
     const vehicleData = vehicleSnap.data();
     if (vehicleData.status !== 'Available') {
-      throw new Error(`গাড়িটি এখন উপলব্ধ (Available) নেই। বর্তমান স্ট্যাটাস: ${vehicleData.status}`);
+      throw new Error(`গাড়িটি এখন উপলব্ধ নেই। বর্তমান স্ট্যাটাস: ${vehicleData.status}`);
     }
 
     // 2. Double-check if there is already an active (Pending or Running) trip for this vehicle
@@ -444,7 +454,7 @@ export const createTrip = async (trip: any, profile?: any) => {
     });
 
     if (hasActiveTrip) {
-      throw new Error("এই গাড়ির জন্য ইতিমধ্যেই একটি ট্রিপ নিবন্ধিত (Pending) বা চলমান (Running) রয়েছে। প্রথমে সেটি শেষ বা বাতিল করুন।");
+      throw new Error("এই গাড়ির জন্য ইতিমধ্যেই একটি ট্রিপ নিবন্ধিত বা চলমান রয়েছে। প্রথমে সেটি শেষ বা বাতিল করুন।");
     }
 
     // 2.5. Double-check if the selected driver is suspended
@@ -477,7 +487,7 @@ export const createTrip = async (trip: any, profile?: any) => {
         return t.status === 'Pending' || t.status === 'Running';
       });
       if (isDriverBusy) {
-        throw new Error("এই চালক (Driver) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
+        throw new Error("এই চালক ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
       }
     }
 
@@ -493,7 +503,7 @@ export const createTrip = async (trip: any, profile?: any) => {
         return t.status === 'Pending' || t.status === 'Running';
       });
       if (isHelperBusy) {
-        throw new Error("এই হেলপার (Helper) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
+        throw new Error("এই হেলপার ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন।");
       }
     }
 
@@ -845,7 +855,17 @@ export const syncUserProfile = async (user: any) => {
       data.role = 'Admin';
     }
     return { id: userSnap.id, ...data };
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    if (error?.code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline')) {
+      console.warn("Firestore syncUserProfile operating in offline/cached mode for user:", user?.email);
+      return {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'System User',
+        role: user.email === 'ismailehossenhira@gmail.com' ? 'Admin' : 'Checker'
+      };
+    }
     handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
   }
 };
@@ -856,83 +876,91 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
 
   const usersColl = collection(db, 'users');
 
-  // 1. Check if users are completely empty or if default admin isn't registered
-  const qAdmin = query(usersColl, where('username', '==', 'admin'));
-  const adminSnap = await getDocs(qAdmin);
-
-  if (adminSnap.empty && username === 'admin' && password === '123456') {
-    // Seed default admin in Firebase Auth and Firestore
-    let uid = '';
-    try {
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
-        uid = userCredential.user.uid;
-      } catch (signInErr: any) {
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-          const secondaryApp = initializeApp(firebaseConfig, 'SecondaryAdmin');
-          const secondaryAuth = getSecondaryAuth(secondaryApp);
-          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
-          uid = userCredential.user.uid;
-          await deleteApp(secondaryApp);
-          
-          // Sign in on main auth instance to establish authenticated request context
-          await signInWithEmailAndPassword(auth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
-        } else {
-          throw signInErr;
-        }
-      }
-
-      await setDoc(doc(db, 'users', uid), {
-        uid,
-        username: 'admin',
-        displayName: 'System Admin',
-        password: '123456',
-        role: 'Admin' as UserRole,
-        createdAt: serverTimestamp()
-      });
-    } catch (err: any) {
-      throw new Error(`Failed to seed default admin: ${err.message}`);
-    }
-    return;
-  }
-
-  // 2. Regular Login lookup
-  const q = query(usersColl, where('username', '==', username));
-  const snap = await getDocs(q);
-
-  if (snap.empty) {
-    throw new Error('User not found. Please check your username.');
-  }
-
-  const userDoc = snap.docs[0];
-  const userData = userDoc.data();
-
-  if (userData.isSuspended) {
-    throw new Error('আপনার অ্যাকাউন্টটি সাসপেন্ড করা হয়েছে। দয়া করে এডমিনের সাথে যোগাযোগ করুন।');
-  }
-
-  if (userData.password !== password) {
-    throw new Error('Incorrect password. Please try again.');
-  }
-
-  // Password matches, sign into Firebase Auth
   try {
-    await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
-  } catch (err: any) {
-    // If auth user doesn't exist but Firestore doc does (out of sync), recreate auth user
-    if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+    // 1. Check if users are completely empty or if default admin isn't registered
+    const qAdmin = query(usersColl, where('username', '==', 'admin'));
+    const adminSnap = await getDocs(qAdmin);
+
+    if (adminSnap.empty && username === 'admin' && password === '123456') {
+      // Seed default admin in Firebase Auth and Firestore
+      let uid = '';
       try {
-        const secondaryApp = initializeApp(firebaseConfig, 'SecondarySync');
-        const secondaryAuth = getSecondaryAuth(secondaryApp);
-        await createUserWithEmailAndPassword(secondaryAuth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
-        await deleteApp(secondaryApp);
-      } catch (e) {}
-      
-      // Retry login
-      await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
-    } else {
-      throw err;
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
+          uid = userCredential.user.uid;
+        } catch (signInErr: any) {
+          if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            const secondaryApp = initializeApp(firebaseConfig, 'SecondaryAdmin');
+            const secondaryAuth = getSecondaryAuth(secondaryApp);
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
+            uid = userCredential.user.uid;
+            await deleteApp(secondaryApp);
+            
+            // Sign in on main auth instance to establish authenticated request context
+            await signInWithEmailAndPassword(auth, 'admin@fleetflow.local', 'fleetflow_secret_auth_key');
+          } else {
+            throw signInErr;
+          }
+        }
+
+        await setDoc(doc(db, 'users', uid), {
+          uid,
+          username: 'admin',
+          displayName: 'System Admin',
+          password: '123456',
+          role: 'Admin' as UserRole,
+          createdAt: serverTimestamp()
+        });
+      } catch (err: any) {
+        throw new Error(`Failed to seed default admin: ${err.message}`);
+      }
+      return;
     }
+
+    // 2. Regular Login lookup
+    const q = query(usersColl, where('username', '==', username));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      throw new Error('User not found. Please check your username.');
+    }
+
+    const userDoc = snap.docs[0];
+    const userData = userDoc.data();
+
+    if (userData.isSuspended) {
+      throw new Error('আপনার অ্যাকাউন্টটি সাসপেন্ড করা হয়েছে। দয়া করে এডমিনের সাথে যোগাযোগ করুন।');
+    }
+
+    if (userData.password !== password) {
+      throw new Error('Incorrect password. Please try again.');
+    }
+
+    // Password matches, sign into Firebase Auth
+    try {
+      await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+    } catch (err: any) {
+      // If auth user doesn't exist but Firestore doc does (out of sync), recreate auth user
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+        try {
+          const secondaryApp = initializeApp(firebaseConfig, 'SecondarySync');
+          const secondaryAuth = getSecondaryAuth(secondaryApp);
+          await createUserWithEmailAndPassword(secondaryAuth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+          await deleteApp(secondaryApp);
+        } catch (e) {}
+        
+        // Retry login
+        await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+      } else {
+        throw err;
+      }
+    }
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (err?.code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline') || msg.includes('Could not reach Cloud Firestore')) {
+      throw new Error('সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি। অনুগ্রহ করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন।');
+    }
+    throw err;
   }
 };
 

@@ -97,7 +97,7 @@ class RootErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
             <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto text-2xl font-bold">
               !
             </div>
-            <h2 className="text-xl font-bold">কিছু সমস্যা হয়েছে (Something went wrong)</h2>
+            <h2 className="text-xl font-bold">কিছু সমস্যা হয়েছে</h2>
             <p className="text-sm text-slate-300">
               {this.state.error?.message || 'একটি অনাকাঙ্ক্ষিত ত্রুটি ঘটেছে। অনুগ্রহ করে পেজটি রিলোড করুন।'}
             </p>
@@ -105,7 +105,7 @@ class RootErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState
               onClick={this.handleReload}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md cursor-pointer"
             >
-              পেজ রিলোড করুন (Reload)
+              পেজ রিলোড করুন
             </button>
           </div>
         </div>

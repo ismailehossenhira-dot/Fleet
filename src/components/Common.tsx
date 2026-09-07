@@ -70,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Maintenance', 
     moduleKey: 'maintenance',
     subItems: [
-      { to: '/maintenance', label: 'সার্ভিস ও মেরামত (Records)', icon: Wrench },
+      { to: '/maintenance', label: 'সার্ভিস ও মেরামত', icon: Wrench },
       { to: '/maintenance/gps', label: 'GPS Device (ADL / BDT)', icon: Radio, badge: 'GPS' }
     ]
   },
@@ -83,7 +83,7 @@ export const getRoleBangla = (role?: string) => {
   switch (role) {
     case 'Admin': return 'অ্যাডমিন';
     case 'Sub Admin': return 'সাব অ্যাডমিন';
-    case 'OCC': return 'ওসিসি (OCC)';
+    case 'OCC': return 'ওসিসি';
     case 'Line Supervisor': return 'লাইন সুপারভাইজার';
     case 'Checker': return 'চেকার';
     default: return role || 'ইউজার';
@@ -368,7 +368,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
                 {/* Mobile Drawer Navigation List */}
                 <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto overscroll-contain">
-                  <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">সবগুলো অপশন (Menu)</p>
+                  <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">সবগুলো অপশন</p>
                   {filteredNavItems.map((item) => {
                     const isRequests = item.to === '/requests';
                     const hasPending = isRequests && pendingCount > 0;
@@ -517,7 +517,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 {/* Mobile Drawer Footer with Signout & Theme Quick Toggle */}
                 <div className="p-3 border-t border-white/10 bg-black/20 space-y-2">
                   <div className="flex items-center justify-between px-2">
-                    <span className="text-[11px] font-bold text-slate-400">থিম (Theme)</span>
+                    <span className="text-[11px] font-bold text-slate-400">থিম</span>
                     <div className="flex items-center gap-1.5">
                       {THEME_OPTIONS.map((opt) => (
                         <button
@@ -542,7 +542,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     className="w-full py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-transform"
                   >
                     <LogOut size={15} />
-                    <span>সাইন আউট (Sign Out)</span>
+                    <span>সাইন আউট</span>
                   </button>
                 </div>
               </div>
@@ -956,7 +956,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <div>
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2">
                         <Palette size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-                        <span>থিম পরিবর্তন (Theme)</span>
+                        <span>থিম পরিবর্তন</span>
                       </label>
                       <div className="space-y-1.5">
                         {THEME_OPTIONS.map((opt) => {
@@ -1010,7 +1010,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 active:scale-98"
                       >
                         <LogOut size={14} className="stroke-[2.2]" />
-                        <span>সাইন আউট (Sign Out)</span>
+                        <span>সাইন আউট</span>
                       </button>
                     </div>
                   </motion.div>

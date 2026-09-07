@@ -384,7 +384,7 @@ const CaseManagement: React.FC = () => {
                  />
                </div>
                <div className="md:col-span-2">
-                 <label className="block text-sm font-medium text-slate-700 mb-1">Reason (মামলার কারণ)</label>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">মামলার কারণ</label>
                  <textarea 
                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
                    placeholder="মামলার কারণ বিস্তারিত লিখুন..."

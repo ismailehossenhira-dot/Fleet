@@ -72,7 +72,7 @@ const StatCard: React.FC<{
     <div className="text-[9px] font-bold mt-2 flex items-center gap-1">
       {isActive ? (
         <span className="text-blue-600 flex items-center gap-1 bg-blue-100/60 px-1.5 py-0.5 rounded">
-          ✓ নির্বাচিত (Selected)
+          ✓ নির্বাচিত
         </span>
       ) : (
         <span className="text-slate-400 hover:text-slate-600">
@@ -567,17 +567,17 @@ const Dashboard: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping shrink-0"></span>
                           <span className="font-bold text-slate-800 text-sm sm:text-base">
-                            {activeStatFilter === 'onTrip' && "ট্রিপে থাকা গাড়ি সমুহ এবং গন্তব্য (Vehicles On Trip & Destinations)"}
-                            {activeStatFilter === 'available' && "উপলব্ধ গাড়ি সমুহ (Available Vehicles)"}
-                            {activeStatFilter === 'activeFleet' && "নেট একটিভ ফ্লিট এবং গাড়ির অবস্থা (Net Active Fleet & Status)"}
-                            {activeStatFilter === 'maintenance' && "মেইনটেনেন্স বা মেরামতে থাকা গাড়ি সমুহ (Vehicles Under Maintenance)"}
+                            {activeStatFilter === 'onTrip' && "ট্রিপে থাকা গাড়িসমূহ এবং গন্তব্য"}
+                            {activeStatFilter === 'available' && "উপলব্ধ গাড়িসমূহ"}
+                            {activeStatFilter === 'activeFleet' && "নেট একটিভ ফ্লিট এবং গাড়ির অবস্থা"}
+                            {activeStatFilter === 'maintenance' && "মেইনটেনেন্সে থাকা গাড়িসমূহ"}
                           </span>
                         </div>
                         <button
                           onClick={() => { setActiveStatFilter(null); setDetailSearch(''); }}
                           className="text-xs font-bold text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer self-start sm:self-auto shrink-0"
                         >
-                          বন্ধ করুন (Close) ×
+                          বন্ধ করুন ×
                         </button>
                       </div>
                     }
@@ -590,7 +590,7 @@ const Dashboard: React.FC = () => {
                           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input 
                             type="text"
-                            placeholder="গাড়ির নাম্বার দিয়ে খুঁজুন... (Search by vehicle number...)"
+                            placeholder="গাড়ির নম্বর দিয়ে খুঁজুন..."
                             value={detailSearch}
                             onChange={e => setDetailSearch(e.target.value)}
                             className="w-full pl-8 pr-4 py-1.5 rounded-lg border border-slate-200 bg-white text-xs outline-none focus:border-blue-400 font-medium"
@@ -604,11 +604,11 @@ const Dashboard: React.FC = () => {
                           <table className="w-full text-xs text-left">
                             <thead>
                               <tr className="bg-slate-50 border-b border-slate-150">
-                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">চালক (Driver)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">কোথায় গেছে/গন্তব্য (Destination)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">শুরুর সময় (Start Time)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস (Status)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নম্বর</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">চালক</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">গন্তব্য</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">শুরুর সময়</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -650,7 +650,7 @@ const Dashboard: React.FC = () => {
                               {computedVehicles.filter(v => v.status === 'On Trip' || v.status === 'Pending Out Scan').length === 0 && (
                                 <tr>
                                   <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
-                                    এই মুহূর্তে কোনো গাড়ি ট্রিপে নেই। (No vehicles currently on a trip)
+                                    এই মুহূর্তে কোনো গাড়ি ট্রিপে নেই।
                                   </td>
                                 </tr>
                               )}
@@ -664,10 +664,10 @@ const Dashboard: React.FC = () => {
                           <table className="w-full text-xs text-left">
                             <thead>
                               <tr className="bg-slate-50 border-b border-slate-150">
-                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">ইনস্ট্যান্ট ট্রিপ (Instant Trip)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা (State)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নম্বর</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ইনস্ট্যান্ট ট্রিপ</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -701,7 +701,7 @@ const Dashboard: React.FC = () => {
                               {computedVehicles.filter(v => v.status === 'Available').length === 0 && (
                                 <tr>
                                   <td colSpan={4} className="px-4 py-8 text-center text-slate-400 italic">
-                                    বর্তমানে কোনো গাড়ি খালি/উপলব্ধ নেই। (No available vehicles in garage)
+                                    বর্তমানে কোনো গাড়ি খালি বা উপলব্ধ নেই।
                                   </td>
                                 </tr>
                               )}
@@ -714,7 +714,7 @@ const Dashboard: React.FC = () => {
                         <div className="space-y-4">
                           {/* Aggregate fleet overview summary bar */}
                           <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl">
-                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">গাড়ির বর্তমান অবস্থা বিশ্লেষণ (Vehicle Status Distribution)</div>
+                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">গাড়ির বর্তমান অবস্থা বিশ্লেষণ</div>
                             <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden flex">
                               <div 
                                 style={{ width: `${(stats.availableVehicles / (stats.totalVehicles || 1)) * 100}%` }} 
@@ -735,17 +735,17 @@ const Dashboard: React.FC = () => {
                             <div className="flex flex-wrap items-center gap-4 mt-3 text-[10px] font-bold text-slate-600">
                               <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                                <span>উপলব্ধ (Available): {stats.availableVehicles} টি</span>
+                                <span>উপলব্ধ: {stats.availableVehicles} টি</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                                <span>চলমান ট্রিপে (On Trip): {stats.onTripVehicles} টি</span>
+                                <span>চলমান ট্রিপে: {stats.onTripVehicles} টি</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                                <span>মেইনটেনেন্সে (Maintenance): {stats.maintenanceVehicles} টি</span>
+                                <span>মেইনটেনেন্সে: {stats.maintenanceVehicles} টি</span>
                               </div>
-                              <div className="ml-auto font-mono text-slate-500">মোট গাড়ি (Total Vehicles): {stats.totalVehicles} টি</div>
+                              <div className="ml-auto font-mono text-slate-500">মোট গাড়ি: {stats.totalVehicles} টি</div>
                             </div>
                           </div>
 
@@ -753,10 +753,10 @@ const Dashboard: React.FC = () => {
                             <table className="w-full text-xs text-left">
                               <thead>
                                 <tr className="bg-slate-50 border-b border-slate-150">
-                                  <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
-                                  <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
-                                  <th className="px-4 py-3 font-semibold text-slate-500">বর্তমান অবস্থান/চালক (Current Location / Driver)</th>
-                                  <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস (Status)</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নম্বর</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">ধরণ</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500">বর্তমান অবস্থান / চালক</th>
+                                  <th className="px-4 py-3 font-semibold text-slate-500 text-right">স্ট্যাটাস</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -782,11 +782,11 @@ const Dashboard: React.FC = () => {
                                             </div>
                                           ) : v.status === 'Maintenance' ? (
                                             <span className="text-amber-700 text-[11px] flex items-center gap-1 font-medium">
-                                              <AlertCircle size={10} className="shrink-0" /> মেইনটেনেন্স গ্যারেজে (In Workshop)
+                                              <AlertCircle size={10} className="shrink-0" /> মেইনটেনেন্স গ্যারেজে
                                             </span>
                                           ) : (
                                             <span className="text-emerald-700 text-[11px] flex items-center gap-1 font-medium">
-                                              <Check size={10} className="shrink-0" /> গ্যারেজে প্রস্তুত (Ready in Garage)
+                                              <Check size={10} className="shrink-0" /> গ্যারেজে প্রস্তুত
                                             </span>
                                           )}
                                         </td>
@@ -814,11 +814,11 @@ const Dashboard: React.FC = () => {
                           <table className="w-full text-xs text-left">
                             <thead>
                               <tr className="bg-slate-50 border-b border-slate-150">
-                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নাম্বার (Vehicle Plate)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ (Type)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">সমস্যা বা মেইনটেনেন্স নোট (Reported Issue / Repair Note)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500">আপডেটের সময় (Last Updated)</th>
-                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা (State)</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">গাড়ির নম্বর</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">ধরণ</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">সমস্যা বা মেইনটেনেন্স নোট</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500">আপডেটের সময়</th>
+                                <th className="px-4 py-3 font-semibold text-slate-500 text-right">অবস্থা</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -838,7 +838,7 @@ const Dashboard: React.FC = () => {
                                           {v.maintenanceNotes}
                                         </span>
                                       ) : (
-                                        <span className="text-slate-400 italic">কোনো সমস্যা উল্লেখ করা নেই (No notes reported)</span>
+                                        <span className="text-slate-400 italic">কোনো সমস্যা উল্লেখ করা নেই</span>
                                       )}
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">{formatMaintDate(v.updatedAt || v.createdAt)}</td>
@@ -853,7 +853,7 @@ const Dashboard: React.FC = () => {
                               {computedVehicles.filter(v => v.status === 'Maintenance').length === 0 && (
                                 <tr>
                                   <td colSpan={5} className="px-4 py-8 text-center text-slate-400 italic">
-                                    বর্তমানে কোনো গাড়ি মেইনটেনেন্সে নেই। (No vehicles currently in maintenance)
+                                    বর্তমানে কোনো গাড়ি মেইনটেনেন্সে নেই।
                                   </td>
                                 </tr>
                               )}
@@ -909,7 +909,7 @@ const Dashboard: React.FC = () => {
                   type="button"
                   onClick={() => setShowModelManagement(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs border cursor-pointer active:scale-95 bg-surface hover:bg-slate-100 text-text-main border-border"
-                  title="গাড়ির মডেল যুক্ত বা কনফিগার করুন (Admin Only)"
+                  title="গাড়ির মডেল যুক্ত বা কনফিগার করুন"
                 >
                   <Layers size={14} className="text-accent" />
                   <span>মডেল কনফিগার</span>
@@ -1027,10 +1027,10 @@ const Dashboard: React.FC = () => {
                       onChange={(e) => setModelSortBy(e.target.value as any)}
                       className="text-xs bg-slate-50/80 border border-border rounded-md px-2.5 py-1.5 text-text-main font-medium focus:outline-hidden cursor-pointer"
                     >
-                      <option value="count_desc">সর্বোচ্চ গাড়ি (Highest Count)</option>
-                      <option value="name_asc">নাম অনুযায়ী (A to Z)</option>
-                      <option value="available_desc">সর্বাধিক সচল (Most Available)</option>
-                      <option value="ontrip_desc">সর্বাধিক ট্রিপে (Most on Trip)</option>
+                      <option value="count_desc">সর্বোচ্চ গাড়ি</option>
+                      <option value="name_asc">নাম অনুযায়ী</option>
+                      <option value="available_desc">সর্বাধিক সচল</option>
+                      <option value="ontrip_desc">সর্বাধিক ট্রিপে</option>
                     </select>
                   </div>
 
@@ -1385,197 +1385,252 @@ const Dashboard: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-stretch">
-        <div className="lg:col-span-2 flex flex-col">
-          <Card title="Live Fleet Status" className="h-full flex flex-col shadow-xs" bodyClassName="p-0 flex-1 flex flex-col overflow-hidden">
-             {/* Mobile-First List View (Visible on Mobile) */}
-             <div className="block md:hidden divide-y divide-border p-2">
-               {trips.filter(t => t.status === 'Running' || t.status === 'Pending').map(trip => {
-                 const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
-                 return (
-                   <div key={trip.id} className="p-3 rounded-xl hover:bg-slate-50 space-y-2">
-                     <div className="flex items-start justify-between gap-2">
-                       <div>
-                         <span className="font-extrabold text-slate-900 text-xs">{vehicleNum}</span>
-                         <p className="text-[11px] text-slate-500 mt-0.5">চালক: <span className="font-semibold text-slate-700">{trip.driverName}</span></p>
-                       </div>
-                       {trip.status === 'Pending' ? (
-                         <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase animate-pulse">
-                           Pending Out
-                         </span>
-                       ) : (
-                         <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-extrabold text-[10px] uppercase">
-                           On Trip
-                         </span>
-                       )}
-                     </div>
+      {/* Live Fleet Status & Maintenance Alerts (Max 5 items visible, scrollable if more) */}
+      {(() => {
+        const liveFleetTrips = warehouseTrips.filter(t => t.status === 'Running' || t.status === 'Pending');
+        const maintenanceAlertVehicles = warehouseVehicles.filter(v => v.status === 'Maintenance');
 
-                     <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
-                       <div className="flex items-center gap-1">
-                         <MapPin size={12} className="text-red-500 shrink-0" />
-                         <span className="font-bold text-slate-800">{trip.location}</span>
-                       </div>
-
-                       {trip.status === 'Pending' && (
-                         <button
-                           onClick={async () => {
-                             if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
-                               try {
-                                 await cancelPendingTrip(trip.id, trip.vehicleId, profile);
-                               } catch (err) {
-                                 console.error("Error cancelling pending trip and making vehicle available:", err);
-                               }
-                             }
-                           }}
-                           className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-[10px] font-bold transition-all cursor-pointer active:scale-95"
-                         >
-                           বাতিল
-                         </button>
-                       )}
-                     </div>
-                   </div>
-                 );
-               })}
-               {trips.filter(t => t.status === 'Running' || t.status === 'Pending').length === 0 && (
-                 <div className="p-6 text-center text-slate-400 text-xs italic">
-                   কোনো চলমান বা পেন্ডিং ট্রিপ নেই।
-                 </div>
-               )}
-             </div>
-
-             {/* Desktop Table View */}
-             <div className="hidden md:block overflow-x-auto overflow-y-auto flex-1 max-h-[380px]">
-              <table className="w-full text-xs text-left">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-[#f8fafc] border-b border-border shadow-2xs">
-                    <th className="px-5 py-3 font-semibold text-text-muted">Vehicle Number (গাড়ির নাম্বার)</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted">Driver</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted">Destination</th>
-                    <th className="px-5 py-3 font-semibold text-text-muted text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {trips.filter(t => t.status === 'Running' || t.status === 'Pending').map(trip => {
-                    const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
-                    return (
-                      <tr key={trip.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-5 py-3 font-bold text-accent">{vehicleNum}</td>
-                        <td className="px-5 py-3 text-text-muted font-medium">{trip.driverName}</td>
-                        <td className="px-5 py-3">{trip.location}</td>
-                        <td className="px-5 py-3 text-right">
-                          {trip.status === 'Pending' ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px] animate-pulse">Pending Out Scan</span>
-                              <button
-                                onClick={async () => {
-                                  if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
-                                    try {
-                                      await cancelPendingTrip(trip.id, trip.vehicleId, profile);
-                                    } catch (err) {
-                                      console.error("Error cancelling pending trip and making vehicle available:", err);
-                                    }
-                                  }
-                                }}
-                                className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-[10px] font-bold transition-all cursor-pointer inline-block"
-                                title="পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করুন"
-                              >
-                                বাতিল ও Available করুন
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">On Trip</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {trips.filter(t => t.status === 'Running' || t.status === 'Pending').length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-5 py-12 text-center text-text-muted italic">No active trips running.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-
-        <div className="flex flex-col">
-          <Card title="Maintenance Alerts" className="h-full flex flex-col shadow-xs" bodyClassName="p-4 flex-1 flex flex-col overflow-hidden">
-            <div className="space-y-3 flex-1 overflow-y-auto max-h-[380px] pr-1">
-              {vehicles.filter(v => v.status === 'Maintenance').map(v => (
-                <div key={v.id} className="p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
-                  <div className="flex items-start gap-3 justify-between">
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 items-start">
+            {/* Live Fleet Status (Cap at 5 items) */}
+            <div className="lg:col-span-2 flex flex-col">
+              <Card 
+                title={
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <AlertCircle size={16} className="text-danger flex-shrink-0" />
-                      <div className="text-xs">
-                        <p className="font-bold text-danger">{v.vehicleNumber}</p>
-                      </div>
+                      <span className="font-semibold text-sm text-text-main">Live Fleet Status</span>
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-blue-100 text-blue-800 rounded-full">
+                        {liveFleetTrips.length}
+                      </span>
                     </div>
-                    {editingNotesId !== v.id && (
-                      <button 
-                        onClick={() => { setEditingNotesId(v.id); setTempNotes(v.maintenanceNotes || ''); }}
-                        className="text-[10px] text-accent hover:underline flex items-center gap-1 bg-white border px-1.5 py-0.5 rounded shadow-2xs font-semibold cursor-pointer"
-                        title="সমস্যা বা নোট পরিবর্তন করুন"
-                      >
-                        <Edit2 size={10} />
-                        <span>নোট লিখুন</span>
-                      </button>
+                    {liveFleetTrips.length > 5 && (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        (সর্বোচ্চ ৫টি দৃশ্যমান, স্ক্রলযোগ্য)
+                      </span>
                     )}
                   </div>
+                } 
+                className="shadow-xs" 
+                bodyClassName="p-0 flex flex-col overflow-hidden"
+              >
+                {/* Mobile-First List View (Visible on Mobile, max 5 items visible) */}
+                <div className="block md:hidden divide-y divide-border p-2 overflow-y-auto max-h-[365px] custom-scrollbar">
+                  {liveFleetTrips.map(trip => {
+                    const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
+                    return (
+                      <div key={trip.id} className="p-2.5 rounded-xl hover:bg-slate-50 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-extrabold text-slate-900 text-xs">{vehicleNum}</span>
+                            <p className="text-[11px] text-slate-500 mt-0.5">চালক: <span className="font-semibold text-slate-700">{trip.driverName}</span></p>
+                          </div>
+                          {trip.status === 'Pending' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase animate-pulse">
+                              পেন্ডিং ছাড়পত্র
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-extrabold text-[10px] uppercase">
+                              চলমান ট্রিপ
+                            </span>
+                          )}
+                        </div>
 
-                  {editingNotesId === v.id ? (
-                    <div className="space-y-1.5 pl-6">
-                      <textarea
-                        className="w-full p-2 text-xs border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-100 bg-white"
-                        placeholder="গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
-                        value={tempNotes}
-                        onChange={e => setTempNotes(e.target.value)}
-                        rows={2}
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          disabled={isSavingNotes}
-                          onClick={() => handleSaveNotes(v.id)}
-                          className="px-2.5 py-1 bg-accent text-white rounded text-[10px] font-bold hover:bg-accent/95 disabled:opacity-50 cursor-pointer"
-                        >
-                          {isSavingNotes ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
-                        </button>
-                        <button
-                          disabled={isSavingNotes}
-                          onClick={() => setEditingNotesId(null)}
-                          className="px-2.5 py-1 bg-slate-200 text-slate-700 rounded text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
-                        >
-                          বাতিল
-                        </button>
+                        <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                          <div className="flex items-center gap-1">
+                            <MapPin size={12} className="text-red-500 shrink-0" />
+                            <span className="font-bold text-slate-800 truncate max-w-[180px]">{trip.location}</span>
+                          </div>
+
+                          {trip.status === 'Pending' && (
+                            <button
+                              onClick={async () => {
+                                if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
+                                  try {
+                                    await cancelPendingTrip(trip.id, trip.vehicleId, profile);
+                                  } catch (err) {
+                                    console.error("Error cancelling pending trip and making vehicle available:", err);
+                                  }
+                                }
+                              }}
+                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-md text-[10px] font-bold transition-all cursor-pointer active:scale-95"
+                            >
+                              বাতিল
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="pl-6 text-xs">
-                      <p className="text-slate-600 font-medium">
-                        {v.maintenanceNotes ? (
-                          <span className="text-amber-700 bg-amber-50 border border-amber-100/50 px-2 py-1 rounded block whitespace-pre-wrap">
-                            {v.maintenanceNotes}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">গাড়ির কোনো নির্দিষ্ট সমস্যা বা নোট লেখা নেই।</span>
-                        )}
-                      </p>
+                    );
+                  })}
+                  {liveFleetTrips.length === 0 && (
+                    <div className="p-6 text-center text-slate-400 text-xs italic">
+                      কোনো চলমান বা পেন্ডিং ট্রিপ নেই।
                     </div>
                   )}
                 </div>
-              ))}
-              {vehicles.filter(v => v.status === 'Maintenance').length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center py-12 text-center text-text-muted text-xs italic">
-                  <CheckCircle size={28} className="text-emerald-500 mb-2 opacity-60" />
-                  <p>No active alerts.</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">সব গাড়ি সচল রয়েছে</p>
+
+                {/* Desktop Table View (Max 5 rows visible ~292px, scrollable if more) */}
+                <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[292px] custom-scrollbar">
+                  <table className="w-full text-xs text-left">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-[#f8fafc] border-b border-border shadow-2xs h-[40px]">
+                        <th className="px-5 py-2.5 font-semibold text-text-muted">গাড়ির নম্বর</th>
+                        <th className="px-5 py-2.5 font-semibold text-text-muted">চালক</th>
+                        <th className="px-5 py-2.5 font-semibold text-text-muted">গন্তব্য</th>
+                        <th className="px-5 py-2.5 font-semibold text-text-muted text-right">স্ট্যাটাস</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {liveFleetTrips.map(trip => {
+                        const vehicleNum = trip.vehiclePlate || vehicles.find(v => v.id === trip.vehicleId)?.vehicleNumber || trip.vehicleId;
+                        return (
+                          <tr key={trip.id} className="hover:bg-slate-50/50 transition-colors h-[50px]">
+                            <td className="px-5 py-2.5 font-bold text-accent whitespace-nowrap">{vehicleNum}</td>
+                            <td className="px-5 py-2.5 text-text-muted font-medium whitespace-nowrap">{trip.driverName}</td>
+                            <td className="px-5 py-2.5 max-w-[200px] truncate" title={trip.location}>{trip.location}</td>
+                            <td className="px-5 py-2.5 text-right whitespace-nowrap">
+                              {trip.status === 'Pending' ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold text-[10px] animate-pulse">
+                                    পেন্ডিং ছাড়পত্র
+                                  </span>
+                                  <button
+                                    onClick={async () => {
+                                      if (window.confirm('আপনি কি নিশ্চিত যে এই গাড়ির পেন্ডিং ট্রিপটি বাতিল করে এটিকে Available করতে চান?')) {
+                                        try {
+                                          await cancelPendingTrip(trip.id, trip.vehicleId, profile);
+                                        } catch (err) {
+                                          console.error("Error cancelling pending trip and making vehicle available:", err);
+                                        }
+                                      }
+                                    }}
+                                    className="px-2 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-[10px] font-bold transition-all cursor-pointer inline-block"
+                                    title="পেন্ডিং ট্রিপ বাতিল করে গাড়ি Available করুন"
+                                  >
+                                    বাতিল
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold text-[10px]">
+                                  চলমান ট্রিপ
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {liveFleetTrips.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-5 py-10 text-center text-text-muted italic">
+                            কোনো চলমান বা পেন্ডিং ট্রিপ নেই।
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </Card>
             </div>
-          </Card>
-        </div>
-      </div>
+
+            {/* Maintenance Alerts (Cap at 5 items ~365px, scrollable if more) */}
+            <div className="flex flex-col">
+              <Card 
+                title={
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-text-main">Maintenance Alerts</span>
+                      <span className={cn(
+                        "px-2 py-0.5 text-[10px] font-extrabold rounded-full",
+                        maintenanceAlertVehicles.length > 0 ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
+                        {maintenanceAlertVehicles.length}
+                      </span>
+                    </div>
+                    {maintenanceAlertVehicles.length > 5 && (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        (সর্বোচ্চ ৫টি দৃশ্যমান, স্ক্রলযোগ্য)
+                      </span>
+                    )}
+                  </div>
+                } 
+                className="shadow-xs" 
+                bodyClassName="p-3 sm:p-4 flex flex-col overflow-hidden"
+              >
+                <div className="space-y-2 overflow-y-auto max-h-[365px] pr-1 custom-scrollbar">
+                  {maintenanceAlertVehicles.map(v => (
+                    <div key={v.id} className="p-2.5 bg-red-50/90 border border-red-200/70 rounded-lg space-y-1.5 transition-all hover:border-red-300">
+                      <div className="flex items-start gap-2 justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle size={15} className="text-danger flex-shrink-0" />
+                          <div className="text-xs">
+                            <p className="font-bold text-danger">{v.vehicleNumber}</p>
+                          </div>
+                        </div>
+                        {editingNotesId !== v.id && (
+                          <button 
+                            onClick={() => { setEditingNotesId(v.id); setTempNotes(v.maintenanceNotes || ''); }}
+                            className="text-[10px] text-accent hover:underline flex items-center gap-1 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-2xs font-semibold cursor-pointer active:scale-95"
+                            title="সমস্যা বা নোট পরিবর্তন করুন"
+                          >
+                            <Edit2 size={10} />
+                            <span>নোট লিখুন</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {editingNotesId === v.id ? (
+                        <div className="space-y-1.5 pl-5">
+                          <textarea
+                            className="w-full p-2 text-xs border border-amber-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-100 bg-white"
+                            placeholder="গাড়ির কি কি সমস্যা রয়েছে লিখুন..."
+                            value={tempNotes}
+                            onChange={e => setTempNotes(e.target.value)}
+                            rows={2}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              disabled={isSavingNotes}
+                              onClick={() => handleSaveNotes(v.id)}
+                              className="px-2.5 py-1 bg-accent text-white rounded text-[10px] font-bold hover:bg-accent/95 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isSavingNotes ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                            </button>
+                            <button
+                              disabled={isSavingNotes}
+                              onClick={() => setEditingNotesId(null)}
+                              className="px-2.5 py-1 bg-slate-200 text-slate-700 rounded text-[10px] font-bold hover:bg-slate-300 cursor-pointer"
+                            >
+                              বাতিল
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="pl-5 text-xs">
+                          <p className="text-slate-600 font-medium">
+                            {v.maintenanceNotes ? (
+                              <span className="text-amber-800 bg-amber-50/80 border border-amber-200/60 px-2 py-0.5 rounded block whitespace-pre-wrap line-clamp-2 text-[11px]">
+                                {v.maintenanceNotes}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">গাড়ির কোনো নির্দিষ্ট সমস্যা বা নোট লেখা নেই।</span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {maintenanceAlertVehicles.length === 0 && (
+                    <div className="py-10 flex flex-col items-center justify-center text-center text-text-muted text-xs italic">
+                      <CheckCircle size={28} className="text-emerald-500 mb-2 opacity-60" />
+                      <p className="font-semibold text-slate-700">কোনো সতর্কতা নেই</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">সব গাড়ি সচল রয়েছে</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Maintenance Overview Section */}
       <Card className="mt-6">
@@ -1610,7 +1665,7 @@ const Dashboard: React.FC = () => {
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="গাড়ি বা সমস্যা খুঁজুন (Search vehicle or note...)"
+                placeholder="গাড়ি বা সমস্যা খুঁজুন..."
                 className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
                 value={maintSearch}
                 onChange={e => setMaintSearch(e.target.value)}
@@ -1636,7 +1691,7 @@ const Dashboard: React.FC = () => {
                     maintStatusFilter === 'All' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  সব (All)
+                  সব
                 </button>
                 <button
                   onClick={() => setMaintStatusFilter('Maintenance')}
@@ -1645,7 +1700,7 @@ const Dashboard: React.FC = () => {
                     maintStatusFilter === 'Maintenance' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  মেইনটেনেন্স (Under Repair)
+                  মেইনটেনেন্স
                 </button>
                 <button
                   onClick={() => setMaintStatusFilter('WithNotes')}
@@ -1654,7 +1709,7 @@ const Dashboard: React.FC = () => {
                     maintStatusFilter === 'WithNotes' ? "bg-accent text-white" : "text-slate-600 hover:bg-slate-50"
                   )}
                 >
-                  নোট সহ (With Notes)
+                  নোটসহ
                 </button>
               </div>
 
@@ -1665,7 +1720,7 @@ const Dashboard: React.FC = () => {
                   onChange={(e) => setMaintTypeFilter(e.target.value)}
                   className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg outline-none focus:border-accent shadow-2xs cursor-pointer"
                 >
-                  <option value="All">সকল মডেল (All Models)</option>
+                  <option value="All">সকল মডেল</option>
                   {VEHICLE_TYPES.map(type => (
                     <option key={type} value={type}>{type}</option>
                   ))}
@@ -1791,7 +1846,7 @@ const Dashboard: React.FC = () => {
                                 ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100" 
                                 : "bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100"
                             )}
-                            title={v.status === 'Maintenance' ? "মেইনটেনেন্স সম্পন্ন করুন (Resolve & Make Available)" : "মেইনটেনেন্সে পাঠান (Mark as Under Repair)"}
+                            title={v.status === 'Maintenance' ? "মেইনটেনেন্স সম্পন্ন করুন" : "মেইনটেনেন্সে পাঠান"}
                           >
                             {v.status === 'Maintenance' ? <Check size={12} /> : <Wrench size={12} />}
                           </button>
@@ -1805,8 +1860,8 @@ const Dashboard: React.FC = () => {
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-slate-400 italic">
                       {maintSearch || maintStatusFilter !== 'All' || maintTypeFilter !== 'All' 
-                        ? "কোনো ম্যাচিং তথ্য পাওয়া যায়নি। (No matching vehicles found for selected filters)"
-                        : "বর্তমানে কোনো গাড়ির মেইনটেনেন্স বা সমস্যা লগ নেই। (No active maintenance or issue notes recorded)"}
+                        ? "কোনো ম্যাচিং তথ্য পাওয়া যায়নি।"
+                        : "বর্তমানে কোনো গাড়ির মেইনটেনেন্স বা সমস্যা লগ নেই।"}
                     </td>
                   </tr>
                 )}

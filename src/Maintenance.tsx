@@ -391,7 +391,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
         recordToComplete.vehiclePlate, 
         profile
       );
-      showToast(`গাড়ি ${recordToComplete.vehiclePlate}-এর সার্ভিসিং সম্পন্ন হয়েছে এবং গাড়ি সচল (Available) হয়েছে।`);
+      showToast(`গাড়ি ${recordToComplete.vehiclePlate}-এর সার্ভিসিং সম্পন্ন হয়েছে এবং গাড়ি সচল হয়েছে।`);
       
       // Update viewed record if open
       if (recordToView?.id === recordToComplete.id) {
@@ -589,7 +589,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
           {isSubMenuDropdownOpen && (
             <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                সাব-মেনু বেছে নিন (Select Menu)
+                সাব-মেনু বেছে নিন
               </p>
 
               <button
@@ -863,7 +863,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="w-full text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-slate-400"
                   >
-                    <option value="All">সকল ক্যাটাগরি (All Categories)</option>
+                    <option value="All">সকল ক্যাটাগরি</option>
                     {MAINTENANCE_CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{CATEGORY_NAMES_BN[cat] || cat}</option>
                     ))}
@@ -877,10 +877,10 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                     className="w-full text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-slate-400"
                   >
                     <option value="All">সকল প্রায়োরিটি</option>
-                    <option value="Low">Low (সাধারণ)</option>
-                    <option value="Medium">Medium (মাঝারি)</option>
-                    <option value="High">High (জরুরি)</option>
-                    <option value="Emergency">Emergency (অতীব জরুরি)</option>
+                    <option value="Low">সাধারণ</option>
+                    <option value="Medium">মাঝারি</option>
+                    <option value="High">জরুরি</option>
+                    <option value="Emergency">অতীব জরুরি</option>
                   </select>
                 </div>
               </div>
@@ -1021,7 +1021,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                           <span className="font-medium text-slate-700 font-mono">{rec.startDate || 'N/A'}</span>
                         </div>
                         <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
-                          <span className="text-slate-500 text-[11px] font-bold">খরচ (Cost):</span>
+                          <span className="text-slate-500 text-[11px] font-bold">খরচ:</span>
                           <span className="font-black text-rose-600 font-mono text-sm">৳{rec.cost.toLocaleString('bn-BD')}</span>
                         </div>
                       </div>
@@ -1290,8 +1290,8 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                           recordToView.status === 'In Progress' ? "bg-amber-50 text-amber-700 border-amber-200" :
                           "bg-slate-100 text-slate-600 border-slate-200"
                         )}>
-                          {recordToView.status === 'Completed' ? 'সম্পন্ন (Completed)' : 
-                           recordToView.status === 'In Progress' ? 'চলমান (In Progress)' : 'পেন্ডিং (Pending)'}
+                          {recordToView.status === 'Completed' ? 'সম্পন্ন' : 
+                           recordToView.status === 'In Progress' ? 'চলমান' : 'পেন্ডিং'}
                         </span>
                         {recordToView.priority && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">
@@ -1340,7 +1340,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                     <div className="bg-blue-50/50 border border-blue-200/80 p-4 rounded-xl">
                       <div className="text-blue-900 font-bold text-xs uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
                         <Wrench size={14} className="text-blue-600" />
-                        <span>পরিবর্তনকৃত পার্টস ও যন্ত্রাংশ (Replaced Parts)</span>
+                        <span>পরিবর্তনকৃত পার্টস ও যন্ত্রাংশ</span>
                       </div>
                       <div className="text-xs font-semibold text-slate-800">
                         {recordToView.partsReplaced}
@@ -1427,7 +1427,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                       <div className="flex justify-between">
                         <span className="text-slate-500">সমাপ্তির তারিখ:</span>
                         <span className="font-mono font-semibold text-slate-800">
-                          {recordToView.completedDate ? recordToView.completedDate : recordToView.status === 'Completed' ? 'সম্পন্ন' : 'চলমান (In Progress)'}
+                          {recordToView.completedDate ? recordToView.completedDate : recordToView.status === 'Completed' ? 'সম্পন্ন' : 'চলমান'}
                         </span>
                       </div>
                     </div>
@@ -1549,7 +1549,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                       • স্ট্যাটাস পরিবর্তন হয়ে <span className="font-bold">'Completed'</span> হবে।
                     </div>
                     <div className="text-[11px] text-emerald-700">
-                      • গাড়িটি স্বয়ংক্রিয়ভাবে <span className="font-bold">সচল (Available)</span> তালিকায় ফিরে আসবে।
+                      • গাড়িটি স্বয়ংক্রিয়ভাবে <span className="font-bold">সচল</span> তালিকায় ফিরে আসবে।
                     </div>
                   </div>
 
@@ -1791,15 +1791,15 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
                         onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                         className="w-full text-xs font-semibold px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500"
                       >
-                        <option value="In Progress">চলমান (In Progress)</option>
-                        <option value="Pending">পেন্ডিং (Pending)</option>
-                        <option value="Completed">সম্পন্ন (Completed)</option>
+                        <option value="In Progress">চলমান</option>
+                        <option value="Pending">পেন্ডিং</option>
+                        <option value="Completed">সম্পন্ন</option>
                       </select>
                     </div>
 
                     {/* Priority */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">অগ্রাধিকার (Priority)</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">অগ্রাধিকার</label>
                       <select
                         value={formData.priority}
                         onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
@@ -1863,7 +1863,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
 
                     {/* Odometer */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">বর্তমান কি.মি. (Odometer)</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">বর্তমান ওডোমিটার কি.মি.</label>
                       <input
                         type="number"
                         placeholder="km"
@@ -1888,7 +1888,7 @@ const Maintenance: React.FC<MaintenanceProps> = ({ defaultTab }) => {
 
                   {/* Parts Replaced */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">পরিবর্তনকৃত পার্টস (Parts Replaced)</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">পরিবর্তনকৃত পার্টস</label>
                     <input
                       type="text"
                       placeholder="যেমন: Mobil 20W-50 (4L), Oil Filter, Front Brake Pad"

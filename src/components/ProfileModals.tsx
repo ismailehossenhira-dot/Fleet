@@ -32,7 +32,9 @@ import {
   Minimize2,
   Sparkles,
   Users,
-  Search
+  Search,
+  GraduationCap,
+  ClipboardCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown } from './Common';
@@ -43,20 +45,20 @@ import { exportStaffProfilePrint, downloadStaffBiodataFile } from '../utils/expo
 
 // Standard Tools list
 export const STANDARD_VEHICLE_TOOLS = [
-  { key: 'jack', label: 'জগ (Jack)', icon: Wrench },
-  { key: 'wheelWrench', label: 'হুইল রেঞ্জ (Wheel Wrench)', icon: Wrench },
-  { key: 'lever', label: 'লিভার (Lever)', icon: Wrench },
-  { key: 'spareWheel', label: 'অতিরিক্ত চাকা (Spare Wheel)', icon: Truck },
-  { key: 'pipe', label: 'পাইপ (Pipe)', icon: Wrench },
+  { key: 'jack', label: 'জগ', icon: Wrench },
+  { key: 'wheelWrench', label: 'হুইল রেঞ্জ', icon: Wrench },
+  { key: 'lever', label: 'লিভার', icon: Wrench },
+  { key: 'spareWheel', label: 'অতিরিক্ত চাকা', icon: Truck },
+  { key: 'pipe', label: 'পাইপ', icon: Wrench },
 ] as const;
 
 // Standard Documents list
 export const STANDARD_VEHICLE_DOCS = [
-  { key: 'TT', label: 'TT (ট্যাক্স টোকেন / Tax Token)', code: 'TT' },
-  { key: 'FC', label: 'FC (ফিটনেস সার্টিফিকেট / Fitness Certificate)', code: 'FC' },
-  { key: 'RP', label: 'RP (রুট পারমিট / Route Permit)', code: 'RP' },
-  { key: 'RC', label: 'RC (রেজিস্ট্রেশন সার্টিফিকেট / Registration Certificate)', code: 'RC' },
-  { key: 'Ads', label: 'Ads (অগ্রিম আয়কর / বিজ্ঞাপন / বীমা)', code: 'Ads' },
+  { key: 'TT', label: 'ট্যাক্স টোকেন (TT)', code: 'TT' },
+  { key: 'FC', label: 'ফিটনেস সার্টিফিকেট (FC)', code: 'FC' },
+  { key: 'RP', label: 'রুট পারমিট (RP)', code: 'RP' },
+  { key: 'RC', label: 'রেজিস্ট্রেশন সার্টিফিকেট (RC)', code: 'RC' },
+  { key: 'Ads', label: 'অগ্রিম আয়কর ও বীমা', code: 'Ads' },
 ] as const;
 
 // Helper to translate family relation value to Bangla readable string
@@ -94,11 +96,12 @@ export const StaffProfileModal: React.FC<{
   staff: any;
   onClose: () => void;
   onEdit?: (staff: any) => void;
-}> = ({ staff, onClose, onEdit }) => {
+  initialTab?: 'overview' | 'viva' | 'performance' | 'trips' | 'biodata';
+}> = ({ staff, onClose, onEdit, initialTab = 'overview' }) => {
   const { isAdmin, isSubAdmin } = useAuth();
   const canManage = isAdmin || isSubAdmin;
   const [trips, setTrips] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'trips' | 'biodata'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'viva' | 'performance' | 'trips' | 'biodata'>(initialTab);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isEditingInline, setIsEditingInline] = useState(false);
   const [tripSearch, setTripSearch] = useState('');
@@ -113,6 +116,43 @@ export const StaffProfileModal: React.FC<{
     role: staff?.role || 'Driver',
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Viva Voce & Practical Assessment State
+  const [vivaData, setVivaData] = useState({
+    status: staff?.vivaAssessment?.status || staff?.vivaStatus || 'উত্তীর্ণ',
+    score: staff?.vivaAssessment?.score || staff?.vivaScore || (staff?.role === 'Helper' ? 88 : 92),
+    trafficKnowledge: staff?.vivaAssessment?.trafficKnowledge ?? 9,
+    drivingSkill: staff?.vivaAssessment?.drivingSkill ?? 9,
+    mechanicalSense: staff?.vivaAssessment?.mechanicalSense ?? 8,
+    physicalFitness: staff?.vivaAssessment?.physicalFitness ?? 10,
+    behavior: staff?.vivaAssessment?.behavior ?? 9,
+    substanceFree: staff?.vivaAssessment?.substanceFree ?? 'ক্লিয়ার ও সার্টিফাইড',
+    examinerName: staff?.vivaAssessment?.examinerName || 'Fleet Selection Board',
+    examinerComments: staff?.vivaAssessment?.examinerComments || (staff?.role === 'Helper' 
+      ? 'মালামাল লোডিং-আনলোডিং নিয়ম ও পণ্য নিরাপত্তায় যথেষ্ট পারদর্শী। ব্যাক গিয়ার সহায়তায় সতর্ক।'
+      : 'দক্ষ ও পেশাদার চালক। ট্রাফিক আইন ও রোড সাইন সম্পর্কে সম্যক জ্ঞান রয়েছে। ডিফেন্সিভ ড্রাইভিংয়ে সন্তোষজনক।'),
+    date: staff?.vivaAssessment?.date || (staff?.createdAt?.toDate ? staff.createdAt.toDate().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+  });
+  const [isEditingViva, setIsEditingViva] = useState(false);
+  const [isSavingViva, setIsSavingViva] = useState(false);
+
+  const handleSaveViva = async () => {
+    setIsSavingViva(true);
+    try {
+      if (staff.id) {
+        await updateDriver(staff.id, {
+          vivaAssessment: vivaData,
+          vivaStatus: vivaData.status,
+          vivaScore: Number(vivaData.score),
+        });
+      }
+      setIsEditingViva(false);
+    } catch (err) {
+      console.error('Save viva error:', err);
+    } finally {
+      setIsSavingViva(false);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeToCollection('trips', setTrips);
@@ -168,15 +208,15 @@ export const StaffProfileModal: React.FC<{
     baseRating = Math.max(1.0, baseRating - 1.2);
   }
 
-  let grade = 'A+ (টপ স্টার পারফরমার)';
-  if (baseRating < 3.0) grade = 'D (সতর্কবার্তা প্রয়োজন)';
-  else if (baseRating < 3.8) grade = 'C (উন্নতি দরকার)';
-  else if (baseRating < 4.4) grade = 'B+ (ভালো পারফরম্যান্স)';
-  else if (baseRating < 4.8) grade = 'A (চমৎকার রেকর্ড)';
+  let grade = 'A+';
+  if (baseRating < 3.0) grade = 'D';
+  else if (baseRating < 3.8) grade = 'C';
+  else if (baseRating < 4.4) grade = 'B+';
+  else if (baseRating < 4.8) grade = 'A';
 
   const statusText = staff.isSuspended 
     ? `সাসপেন্ডেড (${staff.suspensionDays || 0} দিন)` 
-    : (activeRunningTrip ? 'ট্রিপে নিয়োজিত' : (pendingTrip ? 'পেন্ডিং ট্রিপ' : 'উপলব্ধ (Free)'));
+    : (activeRunningTrip ? 'ট্রিপে নিয়োজিত' : (pendingTrip ? 'পেন্ডিং ট্রিপ' : 'উপলব্ধ'));
 
   const performanceData = {
     rating: baseRating,
@@ -212,7 +252,7 @@ export const StaffProfileModal: React.FC<{
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/70 backdrop-blur-sm overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-sm overflow-hidden">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -220,27 +260,27 @@ export const StaffProfileModal: React.FC<{
         transition={{ type: 'spring', damping: 26, stiffness: 340 }}
         onClick={e => e.stopPropagation()} 
         className={cn(
-          "relative bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col transition-all duration-300",
+          "relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col transition-all duration-300",
           isFullscreen 
-            ? "w-full h-[96vh] max-w-none rounded-2xl" 
-            : "w-full max-w-4xl lg:max-w-5xl max-h-[92vh]"
+            ? "w-full h-full sm:h-[96vh] max-w-none rounded-none sm:rounded-2xl" 
+            : "w-full max-w-4xl lg:max-w-5xl h-[95vh] sm:h-auto sm:max-h-[92vh]"
         )}
       >
         {/* Header with Role Banner & Action Controls */}
         <div className={cn(
-          "px-5 sm:px-8 py-5 text-white flex flex-wrap items-center justify-between gap-4 shrink-0 shadow-sm",
+          "px-4 sm:px-8 py-4 sm:py-5 text-white flex flex-wrap items-center justify-between gap-3 sm:gap-4 shrink-0 shadow-sm",
           staff.role === 'Helper' 
             ? "bg-gradient-to-r from-teal-700 via-emerald-700 to-teal-800" 
             : "bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900"
         )}>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-black text-2xl shadow-inner border border-white/20">
-              {staff.name ? staff.name.charAt(0).toUpperCase() : <User size={28} />}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-inner border border-white/20 shrink-0">
+              {staff.name ? staff.name.charAt(0).toUpperCase() : <User size={26} />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-black uppercase tracking-wider border border-white/20">
-                  {staff.role === 'Helper' ? 'হেলপার (Helper)' : 'ড্রাইভার (Driver)'}
+                <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider border border-white/20">
+                  {staff.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার'}
                 </span>
                 <span className="text-white/90 text-xs font-mono font-bold bg-black/20 px-2 py-0.5 rounded-md">
                   #{staff.driverId}
@@ -250,19 +290,31 @@ export const StaffProfileModal: React.FC<{
                   {baseRating.toFixed(1)}
                 </span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
+              <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight mt-0.5 sm:mt-1">
                 {staff.name}
               </h3>
             </div>
           </div>
 
-          {/* Action buttons (Print, Download, Edit, Fullscreen, Close) */}
-          <div className="flex items-center gap-2 flex-wrap ml-auto">
+          {/* Action buttons (Direct Call, Print, Download, Edit, Fullscreen, Close) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap ml-auto">
+            {/* Quick Direct Call Button on Mobile / Desktop */}
+            {staff.phoneNumber && (
+              <a
+                href={`tel:${staff.phoneNumber}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 text-xs font-bold border border-emerald-400/40 active:scale-95 shadow-sm transition-all"
+                title="সরাসরি ফোন কল করুন"
+              >
+                <Phone size={14} className="text-emerald-300" />
+                <span className="hidden xs:inline">কল করুন</span>
+              </a>
+            )}
+
             {/* Quick Print Button */}
             <button
               type="button"
               onClick={() => exportStaffProfilePrint(staff, performanceData, staffTrips)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
               title="প্রোফাইল সরাসরি প্রিন্ট করুন"
             >
               <Printer size={15} />
@@ -273,7 +325,7 @@ export const StaffProfileModal: React.FC<{
             <button
               type="button"
               onClick={() => downloadStaffBiodataFile(staff, performanceData, staffTrips)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
               title="বায়োডাটা ফাইল ডাউনলোড করুন"
             >
               <Download size={15} />
@@ -291,7 +343,7 @@ export const StaffProfileModal: React.FC<{
                     setIsEditingInline(true);
                   }
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-sm active:scale-95"
                 title="তথ্য পরিবর্তন বা সম্পাদন"
               >
                 <Edit3 size={15} />
@@ -303,7 +355,7 @@ export const StaffProfileModal: React.FC<{
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/20"
+              className="p-1.5 sm:p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer border border-white/20 hidden sm:block"
               title={isFullscreen ? "আগের আকারে ফিরুন" : "বড় ভিউ / ফুলস্ক্রিন করুন"}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -313,7 +365,7 @@ export const StaffProfileModal: React.FC<{
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-white/15 hover:bg-red-500/80 text-white transition-colors cursor-pointer border border-white/20"
+              className="p-1.5 sm:p-2 rounded-xl bg-white/15 hover:bg-red-500/80 text-white transition-colors cursor-pointer border border-white/20"
               title="বন্ধ করুন"
             >
               <X size={17} />
@@ -321,36 +373,57 @@ export const StaffProfileModal: React.FC<{
           </div>
         </div>
 
-        {/* Tab Navigation Bar */}
-        <div className="px-6 border-b border-slate-200 bg-slate-50 flex items-center justify-between overflow-x-auto gap-2 py-2 shrink-0">
+        {/* Tab Navigation Bar - Scrollable on mobile */}
+        <div className="px-3 sm:px-6 border-b border-slate-200 bg-slate-50 flex items-center justify-between overflow-x-auto gap-1.5 sm:gap-2 py-2 shrink-0 no-scrollbar">
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
                 activeTab === 'overview'
                   ? "bg-white text-blue-700 shadow-sm border border-slate-200"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
               )}
             >
-              <User size={15} className={activeTab === 'overview' ? "text-blue-600" : "text-slate-400"} />
-              <span>১. প্রোফাইল ও পরিচিতি</span>
+              <User size={14} className={activeTab === 'overview' ? "text-blue-600" : "text-slate-400"} />
+              <span>১. পরিচিতি</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('viva')}
+              className={cn(
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
+                activeTab === 'viva'
+                  ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              )}
+            >
+              <GraduationCap size={15} className={activeTab === 'viva' ? "text-emerald-600" : "text-slate-400"} />
+              <span>২. ভাইভা ও মূল্যায়ন</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                vivaData.status === 'উত্তীর্ণ' ? "bg-emerald-100 text-emerald-800" :
+                vivaData.status === 'বিবেচনাধীন' ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+              )}>
+                {vivaData.status}
+              </span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('performance')}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
                 activeTab === 'performance'
                   ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
               )}
             >
-              <Award size={15} className={activeTab === 'performance' ? "text-amber-500" : "text-slate-400"} />
-              <span>২. পারফরম্যান্স স্কোরকার্ড</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">
+              <Award size={14} className={activeTab === 'performance' ? "text-amber-500" : "text-slate-400"} />
+              <span>৩. পারফরম্যান্স</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-black">
                 {baseRating.toFixed(1)} ★
               </span>
             </button>
@@ -359,15 +432,15 @@ export const StaffProfileModal: React.FC<{
               type="button"
               onClick={() => setActiveTab('trips')}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
                 activeTab === 'trips'
                   ? "bg-white text-blue-700 shadow-sm border border-slate-200"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
               )}
             >
-              <History size={15} className={activeTab === 'trips' ? "text-blue-600" : "text-slate-400"} />
-              <span>৩. ট্রিপ হিস্ট্রি</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
+              <History size={14} className={activeTab === 'trips' ? "text-blue-600" : "text-slate-400"} />
+              <span>৪. ট্রিপ হিস্ট্রি</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[9px] font-black">
                 {staffTrips.length}
               </span>
             </button>
@@ -376,18 +449,18 @@ export const StaffProfileModal: React.FC<{
               type="button"
               onClick={() => setActiveTab('biodata')}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap",
+                "px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap",
                 activeTab === 'biodata'
                   ? "bg-white text-teal-700 shadow-sm border border-slate-200"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
               )}
             >
-              <FileText size={15} className={activeTab === 'biodata' ? "text-teal-600" : "text-slate-400"} />
-              <span>৪. প্রিন্ট ও বায়োডাটা</span>
+              <FileText size={14} className={activeTab === 'biodata' ? "text-teal-600" : "text-slate-400"} />
+              <span>৫. প্রিন্ট ও বায়োডাটা</span>
             </button>
           </div>
 
-          <div className="text-[11px] font-semibold text-slate-500 hidden md:block">
+          <div className="text-[11px] font-semibold text-slate-500 hidden lg:block">
             {staff.role === 'Helper' ? 'হেলপার ডাটাবেজ' : 'ড্রাইভার ডাটাবেজ'} • আইডি: <strong className="text-slate-800 font-mono">{staff.driverId}</strong>
           </div>
         </div>
@@ -400,7 +473,7 @@ export const StaffProfileModal: React.FC<{
               <Ban className="text-red-600 shrink-0 mt-0.5" size={20} />
               <div className="text-xs text-red-800">
                 <div className="font-bold text-sm text-red-900 flex items-center gap-2">
-                  <span>বর্তমানে সাময়িক বরখাস্ত (Suspended)</span>
+                  <span>বর্তমানে সাময়িক বরখাস্ত</span>
                   <span className="px-2 py-0.5 bg-red-200 text-red-900 rounded-md font-bold text-[11px]">মেয়াদ: {staff.suspensionDays || '০'} দিন</span>
                 </div>
                 <p className="mt-1 font-medium text-red-700">কারণ: {staff.suspensionReason || 'উল্লেখ নেই'}</p>
@@ -489,7 +562,7 @@ export const StaffProfileModal: React.FC<{
                     ) : pendingTrip ? (
                       <span className="text-amber-600 font-bold">পেন্ডিং ট্রিপ</span>
                     ) : (
-                      <span className="text-emerald-600 font-bold">উপলব্ধ (Free)</span>
+                      <span className="text-emerald-600 font-bold">উপলব্ধ</span>
                     )}
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1 font-medium">বর্তমানে প্রস্তুত</p>
@@ -518,7 +591,7 @@ export const StaffProfileModal: React.FC<{
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                       <div>
-                        <label className="block text-slate-700 font-bold mb-1">পূর্ণ নাম (Full Name) *</label>
+                        <label className="block text-slate-700 font-bold mb-1">পূর্ণ নাম *</label>
                         <input 
                           type="text" 
                           required
@@ -529,7 +602,7 @@ export const StaffProfileModal: React.FC<{
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 font-bold mb-1">নিজস্ব মোবাইল নম্বর (Staff Phone) *</label>
+                        <label className="block text-slate-700 font-bold mb-1">নিজস্ব মোবাইল নম্বর *</label>
                         <input 
                           type="tel" 
                           required
@@ -541,7 +614,7 @@ export const StaffProfileModal: React.FC<{
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 font-bold mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                        <label className="block text-slate-700 font-bold mb-1">ড্রাইভিং লাইসেন্স নম্বর</label>
                         <input 
                           type="text" 
                           placeholder="DL-XXXX-XXXX"
@@ -554,7 +627,7 @@ export const StaffProfileModal: React.FC<{
                       {/* Family Phone & Relation Selector */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-slate-700 font-bold mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                          <label className="block text-slate-700 font-bold mb-1">পরিবারের নম্বর</label>
                           <input 
                             type="tel" 
                             maxLength={11}
@@ -566,7 +639,7 @@ export const StaffProfileModal: React.FC<{
                         </div>
 
                         <div>
-                          <label className="block text-slate-700 font-bold mb-1 text-emerald-800">নাম্বারটি কার? (Relation) *</label>
+                          <label className="block text-slate-700 font-bold mb-1 text-emerald-800">সম্পর্ক *</label>
                           <select
                             value={editForm.familyPhoneRelation}
                             onChange={e => setEditForm({ ...editForm, familyPhoneRelation: e.target.value })}
@@ -582,7 +655,7 @@ export const StaffProfileModal: React.FC<{
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-slate-700 font-bold mb-1">বর্তমান ও স্থায়ী ঠিকানা (Address)</label>
+                        <label className="block text-slate-700 font-bold mb-1">বর্তমান ও স্থায়ী ঠিকানা</label>
                         <textarea 
                           rows={2}
                           placeholder="গ্রাম/বাড়ি, থানা, জেলা..."
@@ -713,7 +786,7 @@ export const StaffProfileModal: React.FC<{
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
                     <History size={16} className="text-blue-600" />
-                    <span className="text-xs font-bold text-slate-800">সাম্প্রতিক ট্রিপ সমূহ (সর্বশেষ ৪টি)</span>
+                    <span className="text-xs font-bold text-slate-800">সাম্প্রতিক ট্রিপ সমূহ</span>
                   </div>
                   <button
                     type="button"
@@ -757,7 +830,409 @@ export const StaffProfileModal: React.FC<{
             </div>
           )}
 
-          {/* ================= TAB 2: PERFORMANCE & RATING ================= */}
+          {/* ================= TAB: VIVA & ASSESSMENT ================= */}
+          {activeTab === 'viva' && (
+            <div className="space-y-6">
+              {/* Viva Hero Header Card */}
+              <div className="p-5 sm:p-6 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-3xl shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <GraduationCap size={12} />
+                        মৌখিক পরীক্ষা ও দক্ষতা মূল্যায়ন
+                      </span>
+                      <span className="text-xs text-emerald-200/80">নিয়োগ ও রিক্রুটমেন্ট বোর্ড</span>
+                    </div>
+                    <h3 className="text-xl sm:text-2xl font-black text-white mt-2">
+                      {staff.name} — ভাইভা রিপোর্ট
+                    </h3>
+                    <p className="text-xs text-emerald-100/75 mt-1 max-w-xl leading-relaxed">
+                      {staff.role === 'Helper' 
+                        ? 'মালামাল লোডিং ও আনলোডিং, গাড়ির প্রাথমিক টুলস ও চাকা বদল প্রস্তুতি, ব্যাক-গিয়ার সিগন্যাল ও সহকর্মীর সাথে সমন্বয় মূল্যায়ন।'
+                        : 'রোড সেফটি ও ট্রাফিক আইন জ্ঞান, গাড়ি চালনার ব্যবহারিক দক্ষতা, ইঞ্জিন বেসিক্স এবং দায়িত্বশীলতা মূল্যায়ন।'}
+                    </p>
+                  </div>
+
+                  {/* Status & Score Badge */}
+                  <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/15 shrink-0 self-start md:self-auto">
+                    <div className="text-right">
+                      <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wider">ভাইভা স্কোর</span>
+                      <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                        {vivaData.score}<span className="text-xs sm:text-sm font-normal text-emerald-300/80">/১০০</span>
+                      </div>
+                    </div>
+                    <div className="h-9 w-px bg-white/20" />
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wider">ফলাফল</span>
+                      <span className={cn(
+                        "inline-block px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider mt-0.5 shadow-sm",
+                        vivaData.status === 'উত্তীর্ণ' ? "bg-emerald-400 text-emerald-950" :
+                        vivaData.status === 'বিবেচনাধীন' ? "bg-amber-400 text-amber-950" : "bg-red-500 text-white"
+                      )}>
+                        {vivaData.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Evaluator & Date footer */}
+                <div className="mt-4 pt-3 sm:mt-5 sm:pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-emerald-200/80">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-[11px] sm:text-xs">
+                    <span>মূল্যায়নকারী: <strong className="text-white font-medium">{vivaData.examinerName}</strong></span>
+                    <span>•</span>
+                    <span>তারিখ: <strong className="text-white font-medium">{vivaData.date}</strong></span>
+                  </div>
+                  {canManage && !isEditingViva && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingViva(true)}
+                      className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95"
+                    >
+                      <Edit3 size={13} />
+                      <span>মূল্যায়ন আপডেট করুন</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Edit Mode for Admin */}
+              {isEditingViva && (
+                <div className="p-5 sm:p-6 bg-slate-50 border border-slate-200 rounded-3xl space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <ClipboardCheck size={16} className="text-emerald-600" />
+                      ভাইভা ও মূল্যায়ন তথ্য সম্পাদনা
+                    </h4>
+                    <span className="text-xs text-slate-500">এডমিন নিয়ন্ত্রণ</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">ভাইভা ফলাফল</label>
+                      <select
+                        value={vivaData.status}
+                        onChange={e => setVivaData({ ...vivaData, status: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold outline-none focus:border-emerald-500"
+                      >
+                        <option value="উত্তীর্ণ">উত্তীর্ণ</option>
+                        <option value="বিবেচনাধীন">বিবেচনাধীন</option>
+                        <option value="অনুত্তীর্ণ">অনুত্তীর্ণ</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">মোট নম্বর (০-১০০)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={vivaData.score}
+                        onChange={e => setVivaData({ ...vivaData, score: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">মূল্যায়নকারী কর্মকর্তা/বোর্ড</label>
+                      <input
+                        type="text"
+                        value={vivaData.examinerName}
+                        onChange={e => setVivaData({ ...vivaData, examinerName: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Criteria Range Sliders */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    {staff.role === 'Helper' ? (
+                      <>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>📦 লোডিং ও আনলোডিং নিয়মাবলী</span>
+                            <span className="text-emerald-600">{vivaData.trafficKnowledge}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.trafficKnowledge}
+                            onChange={e => setVivaData({ ...vivaData, trafficKnowledge: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🙋‍♂️ ব্যাক গিয়ার সিগন্যাল ও রোড সহায়তা</span>
+                            <span className="text-emerald-600">{vivaData.drivingSkill}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.drivingSkill}
+                            onChange={e => setVivaData({ ...vivaData, drivingSkill: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🛠️ গাড়ির টুলস ও চাকা পরিবর্তনের প্রস্তুতি</span>
+                            <span className="text-emerald-600">{vivaData.mechanicalSense}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.mechanicalSense}
+                            onChange={e => setVivaData({ ...vivaData, mechanicalSense: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🏃 শারীরিক সক্ষমতা ও মাল খালাস সতর্কতা</span>
+                            <span className="text-emerald-600">{vivaData.physicalFitness}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.physicalFitness}
+                            onChange={e => setVivaData({ ...vivaData, physicalFitness: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🚦 ট্রাফিক আইন ও রোড সাইন জ্ঞান</span>
+                            <span className="text-emerald-600">{vivaData.trafficKnowledge}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.trafficKnowledge}
+                            onChange={e => setVivaData({ ...vivaData, trafficKnowledge: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🚚 গাড়ি চালনা ও ডিফেন্সিভ কন্ট্রোল</span>
+                            <span className="text-emerald-600">{vivaData.drivingSkill}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.drivingSkill}
+                            onChange={e => setVivaData({ ...vivaData, drivingSkill: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>🔧 ইঞ্জিন ও জরুরি যান্ত্রিক ট্রাবলশুটিং</span>
+                            <span className="text-emerald-600">{vivaData.mechanicalSense}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.mechanicalSense}
+                            onChange={e => setVivaData({ ...vivaData, mechanicalSense: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>👁️ দৃষ্টি সতর্কতা ও শারীরিক সুস্থতা</span>
+                            <span className="text-emerald-600">{vivaData.physicalFitness}/১০</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="10"
+                            value={vivaData.physicalFitness}
+                            onChange={e => setVivaData({ ...vivaData, physicalFitness: Number(e.target.value) })}
+                            className="w-full accent-emerald-600"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1 text-xs">বোর্ডের চূড়ান্ত মন্তব্য ও সুপারিশ</label>
+                    <textarea
+                      rows={2}
+                      value={vivaData.examinerComments}
+                      onChange={e => setVivaData({ ...vivaData, examinerComments: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <Button variant="secondary" onClick={() => setIsEditingViva(false)}>
+                      বাতিল
+                    </Button>
+                    <Button onClick={handleSaveViva} disabled={isSavingViva} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                      {isSavingViva ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Viva Evaluation Criteria Display Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                      <ClipboardCheck size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm">দক্ষতা ও প্রযুক্তিগত মাপকাঠি</h4>
+                      <p className="text-[11px] text-slate-400">পরীক্ষক বোর্ডের সরাসরি যাচাই</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    {staff.role === 'Helper' ? (
+                      <>
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>📦 লোডিং ও আনলোডিং নিয়মাবলী</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.trafficKnowledge}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.trafficKnowledge * 10}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>🙋‍♂️ ব্যাক-গিয়ার সিগন্যাল ও ড্রাইভার সহায়তা</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.drivingSkill}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.drivingSkill * 10}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>🛠️ গাড়ির টুলস ও চাকা বদলের প্রস্তুতি</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.mechanicalSense}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.mechanicalSense * 10}%` }} />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>🚦 ট্রাফিক আইন ও রোড সাইন জ্ঞান</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.trafficKnowledge}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.trafficKnowledge * 10}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>🚚 গাড়ি চালনা ও ডিফেন্সিভ কন্ট্রোল</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.drivingSkill}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.drivingSkill * 10}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between font-bold text-slate-700 mb-1">
+                            <span>🔧 ইঞ্জিন ও জরুরি যান্ত্রিক ট্রাবলশুটিং</span>
+                            <span className="text-emerald-700 font-mono">{vivaData.mechanicalSense}/১০</span>
+                          </div>
+                          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${vivaData.mechanicalSense * 10}%` }} />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Physical Fitness, Attitude, Drug Free */}
+                <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                      <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm">শারীরিক সুস্থতা ও আচরণগত মান</h4>
+                      <p className="text-[11px] text-slate-400">মেডিকেল ও ডিসিপ্লিনারি রেকর্ড</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <div className="flex justify-between font-bold text-slate-700 mb-1">
+                        <span>🏃 শারীরিক সক্ষমতা ও দৃষ্টিশক্তি</span>
+                        <span className="text-blue-700 font-mono">{vivaData.physicalFitness}/১০</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${vivaData.physicalFitness * 10}%` }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between font-bold text-slate-700 mb-1">
+                        <span>🤝 আচরণ, শৃঙ্খলা ও কাস্টমার ডিলিংস</span>
+                        <span className="text-blue-700 font-mono">{vivaData.behavior}/১০</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${vivaData.behavior * 10}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <div className="p-3 bg-emerald-50/60 border border-emerald-200/60 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                          <span className="font-bold text-emerald-950 text-xs">মাদক ও নেশামুক্ত নিশ্চয়তা:</span>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black">
+                          {vivaData.substanceFree}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Examiner Comments */}
+              <div className="p-5 bg-slate-50 border border-slate-200/80 rounded-3xl space-y-2">
+                <div className="flex items-center gap-2 text-xs font-black text-slate-800 uppercase tracking-wider">
+                  <FileText size={14} className="text-emerald-600" />
+                  <span>পরীক্ষক বোর্ডের মূল্যায়ন ও সুপারিশ</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium bg-white p-4 rounded-2xl border border-slate-100">
+                  "{vivaData.examinerComments}"
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 3: PERFORMANCE & RATING ================= */}
           {activeTab === 'performance' && (
             <div className="space-y-6">
               {/* Scorecard Hero Banner */}
@@ -863,7 +1338,7 @@ export const StaffProfileModal: React.FC<{
               <div className="p-5 bg-white rounded-2xl border border-slate-200 space-y-3">
                 <div className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2">
                   <Award size={16} className="text-blue-600" />
-                  <span>অর্জিত ব্যাজ ও যোগ্যতা (Recognition & Badges)</span>
+                  <span>অর্জিত ব্যাজ ও যোগ্যতা</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
                   <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-3">
@@ -1002,7 +1477,7 @@ export const StaffProfileModal: React.FC<{
                     className="text-xs px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center gap-1.5 shadow-sm"
                   >
                     <Printer size={14} />
-                    <span>প্রিন্ট করুন (Print)</span>
+                    <span>প্রিন্ট করুন</span>
                   </Button>
 
                   <Button
@@ -1011,7 +1486,7 @@ export const StaffProfileModal: React.FC<{
                     className="text-xs px-4 py-2 font-bold flex items-center gap-1.5"
                   >
                     <Download size={14} />
-                    <span>ডাউনলোড (Save)</span>
+                    <span>ডাউনলোড</span>
                   </Button>
                 </div>
               </div>
@@ -1066,7 +1541,7 @@ export const StaffProfileModal: React.FC<{
             </Button>
             
             <Button variant="secondary" className="text-xs px-4 py-1.5" onClick={onClose}>
-              বন্ধ করুন (Close)
+              বন্ধ করুন
             </Button>
           </div>
         </div>
@@ -1157,20 +1632,20 @@ export const VehicleProfileModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/75 backdrop-blur-xs">
       <motion.div 
         initial={{ opacity: 0, scale: 0.94, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 15 }}
         transition={{ type: 'spring', damping: 25, stiffness: 350 }}
         onClick={e => e.stopPropagation()} 
-        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col h-[92vh] sm:h-auto sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-400 font-black text-xl shadow-inner border border-white/10">
-              <Truck size={26} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-400 font-black text-lg sm:text-xl shadow-inner border border-white/10 shrink-0">
+              <Truck size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -1186,13 +1661,13 @@ export const VehicleProfileModal: React.FC<{
                   {vehicle.status}
                 </span>
               </div>
-              <h3 className="text-xl font-black text-white tracking-tight mt-0.5">
+              <h3 className="text-lg sm:text-xl font-black text-white tracking-tight mt-0.5">
                 {vehicle.vehicleNumber}
               </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {onEdit && (isAdmin || isSubAdmin) && (
               <button
                 type="button"
@@ -1203,7 +1678,7 @@ export const VehicleProfileModal: React.FC<{
                 className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                 title="গাড়ি এডিট করুন"
               >
-                <Edit3 size={17} />
+                <Edit3 size={16} />
               </button>
             )}
             <button
@@ -1217,33 +1692,33 @@ export const VehicleProfileModal: React.FC<{
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-100 bg-slate-50 px-6 gap-2 pt-2">
+        <div className="flex border-b border-slate-100 bg-slate-50 px-3 sm:px-6 gap-1.5 sm:gap-2 pt-2 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5",
+              "px-3 sm:px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap",
               activeTab === 'overview'
                 ? "bg-white text-slate-900 border-t border-x border-slate-200 shadow-2xs -mb-px"
                 : "text-slate-500 hover:text-slate-800"
             )}
           >
             <Info size={14} />
-            <span>ওভারভিউ ও ট্রিপ</span>
+            <span>ওভারভিউ</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('tools')}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative",
+              "px-3 sm:px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative whitespace-nowrap",
               activeTab === 'tools'
                 ? "bg-white text-blue-700 border-t border-x border-slate-200 shadow-2xs -mb-px"
                 : "text-slate-500 hover:text-slate-800"
             )}
           >
             <Wrench size={14} />
-            <span>টুলস অপশন (Tools)</span>
+            <span>টুলস</span>
             {Object.values(tools).some(val => !val) && (
               <span className="w-2 h-2 rounded-full bg-red-500" />
             )}
@@ -1253,14 +1728,14 @@ export const VehicleProfileModal: React.FC<{
             type="button"
             onClick={() => setActiveTab('documents')}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative",
+              "px-3 sm:px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative whitespace-nowrap",
               activeTab === 'documents'
                 ? "bg-white text-emerald-700 border-t border-x border-slate-200 shadow-2xs -mb-px"
                 : "text-slate-500 hover:text-slate-800"
             )}
           >
             <FileText size={14} />
-            <span>ডকুমেন্ট অপশন (Docs)</span>
+            <span>ডকুমেন্টস</span>
             {Object.values(docs).some(val => !val) && (
               <span className="w-2 h-2 rounded-full bg-amber-500" />
             )}
@@ -1270,7 +1745,7 @@ export const VehicleProfileModal: React.FC<{
             type="button"
             onClick={() => setActiveTab('cases')}
             className={cn(
-              "px-4 py-2.5 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative",
+              "px-3 sm:px-4 py-2 text-xs font-bold rounded-t-xl transition-all cursor-pointer flex items-center gap-1.5 relative whitespace-nowrap",
               activeTab === 'cases'
                 ? "bg-white text-red-700 border-t border-x border-slate-200 shadow-2xs -mb-px"
                 : "text-slate-500 hover:text-slate-800"
@@ -1362,7 +1837,7 @@ export const VehicleProfileModal: React.FC<{
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl text-xs text-blue-800 flex items-start gap-2">
                   <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold text-blue-900">গাড়ির টুলস নিয়ন্ত্রণ (Tools Verification)</div>
+                    <div className="font-bold text-blue-900">গাড়ির টুলস নিয়ন্ত্রণ</div>
                     <p className="mt-0.5 text-blue-700">
                       এখানে হ্যাঁ বা না পরিবর্তন করলে তা স্বয়ংক্রিয়ভাবে <strong>QR চেক করার সময়</strong> এবং <strong>ট্রিপ এন্ট্রি করার সময়</strong> রিয়েলটাইমে প্রদর্শিত হবে।
                     </p>
@@ -1393,7 +1868,7 @@ export const VehicleProfileModal: React.FC<{
                             <div>
                               <span className="font-bold text-slate-800 text-xs block">{item.label}</span>
                               <span className={cn("text-[10px] font-semibold", isPresent ? "text-emerald-600" : "text-red-600")}>
-                                {isPresent ? 'উপলব্ধ (Available)' : 'অনুপলব্ধ (Missing)'}
+                                {isPresent ? 'উপলব্ধ' : 'অনুপলব্ধ'}
                               </span>
                             </div>
                           </div>
@@ -1413,7 +1888,7 @@ export const VehicleProfileModal: React.FC<{
                             )}
                           >
                             <Check size={13} strokeWidth={3} />
-                            <span>হ্যাঁ (আছে)</span>
+                            <span>আছে</span>
                           </button>
 
                           <button
@@ -1428,7 +1903,7 @@ export const VehicleProfileModal: React.FC<{
                             )}
                           >
                             <X size={13} strokeWidth={3} />
-                            <span>না (নেই)</span>
+                            <span>নেই</span>
                           </button>
                         </div>
                       </div>
@@ -1451,7 +1926,7 @@ export const VehicleProfileModal: React.FC<{
                 <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-xs text-emerald-800 flex items-start gap-2">
                   <Info size={16} className="text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold text-emerald-900">গাড়ির ডকুমেন্ট নিয়ন্ত্রণ (Documents Status)</div>
+                    <div className="font-bold text-emerald-900">গাড়ির ডকুমেন্ট নিয়ন্ত্রণ</div>
                     <p className="mt-0.5 text-emerald-700">
                       এখানে TT, FC, RP, RC, Ads ইত্যাদি ডকুমেন্টের অবস্থা নির্বাচন করুন। ট্রিপ ছাড়ার আগে ও কিউআর স্ক্যান চেকিংয়ে এগুলো নির্দেশক হিসেবে কাজ করবে।
                     </p>
@@ -1537,7 +2012,7 @@ export const VehicleProfileModal: React.FC<{
               >
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="p-3 bg-red-50 border border-red-200 rounded-2xl">
-                    <span className="text-red-700 block font-semibold mb-0.5">সক্রিয় মামলা (Active):</span>
+                    <span className="text-red-700 block font-semibold mb-0.5">সক্রিয় মামলা:</span>
                     <div className="text-xl font-black text-red-900">{activeCases.length} টি</div>
                     <span className="text-[10px] text-red-700 font-bold mt-1 block">বকেয়া: ৳{unpaidFineAmount.toLocaleString()}</span>
                   </div>
@@ -1565,7 +2040,7 @@ export const VehicleProfileModal: React.FC<{
                             "px-2 py-0.5 rounded-full text-[10px] font-black uppercase",
                             (c.status || 'Open') === 'Open' ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
                           )}>
-                            {(c.status || 'Open') === 'Open' ? 'সক্রিয় (UNPAID)' : 'সমাধান (PAID)'}
+                            {(c.status || 'Open') === 'Open' ? 'সক্রিয়' : 'সমাধান'}
                           </span>
                         </div>
 
@@ -1605,7 +2080,7 @@ export const VehicleProfileModal: React.FC<{
         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <AuditDetailsDropdown createdBy={vehicle.createdBy} updatedBy={vehicle.updatedBy} />
           <Button variant="secondary" className="text-xs px-3 py-1.5" onClick={onClose}>
-            বন্ধ করুন (Close)
+            বন্ধ করুন
           </Button>
         </div>
       </motion.div>
@@ -1622,7 +2097,10 @@ export const StaffProfileButton: React.FC<{
   staffName?: string;
   role?: 'Driver' | 'Helper';
   className?: string;
-}> = ({ staff, staffId, staffName, role, className }) => {
+  initialTab?: 'overview' | 'viva' | 'performance' | 'trips' | 'biodata';
+  children?: React.ReactNode;
+  title?: string;
+}> = ({ staff, staffId, staffName, role, className, initialTab = 'overview', children, title }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loadedStaff, setLoadedStaff] = useState<any | null>(staff || null);
 
@@ -1655,15 +2133,15 @@ export const StaffProfileButton: React.FC<{
           "inline-flex items-center justify-center p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer group",
           className
         )}
-        title="প্রোফাইল বিবরণ দেখতে ক্লিক করুন"
+        title={title || "প্রোফাইল বিবরণ দেখতে ক্লিক করুন"}
         aria-label="স্টাফ প্রোফাইল"
       >
-        <User size={13} className="group-hover:scale-110 transition-transform" />
+        {children || <User size={13} className="group-hover:scale-110 transition-transform" />}
       </button>
 
       <AnimatePresence>
         {isOpen && loadedStaff && (
-          <StaffProfileModal staff={loadedStaff} onClose={() => setIsOpen(false)} />
+          <StaffProfileModal staff={loadedStaff} onClose={() => setIsOpen(false)} initialTab={initialTab} />
         )}
       </AnimatePresence>
     </>

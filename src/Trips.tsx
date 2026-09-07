@@ -121,7 +121,7 @@ const Trips: React.FC = () => {
     const startMs = startTime.seconds ? startTime.seconds * 1000 : new Date(startTime).getTime();
     const endMs = endTime.seconds ? endTime.seconds * 1000 : new Date(endTime).getTime();
     const diffMs = endMs - startMs;
-    if (diffMs <= 0) return '১ মিনিট এর কম (Less than 1 min)';
+    if (diffMs <= 0) return '১ মিনিটের কম';
     
     const diffMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(diffMins / 60);
@@ -604,7 +604,7 @@ const Trips: React.FC = () => {
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search filter */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">গাড়ি বা স্টাফ দিয়ে খুঁজুন (Search Log)</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">গাড়ি বা স্টাফ দিয়ে খুঁজুন</label>
               <div className="relative">
                 <input
                   type="text"
@@ -622,7 +622,7 @@ const Trips: React.FC = () => {
 
             {/* Date filter */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">নির্দিষ্ট তারিখ সিলেক্ট করুন (Date Filter)</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">নির্দিষ্ট তারিখ নির্বাচন করুন</label>
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500 cursor-pointer"
@@ -756,7 +756,7 @@ const Trips: React.FC = () => {
                                     isRunning && "bg-blue-100 text-blue-800",
                                     isCompleted && "bg-emerald-100 text-emerald-800"
                                   )}>
-                                    {isRunning ? '● চলমান (Running)' : '✓ সম্পন্ন (Completed)'}
+                                    {isRunning ? '● চলমান' : '✓ সম্পন্ন'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -783,11 +783,11 @@ const Trips: React.FC = () => {
                                 <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
                                   <h5 className="font-bold text-slate-500 uppercase tracking-tight text-[10px] flex items-center gap-1.5 border-b pb-1">
                                     <UserIcon size={12} className="text-slate-400" />
-                                    <span>স্টাফ তথ্য (Staff Profiles)</span>
+                                    <span>স্টাফের তথ্য</span>
                                   </h5>
                                   <div className="space-y-2">
                                     <div>
-                                      <span className="text-slate-400 block mb-0.5">চালক (Driver):</span>
+                                      <span className="text-slate-400 block mb-0.5">চালক:</span>
                                       <div className="font-bold text-slate-800 flex items-center gap-1">
                                         <span>{trip.driverName}</span>
                                         <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.2 rounded font-mono">
@@ -805,7 +805,7 @@ const Trips: React.FC = () => {
 
                                     {trip.helperId ? (
                                       <div className="border-t pt-2 mt-2">
-                                        <span className="text-slate-400 block mb-0.5">সহকারী (Helper):</span>
+                                        <span className="text-slate-400 block mb-0.5">সহকারী:</span>
                                         <div className="font-bold text-slate-700 flex items-center gap-1">
                                           <span>{trip.helperName}</span>
                                           <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.2 rounded font-mono">
@@ -822,7 +822,7 @@ const Trips: React.FC = () => {
                                       </div>
                                     ) : (
                                       <div className="border-t pt-2 mt-2">
-                                        <span className="text-slate-400 italic block text-[11px]">সহকারী (Helper) নেই</span>
+                                        <span className="text-slate-400 italic block text-[11px]">কোনো সহকারী নেই</span>
                                       </div>
                                     )}
                                   </div>
@@ -836,7 +836,7 @@ const Trips: React.FC = () => {
                                   </h5>
                                   <div className="space-y-2">
                                     <div>
-                                      <span className="text-slate-400 block mb-0.5">গন্তব্য (Destination):</span>
+                                      <span className="text-slate-400 block mb-0.5">গন্তব্য:</span>
                                       <span className="font-bold text-slate-800 text-sm flex items-center gap-1">
                                         <MapPin size={12} className="text-rose-500 shrink-0" />
                                         <span>{trip.location}</span>
@@ -844,14 +844,14 @@ const Trips: React.FC = () => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 border-t pt-2 mt-2">
                                       <div>
-                                        <span className="text-slate-400 block mb-0.5">সেতু টোল (Bridge Toll):</span>
+                                        <span className="text-slate-400 block mb-0.5">সেতু টোল:</span>
                                         <span className="font-extrabold text-slate-800">
                                           ৳ {trip.tollAmount || 0}
                                         </span>
                                       </div>
                                       {tripDuration && (
                                         <div>
-                                          <span className="text-slate-400 block mb-0.5">ট্রিপ সময়কাল (Duration):</span>
+                                          <span className="text-slate-400 block mb-0.5">ট্রিপের সময়কাল:</span>
                                           <span className="font-bold text-slate-800 text-[11px]">
                                             {tripDuration}
                                           </span>
@@ -865,11 +865,11 @@ const Trips: React.FC = () => {
                                 <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
                                   <h5 className="font-bold text-slate-500 uppercase tracking-tight text-[10px] flex items-center gap-1.5 border-b pb-1">
                                     <Clock size={12} className="text-slate-400" />
-                                    <span>সময়সূচী (Dispatch Timeline)</span>
+                                    <span>সময়সূচী</span>
                                   </h5>
                                   <div className="space-y-2">
                                     <div>
-                                      <span className="text-slate-400 block mb-0.5">প্রস্থান সময় (Out-Time):</span>
+                                      <span className="text-slate-400 block mb-0.5">প্রস্থান সময়:</span>
                                       <span className="font-bold text-slate-800 flex items-center gap-1.5">
                                         <ArrowRight size={12} className="text-blue-500" />
                                         <span>{formatTripTime(trip.startTime)}</span>
@@ -881,7 +881,7 @@ const Trips: React.FC = () => {
                                       )}
                                     </div>
                                     <div className="border-t pt-2 mt-2">
-                                      <span className="text-slate-400 block mb-0.5">ফেরত সময় (In-Time):</span>
+                                      <span className="text-slate-400 block mb-0.5">ফেরত আসার সময়:</span>
                                       <span className="font-bold text-slate-800 flex items-center gap-1.5">
                                         {isCompleted ? (
                                           <>
@@ -914,7 +914,7 @@ const Trips: React.FC = () => {
                               {/* Issued items checklist bar */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mb-3">
                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                                  <span className="text-slate-400 block font-bold text-[10px] uppercase">প্রস্থানকালে প্রদত্ত কাগজপত্র (Documents Issued)</span>
+                                  <span className="text-slate-400 block font-bold text-[10px] uppercase">প্রস্থানকালে প্রদত্ত কাগজপত্র</span>
                                   {trip.documentsGiven?.length > 0 ? (
                                     <div className="flex flex-wrap gap-1">
                                       {trip.documentsGiven.map((doc: string) => (
@@ -929,7 +929,7 @@ const Trips: React.FC = () => {
                                 </div>
 
                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
-                                  <span className="text-slate-400 block font-bold text-[10px] uppercase">প্রস্থানকালে প্রদত্ত সরঞ্জাম (Tools Issued)</span>
+                                  <span className="text-slate-400 block font-bold text-[10px] uppercase">প্রস্থানকালে প্রদত্ত সরঞ্জাম</span>
                                   {trip.toolsGiven?.length > 0 ? (
                                     <div className="flex flex-wrap gap-1">
                                       {trip.toolsGiven.map((tool: string) => (
@@ -950,7 +950,7 @@ const Trips: React.FC = () => {
                                   <div className="flex justify-between items-center border-b border-emerald-100/60 pb-1.5">
                                     <span className="font-bold text-emerald-800 text-[11px] flex items-center gap-1">
                                       <CheckCircle2 size={12} className="text-emerald-600" />
-                                      <span>গাড়ি ফেরত যাচাই রিপোর্ট (Return Inspection Details)</span>
+                                      <span>গাড়ি ফেরত যাচাই রিপোর্ট</span>
                                     </span>
                                     <span className="text-[10px] text-emerald-600 font-medium">
                                       যাচাইকাল: {formatTripTime(trip.inspectionOnReturn.inspectedAt)}
@@ -965,7 +965,7 @@ const Trips: React.FC = () => {
                                         <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg space-y-1">
                                           <p className="font-bold text-[10px] flex items-center gap-1 text-rose-800">
                                             <AlertTriangle size={12} />
-                                            <span>অনুপস্থিত বা হারানো কাগজপত্র (Missing Docs)!</span>
+                                            <span>অনুপস্থিত বা হারানো কাগজপত্র!</span>
                                           </p>
                                           <div className="flex flex-wrap gap-1">
                                             {trip.inspectionOnReturn.missingDocuments.map((doc: string) => (
@@ -988,7 +988,7 @@ const Trips: React.FC = () => {
                                         <div className="p-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg space-y-1">
                                           <p className="font-bold text-[10px] flex items-center gap-1 text-rose-800">
                                             <AlertTriangle size={12} />
-                                            <span>অনুপস্থিত বা হারানো সরঞ্জাম (Missing Tools)!</span>
+                                            <span>অনুপস্থিত বা হারানো সরঞ্জাম!</span>
                                           </p>
                                           <div className="flex flex-wrap gap-1">
                                             {trip.inspectionOnReturn.missingTools.map((tool: string) => (
@@ -1008,7 +1008,7 @@ const Trips: React.FC = () => {
 
                                   {/* Return Inspection Notes */}
                                   <div>
-                                    <span className="text-slate-500 block mb-1">রিটার্ন মন্তব্য / নোট (Inspection Notes):</span>
+                                    <span className="text-slate-500 block mb-1">রিটার্ন মন্তব্য / নোট:</span>
                                     <p className="p-2 bg-white rounded border border-emerald-100 text-slate-700 italic text-[11px]">
                                       {trip.inspectionOnReturn.notes || 'কোন সমস্যা পাওয়া যায়নি। সবকিছু অক্ষত অবস্থায় ফেরত পাওয়া গেছে।'}
                                     </p>

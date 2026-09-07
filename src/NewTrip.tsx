@@ -443,7 +443,7 @@ const NewTrip: React.FC = () => {
     <div className="space-y-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">New Trip Dispatch (নতুন ট্রিপ এন্ট্রি)</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">নতুন ট্রিপ এন্ট্রি</h2>
           <p className="text-xs text-slate-500">Register and dispatch vehicles for pending trips.</p>
         </div>
       </div>
@@ -461,7 +461,7 @@ const NewTrip: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div className="md:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700">🏢 ট্রিপ অপারেটিং ডিপো (Dispatch Warehouse):</span>
+                    <span className="text-xs font-bold text-slate-700">🏢 ট্রিপ অপারেটিং ডিপো:</span>
                     <select
                       value={formData.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')}
                       onChange={e => {
@@ -614,7 +614,7 @@ const NewTrip: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">টোল বাজেট (Estimated Toll Amount)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">আনুমানিক টোল বাজেট (টাকা)</label>
                   <input 
                     type="number" 
                     className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-800 text-xs sm:text-sm font-mono font-medium transition-all"
@@ -627,7 +627,7 @@ const NewTrip: React.FC = () => {
 
               <div className="flex gap-3 pt-3 border-t border-slate-200">
                 <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                  {isSubmitting ? "সংরক্ষণ করা হচ্ছে (Saving...)" : "Create Pending Trip (ট্রিপ এন্ট্রি করুন)"}
+                  {isSubmitting ? "সংরক্ষণ করা হচ্ছে..." : "ট্রিপ এন্ট্রি করুন"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>Cancel</Button>
               </div>
@@ -636,7 +636,7 @@ const NewTrip: React.FC = () => {
 
           {/* Live Vehicle Information Section - Directly below Register New Trip Form */}
           {!selectedVehicle ? (
-            <Card title="গাড়ির লাইভ তথ্য (Live Vehicle Status)" className="mt-6 border-slate-200 bg-slate-50/80">
+            <Card title="গাড়ির লাইভ তথ্য" className="mt-6 border-slate-200 bg-slate-50/80">
               <div className="flex items-start gap-3 p-4 text-slate-600 text-sm">
                 <Info size={20} className="text-blue-500 mt-0.5 shrink-0" />
                 <div className="space-y-1">
@@ -665,11 +665,11 @@ const NewTrip: React.FC = () => {
                 {/* 1. Vehicle Core Profile Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl space-y-0.5">
-                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">গাড়ির ধরণ (Type)</span>
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">গাড়ির ধরণ</span>
                     <span className="font-black text-slate-800 text-sm">{selectedVehicle.type || 'Standard'}</span>
                   </div>
                   <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-0.5">
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">স্ট্যাটাস (Status)</span>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">স্ট্যাটাস</span>
                     <span className="font-black text-emerald-700 text-sm flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       {selectedVehicle.status || 'Available'}
@@ -734,7 +734,7 @@ const NewTrip: React.FC = () => {
                   <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                     <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
                       <Wrench size={16} className="text-blue-600" />
-                      <span>টুলস অপশন (Vehicle Tools)</span>
+                      <span>টুলস অপশন</span>
                     </h4>
                     <span className="text-[11px] text-slate-500 font-medium">গাড়ির প্রোফাইল অনুযায়ী</span>
                   </div>
@@ -796,7 +796,7 @@ const NewTrip: React.FC = () => {
                   <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                     <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
                       <FileText size={16} className="text-emerald-600" />
-                      <span>কাগজপত্র স্ট্যাটাস (Documents Status)</span>
+                      <span>কাগজপত্র স্ট্যাটাস</span>
                     </h4>
                     <span className="text-[11px] text-slate-500 font-medium">বৈধতা ও জব্দ সংক্রান্ত তথ্য</span>
                   </div>
@@ -871,7 +871,7 @@ const NewTrip: React.FC = () => {
                   <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                     <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs sm:text-sm">
                       <ShieldAlert size={15} className="text-red-500" />
-                      <span>মামলার বিবরণ (Legal Cases)</span>
+                      <span>মামলার বিবরণ</span>
                     </h4>
                     <span className="text-[10px] text-slate-400 font-medium">মোট: {totalVehicleCases.length} টি</span>
                   </div>
@@ -879,7 +879,7 @@ const NewTrip: React.FC = () => {
                   {activeVehicleCases.length === 0 ? (
                     <div className="bg-emerald-50/60 border border-emerald-100 p-3 rounded-xl flex items-center gap-2 text-emerald-800">
                       <CheckCircle size={16} className="text-emerald-500 shrink-0" />
-                      <span className="font-semibold text-xs">এই গাড়ির কোনো সক্রিয় বা বকেয়া মামলা নেই (No Active Cases)</span>
+                      <span className="font-semibold text-xs">এই গাড়ির কোনো সক্রিয় বা বকেয়া মামলা নেই</span>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -924,7 +924,7 @@ const NewTrip: React.FC = () => {
                     <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                       <h4 className="font-bold text-amber-800 flex items-center gap-1.5 text-xs sm:text-sm">
                         <AlertTriangle size={15} className="text-amber-500" />
-                        <span>মিসিং মালামাল রিপোর্ট (Missing Reports)</span>
+                        <span>মিসিং মালামাল রিপোর্ট</span>
                       </h4>
                       <span className="text-[10px] text-amber-600 font-bold">{activeMissingReports.length} টি অনিষ্পন্ন</span>
                     </div>
@@ -958,15 +958,15 @@ const NewTrip: React.FC = () => {
           )}
         </div>
         <div>
-          <Card title="নির্দেশনাবলী (Guidelines)">
+          <Card title="নির্দেশনাবলী">
             <ul className="space-y-3.5 text-sm text-slate-600">
               <li className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">১</span>
-                <span>নতুন ট্রিপ শুরু করার জন্য গাড়িটিকে অবশ্যই <strong>'Available'</strong> (উপলব্ধ) স্ট্যাটাসে থাকতে হবে।</span>
+                <span>নতুন ট্রিপ শুরু করার জন্য গাড়িটিকে অবশ্যই <strong>'Available'</strong> স্ট্যাটাসে থাকতে হবে।</span>
               </li>
               <li className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">২</span>
-                <span>চালকের ইউনিক আইডি (Driver ID) সার্চ করলে নাম ও ফোন নম্বর স্বয়ংক্রিয়ভাবে লোড হবে।</span>
+                <span>চালকের আইডি সার্চ করলে নাম ও ফোন নম্বর স্বয়ংক্রিয়ভাবে লোড হবে।</span>
               </li>
               <li className="flex gap-3">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">৩</span>

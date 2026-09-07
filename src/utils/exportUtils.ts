@@ -33,7 +33,7 @@ export const downloadCSV = (headers: string[], rows: string[][], filename: strin
 export const exportPDFWindow = (title: string, subtitle: string, metadata: { label: string; value: string }[], headers: string[], rows: string[][], footerNotes?: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert("পপ-আপ উইন্ডোটি ব্লক করা হয়েছে। দয়া করে আপনার ব্রাউজারের পপ-আপ সেটিংস পারমিশন দিন এবং পুনরায় চেষ্টা করুন। (Popup was blocked. Please enable popups for this site.)");
+    alert("পপ-আপ উইন্ডোটি ব্লক করা হয়েছে। দয়া করে আপনার ব্রাউজারের পপ-আপ সেটিংস পারমিশন দিন এবং পুনরায় চেষ্টা করুন।");
     return;
   }
 
@@ -310,25 +310,25 @@ export const exportStaffProfilePrint = (
     return;
   }
 
-  const roleLabel = staff.role === 'Helper' ? 'হেলপার (Helper)' : 'ড্রাইভার (Driver)';
+  const roleLabel = staff.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার';
   const joinDate = staff.createdAt?.toDate ? staff.createdAt.toDate().toLocaleDateString('bn-BD') : (staff.createdAt ? new Date(staff.createdAt).toLocaleDateString('bn-BD') : 'N/A');
   const printDate = new Date().toLocaleString('bn-BD');
 
   // Relation translation helper
   const getRelationLabel = (rel?: string) => {
     switch (rel) {
-      case 'Father': return 'বাবা (Father)';
-      case 'Mother': return 'মা (Mother)';
-      case 'Wife': return 'স্ত্রী (Wife)';
-      case 'Husband': return 'স্বামী (Husband)';
-      case 'Brother': return 'ভাই (Brother)';
-      case 'Sister': return 'বোন (Sister)';
-      case 'Son': return 'ছেলে (Son)';
-      case 'Daughter': return 'মেয়ে (Daughter)';
-      case 'Guardian': return 'অভিভাবক (Guardian)';
-      case 'Uncle': return 'চাচা/মামা (Uncle)';
-      case 'Relative': return 'আত্মীয়/স্বজন (Relative)';
-      case 'Other': return 'অন্যান্য (Other)';
+      case 'Father': return 'বাবা';
+      case 'Mother': return 'মা';
+      case 'Wife': return 'স্ত্রী';
+      case 'Husband': return 'স্বামী';
+      case 'Brother': return 'ভাই';
+      case 'Sister': return 'বোন';
+      case 'Son': return 'ছেলে';
+      case 'Daughter': return 'মেয়ে';
+      case 'Guardian': return 'অভিভাবক';
+      case 'Uncle': return 'চাচা/মামা';
+      case 'Relative': return 'আত্মীয়/স্বজন';
+      case 'Other': return 'অন্যান্য';
       default: return rel || 'উল্লেখ নেই';
     }
   };
@@ -636,7 +636,7 @@ export const exportStaffProfilePrint = (
             <span class="info-val">${staff.familyPhone || 'দেওয়া হয়নি'}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">নাম্বারটি কার (Relation):</span>
+            <span class="info-label">সম্পর্ক:</span>
             <span class="info-val" style="color:#0284c7;">${getRelationLabel(staff.familyPhoneRelation)}</span>
           </div>
           <div class="info-row" style="flex-direction:column; gap:4px; border-bottom:none;">
@@ -662,7 +662,7 @@ export const exportStaffProfilePrint = (
       <!-- Recent Trips History -->
       <div class="card" style="margin-bottom:20px;">
         <div class="card-header" style="display:flex; justify-content:space-between;">
-          <span>সাম্প্রতিক ট্রিপ রেকর্ডসমূহ (Recent Trip History)</span>
+          <span>সাম্প্রতিক ট্রিপ রেকর্ডসমূহ</span>
           <span style="font-weight:normal; color:#64748b;">সর্বমোট: ${performance.totalTrips} টি</span>
         </div>
         <table>
@@ -729,18 +729,18 @@ export const downloadStaffBiodataFile = (
 ) => {
   const getRelationLabel = (rel?: string) => {
     switch (rel) {
-      case 'Father': return 'বাবা (Father)';
-      case 'Mother': return 'মা (Mother)';
-      case 'Wife': return 'স্ত্রী (Wife)';
-      case 'Husband': return 'স্বামী (Husband)';
-      case 'Brother': return 'ভাই (Brother)';
-      case 'Sister': return 'বোন (Sister)';
-      case 'Son': return 'ছেলে (Son)';
-      case 'Daughter': return 'মেয়ে (Daughter)';
-      case 'Guardian': return 'অভিভাবক (Guardian)';
-      case 'Uncle': return 'চাচা/মামা (Uncle)';
-      case 'Relative': return 'আত্মীয়/স্বজন (Relative)';
-      case 'Other': return 'অন্যান্য (Other)';
+      case 'Father': return 'বাবা';
+      case 'Mother': return 'মা';
+      case 'Wife': return 'স্ত্রী';
+      case 'Husband': return 'স্বামী';
+      case 'Brother': return 'ভাই';
+      case 'Sister': return 'বোন';
+      case 'Son': return 'ছেলে';
+      case 'Daughter': return 'মেয়ে';
+      case 'Guardian': return 'অভিভাবক';
+      case 'Uncle': return 'চাচা/মামা';
+      case 'Relative': return 'আত্মীয়/স্বজন';
+      case 'Other': return 'অন্যান্য';
       default: return rel || 'উল্লেখ নেই';
     }
   };
@@ -752,19 +752,19 @@ FLEET LOGISTICS & TRANSPORT MANAGEMENT SYSTEM
 
 ১. ব্যক্তিগত ও পরিচিতি তথ্য:
 -----------------------------------------------------
-এমপ্লয়ী আইডি (ID)     : ${staff.driverId}
-পূর্ণ নাম (Full Name)   : ${staff.name}
-পদবি (Role)            : ${staff.role === 'Helper' ? 'হেলপার (Helper)' : 'ড্রাইভার (Driver)'}
-মোবাইল নম্বর (Phone)   : ${staff.phoneNumber || 'উল্লেখ নেই'}
-লাইসেন্স নম্বর (License): ${staff.licenseNo || 'দেওয়া হয়নি'}
+এমপ্লয়ী আইডি         : ${staff.driverId}
+পূর্ণ নাম             : ${staff.name}
+পদবি                : ${staff.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার'}
+মোবাইল নম্বর         : ${staff.phoneNumber || 'উল্লেখ নেই'}
+লাইসেন্স নম্বর        : ${staff.licenseNo || 'দেওয়া হয়নি'}
 যোগদানের তারিখ         : ${staff.createdAt?.toDate ? staff.createdAt.toDate().toLocaleDateString('bn-BD') : (staff.createdAt || 'N/A')}
 বর্তমান স্ট্যাটাস      : ${staff.isSuspended ? `সাসপেন্ডেড (${staff.suspensionDays || 0} দিন)` : performance.statusText}
 
 ২. পারিবারিক ও জরুরী যোগাযোগ:
 -----------------------------------------------------
-পারিবারিক নম্বর (Family): ${staff.familyPhone || 'দেওয়া হয়নি'}
-নাম্বারটি কার (Relation): ${getRelationLabel(staff.familyPhoneRelation)}
-ঠিকানা (Address)       : ${staff.address || 'কোনো ঠিকানা এন্ট্রি করা হয়নি'}
+পারিবারিক নম্বর      : ${staff.familyPhone || 'দেওয়া হয়নি'}
+সম্পর্ক              : ${getRelationLabel(staff.familyPhoneRelation)}
+ঠিকানা               : ${staff.address || 'কোনো ঠিকানা এন্ট্রি করা হয়নি'}
 
 ৩. পারফরম্যান্স স্কোরকার্ড ও ট্রিপ পরিসংখ্যান:
 -----------------------------------------------------

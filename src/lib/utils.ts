@@ -28,18 +28,18 @@ export const STAFF_ROLES = ['Driver', 'Helper'] as const;
 export type StaffRole = typeof STAFF_ROLES[number];
 
 export const FAMILY_RELATIONS = [
-  { value: 'Father', label: 'বাবা (Father)' },
-  { value: 'Mother', label: 'মা (Mother)' },
-  { value: 'Wife', label: 'স্ত্রী (Wife)' },
-  { value: 'Husband', label: 'স্বামী (Husband)' },
-  { value: 'Brother', label: 'ভাই (Brother)' },
-  { value: 'Sister', label: 'বোন (Sister)' },
-  { value: 'Son', label: 'ছেলে (Son)' },
-  { value: 'Daughter', label: 'মেয়ে (Daughter)' },
-  { value: 'Guardian', label: 'অভিভাবক (Guardian)' },
-  { value: 'Uncle', label: 'চাচা / মামা (Uncle)' },
-  { value: 'Relative', label: 'আত্মীয় / স্বজন (Relative)' },
-  { value: 'Other', label: 'অন্যান্য (Other)' }
+  { value: 'Father', label: 'বাবা' },
+  { value: 'Mother', label: 'মা' },
+  { value: 'Wife', label: 'স্ত্রী' },
+  { value: 'Husband', label: 'স্বামী' },
+  { value: 'Brother', label: 'ভাই' },
+  { value: 'Sister', label: 'বোন' },
+  { value: 'Son', label: 'ছেলে' },
+  { value: 'Daughter', label: 'মেয়ে' },
+  { value: 'Guardian', label: 'অভিভাবক' },
+  { value: 'Uncle', label: 'চাচা / মামা' },
+  { value: 'Relative', label: 'আত্মীয় / স্বজন' },
+  { value: 'Other', label: 'অন্যান্য' }
 ] as const;
 
 export type FamilyRelation = typeof FAMILY_RELATIONS[number]['value'];

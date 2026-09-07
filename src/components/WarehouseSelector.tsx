@@ -167,7 +167,7 @@ export const WarehouseSelector: React.FC<WarehouseSelectorProps> = ({ compact = 
                     <Globe size={14} />
                   </div>
                   <div>
-                    <p className="text-xs font-black">🌐 সকল ওয়ারহাউজ (All)</p>
+                    <p className="text-xs font-black">🌐 সকল ওয়ারহাউজ</p>
                     <p className="text-[10px] text-slate-400 font-medium">সমগ্র ফ্লিট ও সব ডিপো একসাথে দেখুন</p>
                   </div>
                 </div>

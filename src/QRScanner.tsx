@@ -257,9 +257,9 @@ const QRScanner: React.FC = () => {
 
           let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন এবং নিশ্চিত করুন অন্য কোনো অ্যাপে ক্যামেরা চালু নেই।";
           if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
-            errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)। আপনি যদি ডেভেলপমেন্ট বা স্যান্ডবক্স আইফ্রেম মুডে থাকেন, অনুগ্রহ করে গাড়ির নম্বর দিয়ে সার্চ (Manual) মুড ব্যবহার করুন।";
+            errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি। আপনি যদি ডেভেলপমেন্ট বা স্যান্ডবক্স আইফ্রেম মুডে থাকেন, অনুগ্রহ করে গাড়ির নম্বর দিয়ে সার্চ মুড ব্যবহার করুন।";
           } else if (errStr.includes("NotAllowedError") || errStr.includes("permission") || (err && err.name === "NotAllowedError")) {
-            errMsg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি (Permission Denied)। অনুগ্রহ করে ব্রাউজার সেটিংসে ক্যামেরা অ্যাক্সেস দিন অথবা গাড়ির নম্বর দিয়ে সার্চ (Manual) মুড ব্যবহার করুন।";
+            errMsg = "ক্যামেরা ব্যবহারের অনুমতি দেওয়া হয়নি। অনুগ্রহ করে ব্রাউজার সেটিংসে ক্যামেরা অ্যাক্সেস দিন অথবা গাড়ির নম্বর দিয়ে সার্চ মুড ব্যবহার করুন।";
           }
           setScannerError(errMsg);
           setScannerActive(false);
@@ -277,7 +277,7 @@ const QRScanner: React.FC = () => {
         }
         let errMsg = "ক্যামেরা চালু করা যায়নি। অনুগ্রহ করে ক্যামেরা ব্যবহারের অনুমতি দিন।";
         if (errStr.includes("NotFoundError") || errStr.includes("device not found") || (err && err.name === "NotFoundError")) {
-          errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি (NotFoundError)।";
+          errMsg = "ক্যামেরা ডিভাইসটি খুঁজে পাওয়া যায়নি।";
         }
         setScannerError(errMsg);
         setScannerActive(false);
@@ -665,7 +665,7 @@ const QRScanner: React.FC = () => {
         >
           <div className="flex items-center gap-2.5 text-text-main font-bold text-sm">
             <Info size={16} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-            <span>স্ক্যানকৃত গাড়ির লাইভ তথ্য (Live Vehicle Info): {vehicle.vehicleNumber}</span>
+            <span>স্ক্যানকৃত গাড়ির লাইভ তথ্য: {vehicle.vehicleNumber}</span>
             <span className={cn(
               "text-[10px] font-black px-2 py-0.5 rounded-full uppercase border ml-1",
               vehicle.status === 'Available' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
@@ -699,11 +699,11 @@ const QRScanner: React.FC = () => {
                 <span className={cn(
                   "text-[10px] font-bold uppercase tracking-wider block",
                   isEmerald ? "text-[#1b6b54]" : isCrimson ? "text-[#be123c]" : isAmber ? "text-[#92400e]" : "text-blue-600"
-                )}>গাড়ির ধরণ (Type)</span>
+                )}>গাড়ির ধরণ</span>
                 <span className="font-black text-slate-800 text-sm">{vehicle.type || 'Standard'}</span>
               </div>
               <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">স্ট্যাটাস (Status)</span>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">স্ট্যাটাস</span>
                 <span className={cn(
                   "font-black text-sm flex items-center gap-1",
                   vehicle.status === 'Available' ? "text-emerald-700" :
@@ -716,9 +716,9 @@ const QRScanner: React.FC = () => {
                     vehicle.status === 'On Trip' ? (isEmerald ? "bg-[#2ea884] animate-pulse" : isCrimson ? "bg-[#ea2340] animate-pulse" : isAmber ? "bg-[#f59e0b] animate-pulse" : "bg-blue-500 animate-pulse") :
                     vehicle.status === 'Maintenance' ? "bg-amber-500" : "bg-slate-400"
                   )} />
-                  {vehicle.status === 'Available' ? 'Available (স্টকে)' : 
-                   vehicle.status === 'On Trip' ? 'On Trip (ট্রিপে)' : 
-                   vehicle.status === 'Maintenance' ? 'Maintenance (মেরামত)' : vehicle.status}
+                  {vehicle.status === 'Available' ? 'স্টকে প্রস্তুত' : 
+                   vehicle.status === 'On Trip' ? 'ট্রিপে চলমান' : 
+                   vehicle.status === 'Maintenance' ? 'মেরামতে' : vehicle.status}
                 </span>
               </div>
               <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1">
@@ -749,7 +749,7 @@ const QRScanner: React.FC = () => {
               <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <Wrench size={14} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-                  <span>টুলস অপশন (Vehicle Tools)</span>
+                  <span>টুলস অপশন</span>
                 </h4>
                 <span className="text-[10px] text-slate-400 font-medium">প্রোফাইল থেকে লাইভ সিঙ্ক</span>
               </div>
@@ -826,7 +826,7 @@ const QRScanner: React.FC = () => {
               <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <FileText size={14} className="text-emerald-600" />
-                  <span>কাগজপত্র স্ট্যাটাস (Documents Status)</span>
+                  <span>কাগজপত্র স্ট্যাটাস</span>
                 </h4>
                 <span className="text-[10px] text-slate-400 font-medium">বৈধতা ও জব্দ সংক্রান্ত তথ্য</span>
               </div>
@@ -908,7 +908,7 @@ const QRScanner: React.FC = () => {
               <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                 <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
                   <ShieldAlert size={14} className="text-red-500" />
-                  <span>মামলার বিবরণ (Legal Cases)</span>
+                  <span>মামলার বিবরণ</span>
                 </h4>
                 <span className="text-[10px] text-slate-400 font-medium">মোট: {totalVehicleCases.length} টি মামলা</span>
               </div>
@@ -916,7 +916,7 @@ const QRScanner: React.FC = () => {
               {activeVehicleCases.length === 0 ? (
                 <div className="bg-emerald-50/40 border border-emerald-100 p-3 rounded-xl flex items-center gap-2 text-emerald-800">
                   <CheckCircle size={15} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[11px]">এই গাড়ির কোনো সক্রিয় বা বকেয়া মামলা নেই (No Active Cases)</span>
+                  <span className="font-semibold text-[11px]">এই গাড়ির কোনো সক্রিয় বা বকেয়া মামলা নেই</span>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -975,7 +975,7 @@ const QRScanner: React.FC = () => {
         >
           <div className="flex items-center gap-2 text-text-main font-bold text-sm">
             <Wrench size={16} className="text-amber-500" />
-            <span>তাৎক্ষণিক স্ট্যাটাস পরিবর্তন (Quick Status Actions)</span>
+            <span>তাৎক্ষণিক স্ট্যাটাস পরিবর্তন</span>
           </div>
           {isQuickActionsExpanded ? (
             <ChevronUp size={16} className="text-slate-500" />
@@ -1075,7 +1075,7 @@ const QRScanner: React.FC = () => {
                   <Wrench size={24} />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-bold text-amber-800 text-sm">গাড়িটি বর্তমানে মেরামত/মেইনটেনেন্সে রয়েছে (Vehicle in Maintenance)</h4>
+                  <h4 className="font-bold text-amber-800 text-sm">গাড়িটি বর্তমানে মেইনটেনেন্সে রয়েছে</h4>
                   <p className="text-xs text-amber-600 mt-1">
                     গাড়িটি বর্তমানে মেরামত বা রক্ষণাবেক্ষণের জন্য মেইনটেনেন্স অবস্থায় রয়েছে। ট্রিপ শুরু করার পূর্বে গাড়িটিকে এভেলেবেল করুন।
                   </p>
@@ -1100,15 +1100,15 @@ const QRScanner: React.FC = () => {
                 <AlertTriangle size={24} />
               </div>
               <div className="flex-1">
-                <h4 className="font-bold text-orange-800 text-sm">গাড়িটি বর্তমানে ট্রিপে রয়েছে (Vehicle On Trip)</h4>
+                <h4 className="font-bold text-orange-800 text-sm">গাড়িটি বর্তমানে ট্রিপে রয়েছে</h4>
                 <p className="text-xs text-orange-600 mt-1">
-                  গাড়িটি বর্তমানে ট্রিপে নিযুক্ত আছে। পুনরায় ট্রিপ শুরু করার পূর্বে গাড়িটিকে গ্যারেজে ইন (Return Scan) করতে হবে।
+                  গাড়িটি বর্তমানে ট্রিপে নিযুক্ত আছে। পুনরায় ট্রিপ শুরু করার পূর্বে গাড়িটিকে গ্যারেজে ইন করতে হবে।
                 </p>
               </div>
             </div>
 
             {activeTrip ? (
-              <Card title="চলমান ট্রিপের বিবরণ (Active Trip Details)">
+              <Card title="চলমান ট্রিপের বিবরণ">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                   <div className="space-y-3">
                     <div className="flex justify-between border-b pb-2">
@@ -1195,9 +1195,9 @@ const QRScanner: React.FC = () => {
               <div className="p-3 bg-amber-100 text-amber-600 rounded-full">
                 <AlertTriangle size={24} />
               </div>
-              <h4 className="font-bold text-amber-800 text-sm">কোনো পেন্ডিং ট্রিপ খুঁজে পাওয়া যায়নি (No Pending Trip)</h4>
+              <h4 className="font-bold text-amber-800 text-sm">কোনো পেন্ডিং ট্রিপ পাওয়া যায়নি</h4>
               <p className="text-xs text-slate-500 max-w-md">
-                এই গাড়িটি বর্তমানে স্টকে Available রয়েছে, কিন্তু ম্যানেজার প্যানেল থেকে কোনো পেন্ডিং ট্রিপ এন্ট্রি করা হয়নি। দয়া করে প্রথমে <strong>Trips (ট্রিপস)</strong> স্ক্রিন থেকে গাড়িটির জন্য ড্রাইভার, হেলপার ও গন্তব্য সেট করে একটি নতুন ট্রিপ এন্ট্রি করুন।
+                এই গাড়িটি বর্তমানে স্টকে Available রয়েছে, কিন্তু ম্যানেজার প্যানেল থেকে কোনো পেন্ডিং ট্রিপ এন্ট্রি করা হয়নি। দয়া করে প্রথমে <strong>ট্রিপস</strong> স্ক্রিন থেকে গাড়িটির জন্য ড্রাইভার, হেলপার ও গন্তব্য সেট করে একটি নতুন ট্রিপ এন্ট্রি করুন।
               </p>
               <Button variant="secondary" onClick={() => setScanResult(null)} className="w-48 text-xs">
                 পুনরায় স্ক্যান করুন
@@ -1251,7 +1251,7 @@ const QRScanner: React.FC = () => {
                       {isSeizedWarningExpanded && (
                         <div className="p-4 border-t border-red-200 bg-red-50/50 text-red-700 space-y-2">
                           <p className="font-semibold text-red-800">
-                            গাড়িটির বিরুদ্ধে সক্রিয় মামলা থাকায় নিম্নোক্ত কাগজপত্রসমূহ বর্তমানে জব্দ রয়েছে (Seized Documents):
+                            গাড়িটির বিরুদ্ধে সক্রিয় মামলা থাকায় নিম্নোক্ত কাগজপত্রসমূহ বর্তমানে জব্দ রয়েছে:
                           </p>
                           <div className="flex flex-wrap gap-1.5 my-1">
                             {seizedDocs.map((doc: string) => (
@@ -1272,7 +1272,7 @@ const QRScanner: React.FC = () => {
                   <div className="bg-slate-50 border p-4 rounded-xl space-y-3 text-xs">
                     <h5 className="font-bold text-slate-700 border-b pb-1.5 flex items-center gap-1.5">
                       <ClipboardCheck size={14} className="text-slate-500" />
-                      এন্ট্রি করা ট্রিপের বিবরণ (Registered Trip Details)
+                      এন্ট্রি করা ট্রিপের বিবরণ
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                       <div className="flex justify-between items-center border-b pb-1">
@@ -1321,7 +1321,7 @@ const QRScanner: React.FC = () => {
                     <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                       <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
                         <Wrench size={15} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-                        <span>১. গাড়ির টুলস অপশন (Vehicle Tools from Profile)</span>
+                        <span>১. গাড়ির টুলস অপশন</span>
                       </h4>
                       <span className="text-[11px] text-slate-500 font-medium">প্রোফাইল থেকে সরাসরি সিঙ্ককৃত</span>
                     </div>
@@ -1383,7 +1383,7 @@ const QRScanner: React.FC = () => {
                     <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
                       <h4 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs sm:text-sm">
                         <FileText size={15} className="text-emerald-600" />
-                        <span>২. গাড়ির কাগজপত্র স্ট্যাটাস (Documents Status from Profile)</span>
+                        <span>২. গাড়ির কাগজপত্র স্ট্যাটাস</span>
                       </h4>
                       <span className="text-[11px] text-slate-500 font-medium">বৈধতা ও জব্দ সংক্রান্ত তথ্য</span>
                     </div>
@@ -1485,7 +1485,7 @@ const QRScanner: React.FC = () => {
                 <CheckCircle2 size={24} className="text-emerald-500" />
               </div>
               <div className="flex-1">
-                <h4 className="font-bold text-slate-800 text-sm">গাড়িটি বর্তমানে এভেলেবেল আছে (Vehicle is in Garage)</h4>
+                <h4 className="font-bold text-slate-800 text-sm">গাড়িটি বর্তমানে গ্যারেজে প্রস্তুত আছে</h4>
                 <p className="text-xs text-slate-500 mt-1">
                   গাড়িটি বর্তমানে গ্যারেজে স্টকে আছে। এটি ট্রিপে যাওয়ার জন্য সম্পূর্ণ প্রস্তুত।
                 </p>
@@ -1493,7 +1493,7 @@ const QRScanner: React.FC = () => {
             </div>
 
             {lastTrip && (
-              <Card title="সর্বশেষ সম্পন্ন ট্রিপের ইতিহাস (Last Completed Trip History)">
+              <Card title="সর্বশেষ সম্পন্ন ট্রিপের ইতিহাস">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div className="space-y-2">
                     <p className="flex justify-between border-b pb-1">
@@ -1547,7 +1547,7 @@ const QRScanner: React.FC = () => {
 
       return (
         <div className="space-y-6">
-          <Card title={`গাড়ি ফেরত (In-Garage Scan): ${vehicle.vehicleNumber}`}>
+          <Card title={`গাড়ি ফেরত স্ক্যান: ${vehicle.vehicleNumber}`}>
           {returnStatus === 'success' ? (
             <div className="text-center py-8 space-y-3">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-md">
@@ -1577,7 +1577,7 @@ const QRScanner: React.FC = () => {
                 isAmber ? "bg-[#fef3c7] border-[#fde68a] text-[#78350f]" :
                 "bg-blue-50 border-blue-100 text-blue-900"
               )}>
-                <p><strong>চলমান ট্রিপের সারাংশ (Active Trip Info):</strong></p>
+                <p><strong>চলমান ট্রিপের সারাংশ:</strong></p>
                 <div className="grid grid-cols-2 gap-3 mt-2 text-slate-700">
                   <div className="flex items-center gap-1">
                     <span>• ড্রাইভার: </span>
@@ -1606,7 +1606,7 @@ const QRScanner: React.FC = () => {
               <div className="space-y-3 border-t pt-4">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-700 block">
-                    কাগজপত্র জমা ও সত্যতা যাচাই (Documents Return Check)
+                    কাগজপত্র জমা ও সত্যতা যাচাই
                   </label>
                   <span className="text-[10px] text-slate-500">আউট করার সময় যে সকল ডকুমেন্ট নিয়ে গেছিল নিচে তা লাল বাটনে চাপ দিয়ে missing চিহ্নিত করুন</span>
                 </div>
@@ -1644,7 +1644,7 @@ const QRScanner: React.FC = () => {
               <div className="space-y-3 border-t pt-4">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-slate-700 block">
-                    গাড়ির সরঞ্জাম ও টুলস ফেরত যাচাই (Tools Return Verification)
+                    গাড়ির সরঞ্জাম ও টুলস ফেরত যাচাই
                   </label>
                   <span className="text-[10px] text-slate-500">গাড়ি রিলিজের সময় নিয়ে যাওয়া টুলসগুলো চেক করে Missing থাকলে সিলেক্ট করুন</span>
                 </div>
@@ -1682,7 +1682,7 @@ const QRScanner: React.FC = () => {
                   <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-xs text-red-800 flex items-start gap-2.5">
                     <AlertTriangle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="font-bold">সতর্কতা: কিছু আইটেম অনুপস্থিত (Missing Items Found)</p>
+                      <p className="font-bold">সতর্কতা: কিছু আইটেম অনুপস্থিত</p>
                       <p className="text-[11px] text-red-600 mt-0.5">
                         রিটার্ন সাবমিট করার পর অনুপস্থিত আইটেমগুলোর জন্য একটি পেন্ডিং ড্যামেজ/মিসিং রিপোর্ট অটো তৈরি হবে।
                       </p>
@@ -1860,7 +1860,7 @@ const QRScanner: React.FC = () => {
 
           {activeScanMode === 'plate_camera' ? (
             <Card 
-              title="এআই নাম্বার প্লেট স্ক্যানার (AI Plate Recognition)"
+              title="এআই নাম্বার প্লেট স্ক্যানার"
               className={cn(
                 "border shadow-xs",
                 isEmerald ? "border-emerald-200" :
@@ -1925,7 +1925,7 @@ const QRScanner: React.FC = () => {
               </div>
             </Card>
           ) : activeScanMode === 'qr_camera' ? (
-            <Card title="কিউআর কোড ক্যামেরা (Live QR Stream)">
+            <Card title="কিউআর কোড ক্যামেরা">
               <div className="space-y-4">
                 {!scannerActive ? (
                   <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center bg-slate-50 space-y-4">
@@ -1965,7 +1965,7 @@ const QRScanner: React.FC = () => {
           ) : (
             /* Manual Vehicle Search & Select Card */
             <Card 
-              title="গাড়ির নম্বর লিখে সিলেক্ট করুন (Manual Entry)" 
+              title="গাড়ির নম্বর লিখে সিলেক্ট করুন" 
               className={cn(
                 "border-2 shadow-sm",
                 isEmerald ? "border-emerald-200" :
@@ -1978,7 +1978,7 @@ const QRScanner: React.FC = () => {
                 {/* Search Box */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-600 block text-[11px]">
-                    গাড়ির নম্বর বা ডিজিট দিয়ে খুঁজুন (Search Plate / Last 4 Digits)
+                    গাড়ির নম্বর বা ডিজিট দিয়ে খুঁজুন
                   </label>
                   <div className="relative">
                     <input 
@@ -2138,7 +2138,7 @@ const QRScanner: React.FC = () => {
                 {/* Dropdown Select option as fallback */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-600 block text-[11px]">
-                    অথবা ড্রপডাউন থেকে নির্বাচন করুন (Or Select from List)
+                    অথবা ড্রপডাউন থেকে নির্বাচন করুন
                   </label>
                   <select 
                     className={cn(
@@ -2174,7 +2174,7 @@ const QRScanner: React.FC = () => {
                 {/* Action Type Selection (OUT vs IN) */}
                 <div className="space-y-1.5 pt-1">
                   <label className="font-bold text-slate-700 block text-xs">
-                    অ্যাকশন সিলেক্ট করুন (Action Mode)
+                    অ্যাকশন সিলেক্ট করুন
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -2188,7 +2188,7 @@ const QRScanner: React.FC = () => {
                       )}
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                      <span>OUT (ছাড়পত্র স্ক্যান)</span>
+                      <span>গাড়ি ছাড়পত্র</span>
                     </button>
                     <button
                       type="button"
@@ -2210,7 +2210,7 @@ const QRScanner: React.FC = () => {
                         isAmber ? "bg-[#f59e0b]" :
                         "bg-blue-500"
                       )}></span>
-                      <span>IN (ফেরত এন্ট্রি স্ক্যান)</span>
+                      <span>গাড়ি ফেরত</span>
                     </button>
                   </div>
                 </div>

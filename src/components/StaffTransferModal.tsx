@@ -148,7 +148,7 @@ export const StaffTransferModal: React.FC<StaffTransferModalProps> = ({
                     "text-[10px] px-1.5 py-0.5 rounded font-bold",
                     staff.role === 'Driver' ? "bg-blue-100 text-blue-700" : "bg-teal-100 text-teal-700"
                   )}>
-                    {staff.role === 'Driver' ? 'ড্রাইভার' : 'সহকারী (Helper)'}
+                    {staff.role === 'Driver' ? 'ড্রাইভার' : 'সহকারী'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 font-mono">

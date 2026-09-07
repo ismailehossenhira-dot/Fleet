@@ -254,7 +254,7 @@ const Vehicles: React.FC = () => {
               onChange={(e) => setSelectedWarehouse(e.target.value)}
               className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
             >
-              <option value="all">🏢 সকল ডিপো (All Hubs - 10)</option>
+              <option value="all">🏢 সকল ডিপো</option>
               {SUPPORTED_WAREHOUSES.map(w => (
                 <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
               ))}
@@ -279,7 +279,7 @@ const Vehicles: React.FC = () => {
               type="button"
               onClick={() => setShowModelManagement(true)}
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="গাড়ির মডেল ও ক্যাটাগরি তৈরি এবং কনফিগার করুন (Admin Only)"
+              title="গাড়ির মডেল ও ক্যাটাগরি তৈরি এবং কনফিগার করুন"
             >
               <Layers size={15} className="text-blue-600" />
               <span>মডেল কনফিগার</span>
@@ -307,7 +307,7 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base md:text-lg">
-                    নতুন গাড়ি এন্ট্রি (Register New Vehicle)
+                    নতুন গাড়ি এন্ট্রি
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">ফ্লিটে নতুন গাড়ি যুক্ত করার ফর্ম</p>
                 </div>
@@ -338,7 +338,7 @@ const Vehicles: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-slate-700">গাড়ির মডেল (Model)</label>
+                      <label className="block text-sm font-medium text-slate-700">গাড়ির মডেল</label>
                       {canManageModels && (
                         <button
                           type="button"
@@ -372,7 +372,7 @@ const Vehicles: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    ওয়ারহাউজ / ডিপো (Base Warehouse)
+                    ওয়ারহাউজ / ডিপো
                   </label>
                   <select 
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
@@ -403,7 +403,7 @@ const Vehicles: React.FC = () => {
                     <span>গাড়ি সংরক্ষণ করুন</span>
                   </Button>
                   <Button type="button" variant="secondary" onClick={handleCancel}>
-                    বাতিল (Cancel)
+                    বাতিল
                   </Button>
                 </div>
               </form>
@@ -424,7 +424,7 @@ const Vehicles: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base md:text-lg">
-                    গাড়ির তথ্য এডিট (Edit Vehicle)
+                    গাড়ির তথ্য এডিট
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     নম্বর: <span className="font-bold text-blue-600">{editingVehicle.vehicleNumber}</span>
@@ -456,7 +456,7 @@ const Vehicles: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-slate-700">গাড়ির নাম / মডেল (Model)</label>
+                      <label className="block text-sm font-medium text-slate-700">গাড়ির মডেল</label>
                       {canManageModels && (
                         <button
                           type="button"
@@ -490,7 +490,7 @@ const Vehicles: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    ওয়ারহাউজ / ডিপো (Assigned Warehouse)
+                    ওয়ারহাউজ / ডিপো
                   </label>
                   <select 
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
@@ -518,7 +518,7 @@ const Vehicles: React.FC = () => {
                   {deletingId === editingVehicle.id ? (
                     <div className="flex-1 flex gap-2">
                       <Button type="button" variant="danger" onClick={() => handleDelete(editingVehicle.id)} className="flex-1">
-                        নিশ্চিত মুছুন (Confirm Delete)
+                        নিশ্চিত মুছুন
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">
                         বাতিল
@@ -527,10 +527,10 @@ const Vehicles: React.FC = () => {
                   ) : (
                     <>
                       <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
-                        আপডেট করুন (Update)
+                        আপডেট করুন
                       </Button>
                       <Button type="button" variant="danger" onClick={() => setDeletingId(editingVehicle.id)} className="px-4 text-xs">
-                        মুছুন (Delete)
+                        মুছুন
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setEditingVehicle(null)}>
                         বাতিল
@@ -687,7 +687,7 @@ const Vehicles: React.FC = () => {
               <tr className="bg-[#f8fafc] border-b border-border">
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Vehicle ID</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Type</th>
-                <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">ডিপো (Warehouse)</th>
+                <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">ডিপো</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider">Status</th>
                 <th className="px-5 py-3 font-semibold text-text-muted uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -739,7 +739,7 @@ const Vehicles: React.FC = () => {
                           setIsTransferModalOpen(true);
                         }}
                         className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors"
-                        title="ডিপো বদলি ও এক্সচেঞ্জ (Transfer / Exchange)"
+                        title="ডিপো বদলি ও এক্সচেঞ্জ"
                       >
                         <ArrowLeftRight size={13} />
                       </button>
@@ -814,7 +814,7 @@ const Vehicles: React.FC = () => {
               <div>
                 <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
                   <QrCode className="text-indigo-600" />
-                  <span>গাড়ির কিউআর কোড (QR Codes): {selectedQRVehicle.vehicleNumber}</span>
+                  <span>গাড়ির কিউআর কোড: {selectedQRVehicle.vehicleNumber}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">গাড়ি ছাড়ার এবং ফেরত রিসিভ করার জন্য আলাদা কিউআর কোড ডাউনলোড বা প্রিন্ট করুন।</p>
               </div>
@@ -834,7 +834,7 @@ const Vehicles: React.FC = () => {
                 <div className="border-2 border-emerald-100 rounded-2xl p-5 bg-emerald-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      OUT QR (গাড়ি ছাড়পত্র)
+                      গাড়ি ছাড়পত্র QR
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">স্টক ছাড় দিয়ে ট্রিপ শুরু করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -855,13 +855,13 @@ const Vehicles: React.FC = () => {
                       variant="secondary" 
                       className="w-full text-xs font-bold text-emerald-700 hover:bg-emerald-50 border-emerald-200"
                     >
-                      <Download size={14} /> ডাউনলোড করুন (Download)
+                      <Download size={14} /> ডাউনলোড করুন
                     </Button>
                     <Button 
                       onClick={() => printQR(`qr-out-${selectedQRVehicle.id}`, selectedQRVehicle.vehicleNumber, 'OUT')}
                       className="w-full text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 border-none"
                     >
-                      <Printer size={14} /> প্রিন্ট করুন (Print Card)
+                      <Printer size={14} /> প্রিন্ট করুন
                     </Button>
                   </div>
                 </div>
@@ -870,7 +870,7 @@ const Vehicles: React.FC = () => {
                 <div className="border-2 border-indigo-100 rounded-2xl p-5 bg-indigo-50/20 text-center flex flex-col justify-between items-center space-y-4">
                   <div>
                     <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                      IN QR (গাড়ি ফেরত)
+                      গাড়ি ফেরত QR
                     </span>
                     <p className="text-[11px] text-slate-500 mt-2">গাড়ি গ্যারেজে ফেরত ও স্টক এন্ট্রি করার জন্য স্ক্যান করুন।</p>
                   </div>
@@ -891,13 +891,13 @@ const Vehicles: React.FC = () => {
                       variant="secondary" 
                       className="w-full text-xs font-bold text-indigo-700 hover:bg-indigo-50 border-indigo-200"
                     >
-                      <Download size={14} /> ডাউনলোড করুন (Download)
+                      <Download size={14} /> ডাউনলোড করুন
                     </Button>
                     <Button 
                       onClick={() => printQR(`qr-in-${selectedQRVehicle.id}`, selectedQRVehicle.vehicleNumber, 'IN')}
                       className="w-full text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 border-none"
                     >
-                      <Printer size={14} /> প্রিন্ট করুন (Print Card)
+                      <Printer size={14} /> প্রিন্ট করুন
                     </Button>
                   </div>
                 </div>
@@ -906,7 +906,7 @@ const Vehicles: React.FC = () => {
 
               {/* Informative notice */}
               <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-[11px] text-slate-600 leading-relaxed text-left">
-                <strong>ব্যবহারের নির্দেশিকা (How to Use):</strong>
+                <strong>ব্যবহারের নির্দেশিকা:</strong>
                 <ul className="list-disc pl-4 mt-1 space-y-1">
                   <li>উপরে থাকা কিউআর কার্ডগুলো প্রিন্ট করে গাড়ির উইন্ডশিল্ড বা উপযুক্ত স্থানে স্টিকার হিসেবে ব্যবহার করুন।</li>
                   <li>গাড়ি গ্যারেজ থেকে ছাড়ার সময় চেকপোস্টে <strong>OUT QR</strong> কোডটি স্ক্যান করে ট্রিপ চালু করবেন।</li>
@@ -918,7 +918,7 @@ const Vehicles: React.FC = () => {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
               <Button onClick={() => setSelectedQRVehicle(null)} variant="secondary" className="px-6">
-                বন্ধ করুন (Close)
+                বন্ধ করুন
               </Button>
             </div>
           </div>

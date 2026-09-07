@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer, User, ArrowLeftRight } from 'lucide-react';
+import { Users, Plus, Search, Phone, Fingerprint, Edit2, Trash2, ChevronDown, ChevronUp, AlertTriangle, Download, Printer, User, ArrowLeftRight, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, Button, AuditDetailsDropdown, StaffProfileButton, StaffProfileModal } from './components/Common';
 import { addDriver, updateDriver, deleteDriver, subscribeToCollection } from './db';
@@ -17,7 +17,7 @@ const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
     <div className="mt-1 flex flex-col items-start gap-1">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="px-2 py-0.5 text-[9px] bg-red-100 border border-red-200 text-red-700 font-black rounded-md flex items-center gap-1 animate-pulse">
-          সাসপেন্ডেড (Suspended)
+          সাসপেন্ডেড
         </span>
         <button
           type="button"
@@ -40,15 +40,15 @@ const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
           >
             <div className="mt-1 bg-red-50/40 border border-red-100/60 p-2.5 rounded-lg space-y-1 text-[10px] font-normal text-red-800 max-w-sm">
               <p>
-                <strong className="text-red-900 font-bold">কারণ (Reason):</strong>{' '}
+                <strong className="text-red-900 font-bold">কারণ:</strong>{' '}
                 <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionReason || 'উল্লেখ নেই'}</span>
               </p>
               <p>
-                <strong className="text-red-900 font-bold">মেয়াদ (Period):</strong>{' '}
+                <strong className="text-red-900 font-bold">মেয়াদ:</strong>{' '}
                 <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspensionDays || '0'} দিন</span>
               </p>
               <p>
-                <strong className="text-red-900 font-bold">কে করেছে (Suspended By):</strong>{' '}
+                <strong className="text-red-900 font-bold">স্থগিতকারী:</strong>{' '}
                 <span className="bg-white/60 px-1 py-0.5 rounded">{driver.suspendedBy || 'Admin'}</span>
               </p>
             </div>
@@ -133,12 +133,12 @@ const Drivers: React.FC = () => {
     const title = 'স্টাফ ডিরেক্টরি ও পারফরম্যান্স রিপোর্ট (Staff Directory & Performance Report)';
     const subtitle = 'নিবন্ধিত ড্রাইভার ও হেলপারদের বিবরণ, ট্রিপ পরিসংখ্যান এবং বর্তমান সাসপেনশন স্ট্যাটাস।';
     const metadata = [
-      { label: 'মোট স্টাফ (Total Staff)', value: `${filtered.length} জন` },
-      { label: 'মোট ড্রাইভার (Drivers)', value: `${filtered.filter(d => (d.role || 'Driver') === 'Driver').length} জন` },
-      { label: 'মোট হেলপার (Helpers)', value: `${filtered.filter(d => d.role === 'Helper').length} জন` },
-      { label: 'সাসপেন্ডেড স্টাফ (Suspended)', value: `${filtered.filter(d => d.isSuspended).length} জন` }
+      { label: 'মোট স্টাফ', value: `${filtered.length} জন` },
+      { label: 'মোট ড্রাইভার', value: `${filtered.filter(d => (d.role || 'Driver') === 'Driver').length} জন` },
+      { label: 'মোট হেলপার', value: `${filtered.filter(d => d.role === 'Helper').length} জন` },
+      { label: 'সাসপেন্ডেড স্টাফ', value: `${filtered.filter(d => d.isSuspended).length} জন` }
     ];
-    const headers = ['আইডি (Employee ID)', 'নাম ও পদবি (Name & Role)', 'মোবাইল (Contact)', 'ট্রিপ পরিসংখ্যান (Trip Stats)', 'অবস্থা (Status)'];
+    const headers = ['এমপ্লয়ী আইডি', 'নাম ও পদবি', 'মোবাইল নম্বর', 'ট্রিপ পরিসংখ্যান', 'অবস্থা'];
     const rows = filtered.map(d => {
       const staffTrips = trips.filter(t => t.driverId === d.driverId || t.helperId === d.driverId);
       const tRun = staffTrips.filter(t => t.status === 'Running').length;
@@ -250,13 +250,177 @@ const Drivers: React.FC = () => {
           <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">{data.length}</span>
         </h3>
       </div>
-      <div className="overflow-x-auto border border-slate-100 rounded-xl">
+
+      {/* Mobile Card View (Phone friendly) */}
+      <div className="block md:hidden space-y-3">
+        {data.map(driver => {
+          const vivaStatus = driver.vivaAssessment?.status || driver.vivaStatus || 'উত্তীর্ণ';
+          const vivaScore = driver.vivaAssessment?.score || driver.vivaScore || (driver.role === 'Helper' ? 88 : 92);
+
+          return (
+            <div 
+              key={driver.id} 
+              className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3"
+            >
+              {/* Top Row: Role, ID, Depo */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                    driver.role === 'Helper' ? "bg-purple-100 text-purple-800 border border-purple-200" : "bg-blue-100 text-blue-800 border border-blue-200"
+                  )}>
+                    {driver.role === 'Helper' ? 'হেলপার' : 'ড্রাইভার'}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                    #{driver.driverId}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {driver.warehouse ? (
+                    <WarehouseBadge warehouse={driver.warehouse} />
+                  ) : (
+                    <span className="text-[10px] text-slate-400 italic">অনির্ধারিত ডিপো</span>
+                  )}
+                  <AuditDetailsDropdown createdBy={driver.createdBy} updatedBy={driver.updatedBy} />
+                </div>
+              </div>
+
+              {/* Main Info: Name & Quick Phone Call */}
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-black text-slate-900 text-base tracking-tight">
+                    {driver.name}
+                  </h4>
+                  {driver.isSuspended && (
+                    <SuspensionBadgeAndDetails driver={driver} />
+                  )}
+                </div>
+
+                {driver.phoneNumber && (
+                  <a
+                    href={`tel:${driver.phoneNumber}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200/80 text-xs font-bold transition-all active:scale-95 shadow-2xs shrink-0"
+                    title="সরাসরি কল করুন"
+                  >
+                    <Phone size={13} className="text-emerald-600" />
+                    <span>কল করুন</span>
+                  </a>
+                )}
+              </div>
+
+              {/* Viva Voce Quick Status Card */}
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    <GraduationCap size={15} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ভাইভা ও মূল্যায়ন</div>
+                    <div className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                      <span>{vivaScore}/১০০</span>
+                      <span className={cn(
+                        "text-[9px] px-1.5 py-0.2 rounded-full font-black",
+                        vivaStatus === 'উত্তীর্ণ' ? "bg-emerald-100 text-emerald-800" :
+                        vivaStatus === 'বিবেচনাধীন' ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+                      )}>
+                        {vivaStatus}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <StaffProfileButton
+                  staff={driver}
+                  initialTab="viva"
+                  className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-white border border-emerald-200 rounded-lg hover:bg-emerald-50 active:scale-95 transition-all shadow-2xs"
+                  title="মৌখিক পরীক্ষা ও মূল্যায়ন দেখুন"
+                >
+                  ভাইভা দেখুন
+                </StaffProfileButton>
+              </div>
+
+              {/* Action Buttons Row */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <StaffProfileButton 
+                    staff={driver} 
+                    className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                  >
+                    <User size={13} />
+                    <span>প্রোফাইল</span>
+                  </StaffProfileButton>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTransferStaff(driver);
+                      setIsTransferModalOpen(true);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold flex items-center gap-1 transition-colors"
+                    title="ডিপো বদলি ও ট্রান্সফার"
+                  >
+                    <ArrowLeftRight size={13} />
+                    <span>ডিপো বদলি</span>
+                  </button>
+                </div>
+
+                {canManage && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    {deletingId === driver.id ? (
+                      <div className="flex items-center gap-1 animate-in slide-in-from-right-1 duration-300">
+                        <button 
+                          onClick={() => handleDelete(driver.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold shadow-sm"
+                        >
+                          নিশ্চিত?
+                        </button>
+                        <button 
+                          onClick={() => setDeletingId(null)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs border border-slate-200"
+                        >
+                          না
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={() => { setEditingDriver(driver); setDeletingId(null); }}
+                          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                          title="এডিট করুন"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          onClick={() => setDeletingId(driver.id)}
+                          className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all"
+                          title="মুছে ফেলুন"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {data.length === 0 && (
+          <div className="p-8 text-center text-slate-400 italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-xs">
+            কোনো {title.toLowerCase()} পাওয়া যায়নি।
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto border border-slate-100 rounded-xl">
         <table className="w-full text-xs text-left">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Employee ID</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Full Name</th>
-              <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">ডিপো (Warehouse)</th>
+              <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">ডিপো</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider">Join Date</th>
               <th className="px-5 py-3 font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
@@ -305,7 +469,7 @@ const Drivers: React.FC = () => {
                         setIsTransferModalOpen(true);
                       }}
                       className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors"
-                      title="ডিপো বদলি ও ট্রান্সফার (Transfer Staff)"
+                      title="ডিপো বদলি ও ট্রান্সফার"
                     >
                       <ArrowLeftRight size={12} />
                     </button>
@@ -404,7 +568,7 @@ const Drivers: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base md:text-lg">
-                    নতুন স্টাফ এন্ট্রি (Register New Staff)
+                    নতুন স্টাফ এন্ট্রি
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">ড্রাইভার বা হেলপার যোগ করার ফর্ম</p>
                 </div>
@@ -423,7 +587,7 @@ const Drivers: React.FC = () => {
               <form onSubmit={handleAdd} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    স্টাফ পদবি (Staff Role)
+                    স্টাফের পদবি
                   </label>
                   <select 
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
@@ -470,7 +634,7 @@ const Drivers: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম (Full Name)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম</label>
                   <input 
                     type="text" 
                     required
@@ -483,7 +647,7 @@ const Drivers: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর</label>
                     <input 
                       type="tel" 
                       required
@@ -495,7 +659,7 @@ const Drivers: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নম্বর</label>
                     <input 
                       type="text" 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
@@ -508,7 +672,7 @@ const Drivers: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নম্বর</label>
                     <input 
                       type="tel" 
                       maxLength={11}
@@ -519,7 +683,7 @@ const Drivers: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা (Address)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা</label>
                     <input 
                       type="text" 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
@@ -532,7 +696,7 @@ const Drivers: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    ডিপো / কর্মক্ষেত্র (Assigned Warehouse)
+                    ডিপো / কর্মক্ষেত্র
                   </label>
                   <select 
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
@@ -552,7 +716,7 @@ const Drivers: React.FC = () => {
                     <span>নতুন স্টাফ সংরক্ষণ করুন</span>
                   </Button>
                   <Button type="button" variant="secondary" onClick={handleCancel}>
-                    বাতিল (Cancel)
+                    বাতিল
                   </Button>
                 </div>
               </form>
@@ -573,7 +737,7 @@ const Drivers: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base md:text-lg">
-                    স্টাফ তথ্য এডিট (Edit Staff)
+                    স্টাফের তথ্য এডিট
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {editingDriver.name} — <span className="font-bold text-blue-600">{editingDriver.driverId}</span>
@@ -594,7 +758,7 @@ const Drivers: React.FC = () => {
               <form onSubmit={handleUpdate} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">স্টাফ পদবি (Staff Role)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">স্টাফের পদবি</label>
                     <select 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
                       value={editingDriver.role || 'Driver'}
@@ -616,7 +780,7 @@ const Drivers: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম (Full Name)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">পূর্ণ নাম</label>
                   <input 
                     type="text" 
                     required
@@ -628,7 +792,7 @@ const Drivers: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর (Phone Number)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">মোবাইল নম্বর</label>
                     <input 
                       type="tel" 
                       required
@@ -639,7 +803,7 @@ const Drivers: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নং (License No)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">ড্রাইভিং লাইসেন্স নম্বর</label>
                     <input 
                       type="text" 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
@@ -652,7 +816,7 @@ const Drivers: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নাম্বার (Family Phone)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">পরিবারের নম্বর</label>
                     <input 
                       type="tel" 
                       maxLength={11}
@@ -663,7 +827,7 @@ const Drivers: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা (Address)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">বর্তমান / স্থায়ী ঠিকানা</label>
                     <input 
                       type="text" 
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400"
@@ -676,7 +840,7 @@ const Drivers: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    ডিপো / কর্মক্ষেত্র (Assigned Warehouse)
+                    ডিপো / কর্মক্ষেত্র
                   </label>
                   <select 
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-400 font-medium"
@@ -695,7 +859,7 @@ const Drivers: React.FC = () => {
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        সাসপেনশন কন্ট্রোল (Suspension Control)
+                        সাসপেনশন কন্ট্রোল
                       </h4>
                       <p className="text-[10px] text-slate-500">স্টাফ সাময়িকভাবে বরখাস্ত বা সাসপেন্ড করার জন্য</p>
                     </div>
@@ -748,7 +912,7 @@ const Drivers: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডের কারণ / Reason</label>
+                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">সাসপেন্ডের কারণ</label>
                         <textarea 
                           required
                           className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 outline-none focus:border-red-400 bg-white"
@@ -766,7 +930,7 @@ const Drivers: React.FC = () => {
                   {deletingId === editingDriver.id ? (
                     <div className="flex-1 flex gap-2">
                       <Button type="button" variant="danger" onClick={() => handleDelete(editingDriver.id)} className="flex-1">
-                        নিশ্চিত মুছুন (Confirm Delete)
+                        নিশ্চিত মুছুন
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setDeletingId(null)} className="px-4">
                         বাতিল
@@ -775,10 +939,10 @@ const Drivers: React.FC = () => {
                   ) : (
                     <>
                       <Button type="submit" className="flex-1 shadow-md shadow-blue-200">
-                        আপডেট করুন (Update)
+                        আপডেট করুন
                       </Button>
                       <Button type="button" variant="danger" onClick={() => setDeletingId(editingDriver.id)} className="px-4 text-xs">
-                        মুছুন (Delete)
+                        মুছুন
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setEditingDriver(null)}>
                         বাতিল
@@ -816,7 +980,7 @@ const Drivers: React.FC = () => {
                 onChange={(e) => setSelectedWarehouse(e.target.value)}
                 className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
               >
-                <option value="all">🏢 সকল ডিপো (All Hubs - 10)</option>
+                <option value="all">🏢 সকল ডিপো</option>
                 {SUPPORTED_WAREHOUSES.map(w => (
                   <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
                 ))}

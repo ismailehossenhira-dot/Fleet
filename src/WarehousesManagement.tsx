@@ -242,10 +242,10 @@ export const WarehousesManagement: React.FC = () => {
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              ওয়্যারহাউজ ব্যবস্থাপনা ও ট্রান্সফার হাব (Warehouse Hub)
+              ওয়্যারহাউজ ব্যবস্থাপনা ও ট্রান্সফার হাব
             </h1>
             <p className="text-sm text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-              মোহাম্মদপুর, সাভার, ভাঙ্গা, কুমিল্লা, চিটাগাং, রংপুর, সিলেট, মিরপুর, খুলনা ও যশোর ডিপোর গাড়ি, ড্রাইভার ও হেলপার আলাদাভাবে পর্যবেক্ষণ, ফিল্টার ও পারস্পরিক বদলি (Exchange / Transfer) করুন।
+              মোহাম্মদপুর, সাভার, ভাঙ্গা, কুমিল্লা, চিটাগাং, রংপুর, সিলেট, মিরপুর, খুলনা ও যশোর ডিপোর গাড়ি, ড্রাইভার ও হেলপার আলাদাভাবে পর্যবেক্ষণ, ফিল্টার ও পারস্পরিক বদলি ও এক্সচেঞ্জ করুন।
             </p>
           </div>
 
@@ -332,7 +332,7 @@ export const WarehousesManagement: React.FC = () => {
               <Building2 size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900">ওয়্যারহাউজ অপশন ও দ্রুত ফিল্টার (Depot Selector)</h3>
+              <h3 className="text-sm font-black text-slate-900">ওয়্যারহাউজ অপশন ও দ্রুত ফিল্টার</h3>
               <p className="text-[11px] text-slate-500">যেকোনো ডিপোতে ক্লিক করে এক ক্লিকে পুরো সিস্টেমের ভিউ পরিবর্তন করুন</p>
             </div>
           </div>
@@ -345,7 +345,7 @@ export const WarehousesManagement: React.FC = () => {
                 ? "bg-slate-900 text-white border-slate-900"
                 : "bg-blue-50 text-blue-800 border-blue-200"
             )}>
-              {selectedWarehouse === 'all' ? '🌐 সকল ডিপো (Global View)' : `🏢 ${selectedWarehouse}`}
+              {selectedWarehouse === 'all' ? '🌐 সকল ডিপো' : `🏢 ${selectedWarehouse}`}
             </span>
           </div>
         </div>
@@ -364,7 +364,7 @@ export const WarehousesManagement: React.FC = () => {
             )}
           >
             <span>🌐</span>
-            <span>সকল ডিপো (All Warehouses)</span>
+            <span>সকল ডিপো</span>
             <span className={cn(
               "px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold",
               selectedWarehouse === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
@@ -480,15 +480,15 @@ export const WarehousesManagement: React.FC = () => {
               <span className="text-xl font-black text-slate-900 mt-0.5 block">{activeStats.totalVehicles} টি</span>
             </div>
             <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-100">
-              <span className="text-[11px] font-bold text-emerald-700 block">উপলব্ধ (Available)</span>
+              <span className="text-[11px] font-bold text-emerald-700 block">উপলব্ধ</span>
               <span className="text-xl font-black text-emerald-700 mt-0.5 block">{activeStats.availableVehicles} টি</span>
             </div>
             <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100">
-              <span className="text-[11px] font-bold text-blue-700 block">ট্রিপে আছে (On Trip)</span>
+              <span className="text-[11px] font-bold text-blue-700 block">ট্রিপে আছে</span>
               <span className="text-xl font-black text-blue-700 mt-0.5 block">{activeStats.onTripVehicles} টি</span>
             </div>
             <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-100">
-              <span className="text-[11px] font-bold text-amber-700 block">মেইনটেন্যান্স (Maint.)</span>
+              <span className="text-[11px] font-bold text-amber-700 block">মেইনটেন্যান্স</span>
               <span className="text-xl font-black text-amber-700 mt-0.5 block">{activeStats.maintenanceVehicles} টি</span>
             </div>
             <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100">
@@ -496,7 +496,7 @@ export const WarehousesManagement: React.FC = () => {
               <span className="text-xl font-black text-purple-700 mt-0.5 block">{activeStats.totalDrivers} জন</span>
             </div>
             <div className="p-3 bg-teal-50/70 rounded-xl border border-teal-100">
-              <span className="text-[11px] font-bold text-teal-700 block">সহকারী (Helpers)</span>
+              <span className="text-[11px] font-bold text-teal-700 block">সহকারী</span>
               <span className="text-xl font-black text-teal-700 mt-0.5 block">{activeStats.totalHelpers} জন</span>
             </div>
           </div>
@@ -511,7 +511,7 @@ export const WarehousesManagement: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">
-                  সকল ডিপো একনজরে (Global Depots Consolidated View)
+                  সকল ডিপো একনজরে
                 </h3>
                 <p className="text-xs text-slate-600">
                   বর্তমানে সকল ১০টি ডিপোর সামগ্রিক গাড়িবহর ও স্টাফ তথ্য প্রদর্শিত হচ্ছে
@@ -530,7 +530,7 @@ export const WarehousesManagement: React.FC = () => {
               <span className="text-xl font-black text-slate-900 mt-0.5 block">{totalStats.totalVehicles} টি</span>
             </div>
             <div className="p-3 bg-white rounded-xl border border-emerald-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-emerald-700 block">Available (ফ্রি)</span>
+              <span className="text-[11px] font-bold text-emerald-700 block">উপলব্ধ</span>
               <span className="text-xl font-black text-emerald-700 mt-0.5 block">{totalStats.availableVehicles} টি</span>
             </div>
             <div className="p-3 bg-white rounded-xl border border-blue-200/80 shadow-2xs">
@@ -576,7 +576,113 @@ export const WarehousesManagement: React.FC = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* All Warehouses Master Card */}
+          <div
+            className={cn(
+              "bg-white rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden shadow-2xs hover:shadow-md",
+              selectedWarehouse === 'all'
+                ? "border-blue-500 ring-2 ring-blue-500 shadow-md bg-blue-50/20"
+                : "border-slate-200/90 hover:border-slate-300"
+            )}
+          >
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-2 mb-2.5">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-black text-slate-900">সকল ওয়ারহাউজ</span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded border shadow-2xs bg-blue-100 border-blue-200 text-blue-800">
+                      ALL
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1 font-medium mt-0.5">
+                    <MapPin size={11} />
+                    <span>সমগ্র বাংলাদেশ (১০টি হাব)</span>
+                  </p>
+                </div>
+
+                {selectedWarehouse === 'all' && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-600 text-white flex items-center gap-1">
+                    <Check size={11} />
+                    <span>অ্যাক্টিভ</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Vehicle Counter Grid */}
+              <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 mb-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-600 flex items-center gap-1.5">
+                    <Truck size={13} className="text-slate-400" />
+                    <span>মোট গাড়ি</span>
+                  </span>
+                  <span className="font-black text-slate-900 text-sm">{totalStats.totalVehicles} টি</span>
+                </div>
+
+                {/* Breakdown */}
+                <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-slate-200/60 text-center">
+                  <div className="p-1 rounded bg-white border border-slate-100">
+                    <span className="text-[9px] text-slate-400 block font-bold">Free</span>
+                    <span className="text-xs font-black text-emerald-600">{totalStats.availableVehicles}</span>
+                  </div>
+                  <div className="p-1 rounded bg-white border border-slate-100">
+                    <span className="text-[9px] text-slate-400 block font-bold">Trip</span>
+                    <span className="text-xs font-black text-blue-600">{totalStats.onTripVehicles}</span>
+                  </div>
+                  <div className="p-1 rounded bg-white border border-slate-100">
+                    <span className="text-[9px] text-slate-400 block font-bold">Maint.</span>
+                    <span className="text-xs font-black text-amber-600">{totalStats.maintenanceVehicles}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drivers & Helpers */}
+              <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50/50 px-2.5 py-2 rounded-xl border border-slate-100">
+                <span className="flex items-center gap-1.5 font-bold">
+                  <Users size={13} className="text-slate-400" />
+                  <span>মোট স্টাফ:</span>
+                </span>
+                <span className="font-black text-slate-800">
+                  {totalStats.totalDrivers + totalStats.totalHelpers} জন
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-100 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedWarehouse('all')}
+                className={cn(
+                  "flex-1 py-1.5 px-2 rounded-lg font-bold transition-all text-center cursor-pointer text-xs",
+                  selectedWarehouse === 'all'
+                    ? "bg-slate-900 text-white"
+                    : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                )}
+              >
+                {selectedWarehouse === 'all' ? 'নির্বাচিত ডিপো' : 'সকল ডিপো দেখুন'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseAndNavigate('all', '/vehicles')}
+                title="সকল ডিপোর গাড়ি তালিকা দেখুন"
+                className="p-1.5 rounded-lg bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                <Truck size={14} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectWarehouseAndNavigate('all', '/drivers')}
+                title="সকল ডিপোর স্টাফ তালিকা দেখুন"
+                className="p-1.5 rounded-lg bg-white border border-slate-200 text-purple-600 hover:bg-purple-50 transition-colors"
+              >
+                <Users size={14} />
+              </button>
+            </div>
+          </div>
+
           {warehouses.map((wh) => {
             const stats = warehouseStats[wh.name] || {
               totalVehicles: 0,
@@ -712,7 +818,7 @@ export const WarehousesManagement: React.FC = () => {
           <div>
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
               <History size={18} className="text-indigo-600" />
-              <span>ইন্টার-ডিপো ট্রান্সফার ও এক্সচেঞ্জ হিস্ট্রি (Transfer Logs)</span>
+              <span>ইন্টার-ডিপো ট্রান্সফার ও এক্সচেঞ্জ হিস্ট্রি</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
               কোন গাড়ি বা স্টাফ কোন ডিপো থেকে কোথায় বদলি বা এক্সচেঞ্জ করা হয়েছে তার সম্পূর্ণ লগ
@@ -741,7 +847,7 @@ export const WarehousesManagement: React.FC = () => {
             >
               <option value="all">সব ধরনের বদলি</option>
               <option value="vehicle">গাড়ি ট্রান্সফার</option>
-              <option value="exchange">গাড়ি এক্সচেঞ্জ (Swap)</option>
+              <option value="exchange">গাড়ি এক্সচেঞ্জ</option>
               <option value="staff">স্টাফ ট্রান্সফার</option>
             </select>
 

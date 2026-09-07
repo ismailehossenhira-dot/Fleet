@@ -477,7 +477,7 @@ export const UsersManagement: React.FC = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    পূর্ণ নাম (Full Name)
+                    পূর্ণ নাম
                   </label>
                   <input
                     type="text"
@@ -491,7 +491,7 @@ export const UsersManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    ইউজারনেম (Username)
+                    ইউজারনেম
                   </label>
                   <input
                     type="text"
@@ -509,7 +509,7 @@ export const UsersManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    পাসওয়ার্ড (Password)
+                    পাসওয়ার্ড
                   </label>
                   <input
                     type="text"
@@ -525,7 +525,7 @@ export const UsersManagement: React.FC = () => {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <Building2 size={13} className="text-blue-600" />
-                    <span>কর্মস্থল / ডিপো (Warehouse Hub)</span>
+                    <span>কর্মস্থল / ডিপো</span>
                   </label>
                   {isWarehouseLocked ? (
                     <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
@@ -543,7 +543,7 @@ export const UsersManagement: React.FC = () => {
                       value={formWarehouse}
                       onChange={(e) => setFormWarehouse(e.target.value)}
                     >
-                      <option value="all">🌐 সকল ডিপো (Global / Head Office)</option>
+                      <option value="all">🌐 সকল ডিপো</option>
                       {warehouses.map(w => (
                         <option key={w.id} value={w.name}>🏢 {w.name} ({w.nameEn}) - {w.region}</option>
                       ))}
@@ -553,7 +553,7 @@ export const UsersManagement: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    অ্যাকাউন্টের রোল (Account Role)
+                    অ্যাকাউন্টের রোল
                   </label>
                   <select
                     disabled={!isAdmin}
@@ -561,11 +561,11 @@ export const UsersManagement: React.FC = () => {
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value as UserRole)}
                   >
-                    <option value="Admin">Admin (এডমিন - সর্বময় ক্ষমতা)</option>
-                    <option value="Sub Admin">Sub Admin (সাব এডমিন)</option>
-                    <option value="OCC">OCC (ওসিসি কন্ট্রোল)</option>
-                    <option value="Line Supervisor">Line Supervisor (লাইন সুপারভাইজার)</option>
-                    <option value="Checker">Checker (চেকার)</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Sub Admin">Sub Admin</option>
+                    <option value="OCC">OCC</option>
+                    <option value="Line Supervisor">Line Supervisor</option>
+                    <option value="Checker">Checker</option>
                   </select>
                   {!isAdmin && (
                     <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
@@ -586,7 +586,7 @@ export const UsersManagement: React.FC = () => {
                       />
                       <span className="text-xs font-bold text-slate-800 flex items-center gap-1">
                         <Sparkles size={14} className="text-amber-500" />
-                        <span>সব মডিউল চালানোর ক্ষমতা দিন (Full Execution Power)</span>
+                        <span>সব মডিউল চালানোর ক্ষমতা দিন</span>
                       </span>
                     </label>
                     <p className="text-[11px] text-slate-500 leading-relaxed pl-6">
@@ -687,12 +687,12 @@ export const UsersManagement: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                      <th className="py-3.5 px-4">নাম (Name)</th>
-                      <th className="py-3.5 px-4">ইউজারনেম (Username)</th>
-                      <th className="py-3.5 px-4">ডিপো (Warehouse)</th>
-                      <th className="py-3.5 px-4">পাসওয়ার্ড (Password)</th>
-                      <th className="py-3.5 px-4">রোল (Role)</th>
-                      <th className="py-3.5 px-4">পারমিশন অবস্থা (Access)</th>
+                      <th className="py-3.5 px-4">নাম</th>
+                      <th className="py-3.5 px-4">ইউজারনেম</th>
+                      <th className="py-3.5 px-4">ডিপো</th>
+                      <th className="py-3.5 px-4">পাসওয়ার্ড</th>
+                      <th className="py-3.5 px-4">রোল</th>
+                      <th className="py-3.5 px-4">পারমিশন</th>
                       <th className="py-3.5 px-4 text-right">অ্যাকশন</th>
                     </tr>
                   </thead>
@@ -898,7 +898,7 @@ export const UsersManagement: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <Sparkles className="text-amber-500 flex-shrink-0 mt-1" size={20} />
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">সকল মডিউলে পূর্ণ এক্সেস (Full Module Access)</h4>
+                    <h4 className="text-sm font-bold text-slate-900">সকল মডিউলে পূর্ণ এক্সেস</h4>
                     <p className="text-xs text-slate-600 mt-0.5">
                       এটি চালু করলে এই ইউজার রোলের তোয়াক্কা না করে সিস্টেমের সকল মডিউল সরাসরি ব্যবহার করতে পারবেন।
                     </p>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { syncUserProfile } from './db';
 
@@ -95,18 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         if (u) {
-          // Test connection as per guidelines (gracefully handle offline / reconnecting state)
-          try {
-            await getDocFromServer(doc(db, 'system', 'connection_test'));
-          } catch (error: any) {
-            const errMsg = error?.message || String(error);
-            if (errMsg.includes('the client is offline') || error?.code === 'unavailable' || errMsg.includes('unavailable')) {
-              console.warn("Firestore: Client is operating in offline cache mode or reconnecting to backend.");
-            } else {
-              console.info("Firestore connection check info:", errMsg);
-            }
-          }
-
           // Sync and fetch profile
           try {
             const userProfile = await syncUserProfile(u);

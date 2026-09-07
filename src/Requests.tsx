@@ -67,14 +67,14 @@ const Requests: React.FC = () => {
 
   // Common Zones for dropdown
   const commonZones = [
-    'Zone A (জোন এ)',
-    'Zone B (জোন বি)',
-    'Zone C (জোন সি)',
-    'Zone D (জোন ডি)',
-    'Dhaka (ঢাকা)',
-    'Chittagong (চট্টগ্রাম)',
-    'Gazipur (গাজীপুর)',
-    'Narayanganj (নারায়ণগঞ্জ)'
+    'Zone A',
+    'Zone B',
+    'Zone C',
+    'Zone D',
+    'ঢাকা',
+    'চট্টগ্রাম',
+    'গাজীপুর',
+    'নারায়ণগঞ্জ'
   ];
 
   // Subscribe to requests collection
@@ -146,8 +146,8 @@ const Requests: React.FC = () => {
   const handleUpdateStatus = (requestId: string, newStatus: 'Fulfilled' | 'Rejected') => {
     const title = newStatus === 'Fulfilled' ? 'চাহিদা পূরণ নিশ্চিত করুন' : 'চাহিদা প্রত্যাখ্যান নিশ্চিত করুন';
     const message = newStatus === 'Fulfilled' 
-      ? 'আপনি কি নিশ্চিত যে এই চাহিদাটি পূরণ (Fulfilled) হিসেবে চিহ্নিত করতে চান?' 
-      : 'আপনি কি নিশ্চিত যে এই চাহিদাটি প্রত্যাখ্যান (Rejected) করতে চান?';
+      ? 'আপনি কি নিশ্চিত যে এই চাহিদাটি পূরণ হিসেবে চিহ্নিত করতে চান?' 
+      : 'আপনি কি নিশ্চিত যে এই চাহিদাটি প্রত্যাখ্যান করতে চান?';
       
     setConfirmModal({
       show: true,
@@ -260,21 +260,21 @@ const Requests: React.FC = () => {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
             <Clock size={12} />
-            পেন্ডিং (Pending)
+            পেন্ডিং
           </span>
         );
       case 'Fulfilled':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle size={12} />
-            পূরণকৃত (Fulfilled)
+            পূরণকৃত
           </span>
         );
       case 'Rejected':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
             <XCircle size={12} />
-            বাতিল (Rejected)
+            বাতিল
           </span>
         );
       default:
@@ -291,7 +291,7 @@ const Requests: React.FC = () => {
       {/* Header Panel */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">গাড়ির চাহিদা তালিকা (Requests)</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">গাড়ির চাহিদা তালিকা</h2>
           <p className="text-sm text-slate-500 mt-1">জোন থেকে গাড়ির রিকুইজিশন তৈরি ও মনিটর করুন</p>
         </div>
         <Button 
@@ -321,11 +321,11 @@ const Requests: React.FC = () => {
 
       {/* Create Request Form */}
       {showCreateForm && (
-        <Card title="গাড়ির চাহিদা রিকুইজিশন ফর্ম (New Vehicle Request)" className="max-w-2xl mx-auto">
+        <Card title="গাড়ির চাহিদা রিকুইজিশন ফর্ম" className="max-w-2xl mx-auto">
           <form onSubmit={handleCreateRequest} className="space-y-5">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                জোন বা স্থান (Zone / Area) <span className="text-red-500">*</span>
+                জোন বা এলাকা <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <select
@@ -354,7 +354,7 @@ const Requests: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  গাড়ির নাম / মডেল (Vehicle Model) <span className="text-red-500">*</span>
+                  গাড়ির মডেল <span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:border-accent focus:bg-white transition-all font-medium"
@@ -369,7 +369,7 @@ const Requests: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  গাড়ির সংখ্যা (Quantity Required) <span className="text-red-500">*</span>
+                  গাড়ির সংখ্যা <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -384,7 +384,7 @@ const Requests: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                বিশেষ নির্দেশনা বা প্রথম মন্তব্য (First Note / Purpose)
+                বিশেষ নির্দেশনা বা মন্তব্য
               </label>
               <textarea
                 placeholder="যেমন: কোন শিপমেন্ট যাবে, বা কখন গাড়ি পৌঁছাতে হবে..."
@@ -657,13 +657,13 @@ const Requests: React.FC = () => {
                                   onClick={() => handleUpdateStatus(req.id, 'Fulfilled')}
                                   className="text-xs font-bold text-emerald-600 hover:text-white hover:bg-emerald-600 border border-emerald-200 bg-emerald-50 px-3 py-1.5 rounded-lg transition-all"
                                 >
-                                  পূরণ হয়েছে (Fulfill)
+                                  পূরণ হয়েছে
                                 </button>
                                 <button
                                   onClick={() => handleUpdateStatus(req.id, 'Rejected')}
                                   className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 border border-red-200 bg-red-50 px-3 py-1.5 rounded-lg transition-all"
                                 >
-                                  প্রত্যাখ্যান (Reject)
+                                  প্রত্যাখ্যান করুন
                                 </button>
                               </>
                             )}

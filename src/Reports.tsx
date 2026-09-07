@@ -458,14 +458,14 @@ const Reports: React.FC = () => {
 
   const handleExportPDF = () => {
     if (activeTab === 'Archive') {
-      const title = 'যানবাহন ট্রিপ ইতিহাস রিপোর্ট (Vehicle Trip History Report)';
+      const title = 'যানবাহন ট্রিপ ইতিহাস রিপোর্ট';
       const subtitle = 'লজিস্টিক ট্রান্সপোর্ট আর্কাইভের ট্রিপ রেকর্ড ও চলমান ট্রিপ সমূহের তালিকা।';
       const metadata = [
-        { label: 'মোট রেকর্ড (Total Records)', value: `${filteredTrips.length} টি` },
-        { label: 'চলমান ট্রিপ (Running Trips)', value: `${filteredTrips.filter(t => t.status === 'Running').length} টি` },
-        { label: 'সম্পন্ন ট্রিপ (Completed Trips)', value: `${filteredTrips.filter(t => t.status === 'Completed').length} টি` }
+        { label: 'মোট রেকর্ড', value: `${filteredTrips.length} টি` },
+        { label: 'চলমান ট্রিপ', value: `${filteredTrips.filter(t => t.status === 'Running').length} টি` },
+        { label: 'সম্পন্ন ট্রিপ', value: `${filteredTrips.filter(t => t.status === 'Completed').length} টি` }
       ];
-      const headers = ['তারিখ (Date)', 'গাড়ির নাম্বার (Plate)', 'ড্রাইভার ও হেলপার (Crew Details)', 'গন্তব্য (Destination)', 'অবস্থা (Status)'];
+      const headers = ['তারিখ', 'গাড়ির নম্বর', 'ড্রাইভার ও হেলপার', 'গন্তব্য', 'অবস্থা'];
       const rows = filteredTrips.map(t => [
         formatDate(t.startTime || t.createdAt),
         t.vehiclePlate || t.vehicleId,
@@ -477,12 +477,12 @@ const Reports: React.FC = () => {
       ]);
       exportPDFWindow(title, subtitle, metadata, headers, rows);
     } else if (activeTab === 'Missing') {
-      const title = 'অনুপস্থিত সরঞ্জামের পেন্ডিং রিপোর্ট (Pending Missing Items Report)';
+      const title = 'অনুপস্থিত সরঞ্জামের পেন্ডিং রিপোর্ট';
       const subtitle = 'গাড়ি ফেরত আসার সময় অনুপস্থিত থাকা বিভিন্ন কাগজপত্র ও টুলের তালিকা।';
       const metadata = [
-        { label: 'মোট পেন্ডিং কেস (Total Issues)', value: `${missingReports.length} টি` }
+        { label: 'মোট পেন্ডিং কেস', value: `${missingReports.length} টি` }
       ];
-      const headers = ['তারিখ (Date)', 'গাড়ি ও ড্রাইভার (Vehicle & Driver)', 'অনুপস্থিত সরঞ্জাম (Missing Items)', 'নোট ও মন্তব্য (Notes)'];
+      const headers = ['তারিখ', 'গাড়ি ও ড্রাইভার', 'অনুপস্থিত সরঞ্জাম', 'নোট ও মন্তব্য'];
       const rows = missingReports.map(r => [
         formatDate(r.date),
         `<strong>${r.vehiclePlate}</strong><br/>ড্রাইভার: ${r.driverName} (${r.driverId})`,
@@ -494,12 +494,12 @@ const Reports: React.FC = () => {
       ]);
       exportPDFWindow(title, subtitle, metadata, headers, rows);
     } else if (activeTab === 'History') {
-      const title = 'সমাধানকৃত মিসিং রিপোর্টের ইতিহাস (Resolved Reports History)';
+      const title = 'সমাধানকৃত মিসিং রিপোর্টের ইতিহাস';
       const subtitle = 'ইতিপূর্বে সমাধান করা হওয়া মিসিং ও ড্যামেজ রিপোর্টের সম্পূর্ণ বিবরণী।';
       const metadata = [
         { label: 'মোট সমাধানকৃত কেস', value: `${missingHistory.length} টি` }
       ];
-      const headers = ['তারিখ (Date)', 'গাড়ি ও ড্রাইভার (Vehicle & Driver)', 'অনুপস্থিত সরঞ্জাম (Missing Items)', 'অবস্থা (Status)'];
+      const headers = ['তারিখ', 'গাড়ি ও ড্রাইভার', 'অনুপস্থিত সরঞ্জাম', 'অবস্থা'];
       const rows = missingHistory.map(r => [
         formatDate(r.resolvedAt || r.deletedAt),
         `<strong>${r.vehiclePlate}</strong><br/>ড্রাইভার: ${r.driverName} (${r.driverId})`,
@@ -793,14 +793,14 @@ const Reports: React.FC = () => {
                                     <button 
                                       onClick={() => handleTripEdit(trip)} 
                                       className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer transition-colors" 
-                                      title="সম্পাদনা (Edit)"
+                                      title="সম্পাদনা"
                                     >
                                       <Edit3 size={14} />
                                     </button>
                                     <button 
                                       onClick={() => handleTriggerSingleTripDelete(trip)} 
                                       className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer transition-colors" 
-                                      title="এই রেকর্ডটি মুছুন (Delete)"
+                                      title="এই রেকর্ডটি মুছুন"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -882,7 +882,7 @@ const Reports: React.FC = () => {
                          {report.status === 'Resolved' && (
                            <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold text-xs mb-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 w-fit">
                              <CheckCircle2 size={12} className="text-emerald-600 animate-bounce" />
-                             <span>✓ সমাধান সম্পন্ন (Issue Solved)</span>
+                             <span>✓ সমাধান সম্পন্ন</span>
                            </div>
                          )}
                          {report.missingDocuments?.length > 0 && (
@@ -1196,7 +1196,7 @@ const Reports: React.FC = () => {
                                <button 
                                  onClick={() => handleTriggerSingleHistoryDelete(report)} 
                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded cursor-pointer transition-colors" 
-                                 title="এই হিস্ট্রি রেকর্ডটি মুছুন (Delete)"
+                                 title="এই রেকর্ডটি মুছুন"
                                >
                                  <Trash2 size={14} />
                                </button>

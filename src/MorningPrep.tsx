@@ -355,7 +355,7 @@ const MorningPrep: React.FC = () => {
               <Sunrise size={20} className="animate-spin-slow" />
             </span>
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              প্রভাতী প্রস্তুতি ও ইন্সপেকশন বোর্ড (Morning Dispatch)
+              প্রভাতী প্রস্তুতি ও ইন্সপেকশন বোর্ড
             </h2>
           </div>
           <p className="text-xs text-slate-500 font-medium max-w-2xl">
@@ -391,7 +391,7 @@ const MorningPrep: React.FC = () => {
                 <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
                   <Activity size={16} className="text-blue-600 animate-bounce" />
-                  ২৪ ঘণ্টার অপারেশনাল ওভারভিউ (24-Hour Operational Overview)
+                  ২৪ ঘণ্টার অপারেশনাল ওভারভিউ
                 </h3>
               </div>
               <p className="text-xs text-slate-500 font-medium">
@@ -420,7 +420,7 @@ const MorningPrep: React.FC = () => {
               <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform duration-200">
                 <ArrowUpRight size={14} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ট্রিপ রওনা (Dispatched)</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ট্রিপ রওনা</p>
               <div className="flex items-baseline gap-1 mt-4">
                 <h4 className="text-3xl font-black text-slate-900 tracking-tight">{fleetStats.dispatchedCount}</h4>
                 <span className="text-xs font-semibold text-slate-500">টি গাড়ি</span>
@@ -443,7 +443,7 @@ const MorningPrep: React.FC = () => {
               <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform duration-200">
                 <ArrowDownLeft size={14} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ফিরে এসেছে (Returned)</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ফিরে এসেছে</p>
               <div className="flex items-baseline gap-1 mt-4">
                 <h4 className="text-3xl font-black text-slate-900 tracking-tight">{fleetStats.returnedCount}</h4>
                 <span className="text-xs font-semibold text-slate-500">টি গাড়ি</span>
@@ -466,7 +466,7 @@ const MorningPrep: React.FC = () => {
               <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-rose-50 text-rose-600 group-hover:scale-110 transition-transform duration-200">
                 <Wrench size={14} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ওয়ার্কশপে গেছে (In)</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">ওয়ার্কশপে গেছে</p>
               <div className="flex items-baseline gap-1 mt-4">
                 <h4 className="text-3xl font-black text-slate-900 tracking-tight">{fleetStats.maintInCount}</h4>
                 <span className="text-xs font-semibold text-slate-500">টি গাড়ি</span>
@@ -489,7 +489,7 @@ const MorningPrep: React.FC = () => {
               <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-cyan-50 text-cyan-600 group-hover:scale-110 transition-transform duration-200">
                 <ShieldCheck size={14} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">রিলিজ পেয়েছে (Out)</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">রিলিজ পেয়েছে</p>
               <div className="flex items-baseline gap-1 mt-4">
                 <h4 className="text-3xl font-black text-slate-900 tracking-tight">{fleetStats.maintOutCount}</h4>
                 <span className="text-xs font-semibold text-slate-500">টি গাড়ি</span>
@@ -512,7 +512,7 @@ const MorningPrep: React.FC = () => {
               <div className="absolute top-3 right-3 p-1.5 rounded-lg bg-violet-50 text-violet-600 group-hover:scale-110 transition-transform duration-200">
                 <Coins size={14} />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">সেতু টোল খরচ (Tolls)</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">সেতু টোল খরচ</p>
               <div className="flex items-baseline gap-0.5 mt-4">
                 <span className="text-sm font-bold text-slate-400">৳</span>
                 <h4 className="text-2xl font-black text-slate-900 tracking-tight">{fleetStats.totalTollAmount}</h4>
@@ -550,7 +550,7 @@ const MorningPrep: React.FC = () => {
                   onClick={() => setActiveDetailTab(null)}
                   className="text-slate-500 hover:text-slate-800 text-xs font-semibold bg-slate-200/60 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors"
                 >
-                  বন্ধ করুন (Close)
+                  বন্ধ করুন
                 </button>
               </div>
 
@@ -663,7 +663,7 @@ const MorningPrep: React.FC = () => {
               {activeDetailTab === 'maintenance_in' && (
                 <div className="overflow-x-auto">
                   {fleetStats.maintInList.length === 0 ? (
-                    <p className="text-slate-500 text-xs italic py-4 text-center">গত ২৪ ঘণ্টায় নতুন কোন গাড়ি রক্ষণাবেক্ষণে (Maintenance) পাঠানো হয়নি।</p>
+                    <p className="text-slate-500 text-xs italic py-4 text-center">গত ২৪ ঘণ্টায় নতুন কোন গাড়ি রক্ষণাবেক্ষণে পাঠানো হয়নি।</p>
                   ) : (
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
@@ -730,7 +730,7 @@ const MorningPrep: React.FC = () => {
                             </td>
                             <td className="py-3 px-3">
                               <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                সচল (Available)
+                                সচল
                               </span>
                             </td>
                             <td className="py-3 px-3 text-cyan-700 font-mono">
@@ -764,7 +764,7 @@ const MorningPrep: React.FC = () => {
                             <th className="py-2.5 px-3">গাড়ি নম্বর ও চালক</th>
                             <th className="py-2.5 px-3">সেতু ও রুট</th>
                             <th className="py-2.5 px-3">সময় কাল</th>
-                            <th className="py-2.5 px-3 text-right">টোল এ খরচ (Toll Paid)</th>
+                            <th className="py-2.5 px-3 text-right">টোল খরচ</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200/50">
@@ -817,7 +817,7 @@ const MorningPrep: React.FC = () => {
 
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/60 p-5 rounded-2xl flex items-center justify-between shadow-sm">
             <div>
-              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">সম্পূর্ণ প্রস্তুত (Certified Ready)</p>
+              <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">সম্পূর্ণ প্রস্তুত</p>
               <h3 className="text-3xl font-black text-emerald-900 mt-1">{countReady} টি</h3>
             </div>
             <CheckCircle size={36} className="text-emerald-500 opacity-80" />
@@ -864,7 +864,7 @@ const MorningPrep: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  গাড়ি নির্বাচন করুন (Select Vehicle) <span className="text-red-500">*</span>
+                  গাড়ি নির্বাচন করুন <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -883,7 +883,7 @@ const MorningPrep: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  চালক নির্বাচন করুন (Select Driver) <span className="text-red-500">*</span>
+                  চালক নির্বাচন করুন <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -905,7 +905,7 @@ const MorningPrep: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  ওডোমিটার রিডিং (Odometer Reading - KM)
+                  ওডোমিটার রিডিং (কি.মি.)
                 </label>
                 <input
                   type="number"
@@ -918,7 +918,7 @@ const MorningPrep: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  চূড়ান্ত অবস্থা (Overall Suitability Status)
+                  চূড়ান্ত অবস্থা
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -930,7 +930,7 @@ const MorningPrep: React.FC = () => {
                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    সম্পূর্ণ প্রস্তুত (Ready)
+                    সম্পূর্ণ প্রস্তুত
                   </button>
                   <button
                     type="button"
@@ -951,7 +951,7 @@ const MorningPrep: React.FC = () => {
             <div className="space-y-3 bg-slate-50 p-5 rounded-2xl border border-slate-200/60">
               <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5 mb-2">
                 <CheckSquare size={14} className="text-accent" />
-                বাধ্যতামূলক সকালের চেকলিস্ট (Checklist Verification)
+                বাধ্যতামূলক সকালের চেকলিস্ট
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -988,7 +988,7 @@ const MorningPrep: React.FC = () => {
             {/* Notes */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                মন্তব্য বা ত্রুটির বিবরণ (Checker Remarks / Issue Details)
+                মন্তব্য বা ত্রুটির বিবরণ
               </label>
               <textarea
                 placeholder="চেকিং বা ফিটনেস সংক্রান্ত কোন সমস্যা থাকলে বিস্তারিত লিখুন..."
@@ -1061,7 +1061,7 @@ const MorningPrep: React.FC = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
-                          ইন্সপেকশন অনুপস্থিত ট্র্যাকার (Delayed/Missing Pre-Trip Entry)
+                          ইন্সপেকশন ট্র্যাকার
                         </h3>
                         <span className={cn(
                           "px-2 py-0.5 rounded-full text-[10px] font-extrabold border font-mono shrink-0",
@@ -1302,12 +1302,12 @@ const MorningPrep: React.FC = () => {
                         {prep.overallStatus === 'Ready' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
                             <CheckCircle size={10} />
-                            সচল (Ready)
+                            সচল
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 rounded-full">
                             <AlertTriangle size={10} />
-                            ত্রুটি (Hold)
+                            ত্রুটি
                           </span>
                         )}
                       </div>

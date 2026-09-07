@@ -364,7 +364,7 @@ export const GPSDeviceManagement: React.FC = () => {
                     <td><span class="badge-prov">${item.provider}</span></td>
                     <td>${item.deviceId || 'N/A'}<br/><small style="color: #64748b;">${item.simNumber || ''}</small></td>
                     <td>${item.gpsStatus === 'Offline' ? '<span class="badge-crit">অফলাইন</span>' : item.gpsStatus}</td>
-                    <td>${item.cameraStatus === 'Damaged' ? '<span class="badge-crit">নষ্ট / Faulty</span>' : item.cameraStatus}</td>
+                    <td>${item.cameraStatus === 'Damaged' ? '<span class="badge-crit">নষ্ট</span>' : item.cameraStatus}</td>
                     <td>
                       <span class="${days >= 7 ? 'badge-crit' : 'badge-warn'}">
                         ${days} দিন (${item.offlineSince || 'N/A'})
@@ -511,7 +511,7 @@ export const GPSDeviceManagement: React.FC = () => {
         {/* Online All Good */}
         <div className="bg-white p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/20 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">সচল (Online)</span>
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">অনলাইন</span>
             <CheckCircle2 size={16} className="text-emerald-600" />
           </div>
           <p className="text-xl font-black text-emerald-600 mt-1 font-mono">{stats.onlineAllGood}</p>
@@ -571,7 +571,7 @@ export const GPSDeviceManagement: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-900">BD Tracking (বিডি ট্র্যাকিং)</h4>
+                <h4 className="text-sm font-bold text-slate-900">BD Tracking</h4>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800">
                   {stats.bdTrackingTotal} টি গাড়ি
                 </span>
@@ -601,12 +601,12 @@ export const GPSDeviceManagement: React.FC = () => {
         {/* Status Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100">
           {[
-            { id: 'Issues', label: 'সমস্যাযুক্ত গাড়ি (Active Issues)', count: stats.activeIssues, alert: true },
+            { id: 'Issues', label: 'সমস্যাযুক্ত গাড়ি', count: stats.activeIssues, alert: true },
             { id: 'Offline', label: 'GPS অফলাইন', count: stats.offlineGPS },
-            { id: 'Camera', label: 'ক্যামেরা নষ্ট (Camera Damaged)', count: stats.damagedCamera },
+            { id: 'Camera', label: 'ক্যামেরা নষ্ট', count: stats.damagedCamera },
             { id: 'Both', label: 'উভয় নষ্ট (GPS & Camera)', count: stats.bothIssues },
             { id: 'Online', label: 'সকল সচল (Online & OK)', count: stats.onlineAllGood },
-            { id: 'All', label: 'সবগুলো ডিভাইস (All)', count: stats.total }
+            { id: 'All', label: 'সকল ডিভাইস', count: stats.total }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -651,10 +651,10 @@ export const GPSDeviceManagement: React.FC = () => {
               onChange={(e) => setDurationFilter(e.target.value as any)}
               className="w-full text-xs font-bold px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 text-slate-800"
             >
-              <option value="All">সকল সময়কাল (All Durations)</option>
+              <option value="All">সকল সময়কাল</option>
               <option value="critical">🚨 ৭ দিনের বেশি অফলাইন (&gt; 7 Days)</option>
-              <option value="medium">⚠️ ৩ থেকে ৭ দিন (3 - 7 Days)</option>
-              <option value="short">ℹ️ ১ থেকে ২ দিন (1 - 2 Days)</option>
+              <option value="medium">⚠️ ৩ থেকে ৭ দিন</option>
+              <option value="short">ℹ️ ১ থেকে ২ দিন</option>
             </select>
           </div>
 
@@ -730,7 +730,7 @@ export const GPSDeviceManagement: React.FC = () => {
                       </span>
                     ) : (
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        সচল (Online)
+                        অনলাইন
                       </span>
                     )}
                   </div>
@@ -752,7 +752,7 @@ export const GPSDeviceManagement: React.FC = () => {
                           isGPSOffline ? "bg-rose-600 animate-ping" : "bg-emerald-500"
                         )} />
                         <span className="text-xs font-black">
-                          {dev.gpsStatus === 'Offline' ? 'অফলাইন (Offline)' : dev.gpsStatus === 'No Signal' ? 'সিগন্যাল নেই' : dev.gpsStatus === 'Power Cut' ? 'পাওয়ার কাটা' : 'অনলাইন (Online)'}
+                          {dev.gpsStatus === 'Offline' ? 'অফলাইন' : dev.gpsStatus === 'No Signal' ? 'সিগন্যাল নেই' : dev.gpsStatus === 'Power Cut' ? 'পাওয়ার কাটা' : 'অনলাইন'}
                         </span>
                       </div>
                     </div>
@@ -772,7 +772,7 @@ export const GPSDeviceManagement: React.FC = () => {
                           isCameraDamaged ? "bg-amber-600" : "bg-emerald-500"
                         )} />
                         <span className="text-xs font-black">
-                          {dev.cameraStatus === 'Damaged' ? 'ক্যামেরা নষ্ট (Damaged)' : dev.cameraStatus === 'No Video' ? 'ভিডিও নেই' : dev.cameraStatus === 'Cable Issue' ? 'ক্যাবল সমস্যা' : dev.cameraStatus === 'Not Installed' ? 'সংযুক্ত নয়' : 'সচল (Working OK)'}
+                          {dev.cameraStatus === 'Damaged' ? 'ক্যামেরা নষ্ট' : dev.cameraStatus === 'No Video' ? 'ভিডিও নেই' : dev.cameraStatus === 'Cable Issue' ? 'ক্যাবল সমস্যা' : dev.cameraStatus === 'Not Installed' ? 'সংযুক্ত নয়' : 'সচল'}
                         </span>
                       </div>
                     </div>
@@ -817,7 +817,7 @@ export const GPSDeviceManagement: React.FC = () => {
                           ? "bg-amber-100 text-amber-800 border border-amber-200" 
                           : "bg-slate-100 text-slate-600 border border-slate-200"
                       )}>
-                        {(dev.vendorNotifyCount || 0) === 0 ? '০ বার (জানানো হয়নি)' : `${dev.vendorNotifyCount} বার`}
+                        {(dev.vendorNotifyCount || 0) === 0 ? '০ বার' : `${dev.vendorNotifyCount} বার`}
                       </span>
                     </div>
                   </div>
@@ -860,7 +860,7 @@ export const GPSDeviceManagement: React.FC = () => {
                       className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1 active:scale-95"
                     >
                       <Check size={13} />
-                      <span>সচল চিহ্নিত করুন (Resolve)</span>
+                      <span>সচল চিহ্নিত করুন</span>
                     </button>
                   )}
                 </div>
@@ -924,7 +924,7 @@ export const GPSDeviceManagement: React.FC = () => {
                     className="w-full text-xs font-bold px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500 text-blue-700"
                   >
                     <option value="ADL">ADL (ADL Tracking)</option>
-                    <option value="BD Tracking">BD Tracking (বিডি ট্র্যাকিং)</option>
+                    <option value="BD Tracking">BD Tracking</option>
                   </select>
                 </div>
               </div>
@@ -932,17 +932,17 @@ export const GPSDeviceManagement: React.FC = () => {
               {/* Device ID and SIM */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">ডিভাইস আইডি / IMEI</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">ডিভাইস আইডি (IMEI)</label>
                   <input
                     type="text"
-                    placeholder="যেমন: ADL-88239 / BDT-109"
+                    placeholder="যেমন: ADL-88239"
                     value={formData.deviceId}
                     onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
                     className="w-full text-xs font-mono font-medium px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">সিম কার্ড নম্বর (সর্বোচ্চ ১১ ডিজিট)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">সিম কার্ড নম্বর</label>
                   <input
                     type="tel"
                     maxLength={11}
@@ -965,10 +965,10 @@ export const GPSDeviceManagement: React.FC = () => {
                     required
                     className="w-full text-xs font-bold px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500"
                   >
-                    <option value="Offline">🚨 অফলাইন (Offline)</option>
-                    <option value="Online">🟢 সচল / অনলাইন (Online)</option>
-                    <option value="No Signal">⚠️ সিগন্যাল নেই (No Signal)</option>
-                    <option value="Power Cut">🔌 পাওয়ার বিচ্ছিন্ন (Power Cut)</option>
+                    <option value="Offline">🚨 অফলাইন</option>
+                    <option value="Online">🟢 অনলাইন</option>
+                    <option value="No Signal">⚠️ সিগন্যাল নেই</option>
+                    <option value="Power Cut">🔌 পাওয়ার বিচ্ছিন্ন</option>
                   </select>
                 </div>
 
@@ -981,12 +981,12 @@ export const GPSDeviceManagement: React.FC = () => {
                     required
                     className="w-full text-xs font-bold px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500"
                   >
-                    <option value="Damaged">🚨 ক্যামেরা নষ্ট (Damaged)</option>
-                    <option value="OK">🟢 সচল (Working OK)</option>
-                    <option value="Offline">⚠️ ক্যামেরা অফলাইন (Offline)</option>
-                    <option value="No Video">📹 ভিডিও শো করছে না (No Video)</option>
+                    <option value="Damaged">🚨 ক্যামেরা নষ্ট</option>
+                    <option value="OK">🟢 সচল</option>
+                    <option value="Offline">⚠️ ক্যামেরা অফলাইন</option>
+                    <option value="No Video">📹 ভিডিও শো করছে না</option>
                     <option value="Cable Issue">🔌 ক্যাবল / লেন্স ত্রুটি</option>
-                    <option value="Not Installed">সংযুক্ত নেই (Not Installed)</option>
+                    <option value="Not Installed">সংযুক্ত নেই</option>
                   </select>
                 </div>
               </div>
@@ -1030,10 +1030,10 @@ export const GPSDeviceManagement: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, actionStatus: e.target.value as any })}
                     className="w-full text-xs font-semibold px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-blue-500"
                   >
-                    <option value="Active Issue">🚨 অ্যাক্টিভ সমস্যা (Active Issue)</option>
-                    <option value="Complain Lodged">📞 ভেন্ডরকে জানানো হয়েছে (Complain Lodged)</option>
+                    <option value="Active Issue">🚨 অ্যাক্টিভ সমস্যা</option>
+                    <option value="Complain Lodged">📞 ভেন্ডরকে জানানো হয়েছে</option>
                     <option value="Technician Scheduled">🔧 টেকনিশিয়ান শিডিউল হয়েছে</option>
-                    <option value="Resolved">🟢 সমাধান হয়েছে (Resolved)</option>
+                    <option value="Resolved">🟢 সমাধান হয়েছে</option>
                   </select>
                 </div>
 
