@@ -242,17 +242,10 @@ const Vehicles: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Vehicle Management</h2>
-          <p className="text-slate-500 flex items-center gap-2 flex-wrap">
-            <span>
-              {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
-                ? `${selectedWarehouse} ডিপোর ফ্লিট গাড়ি` 
-                : 'ফ্লিট গাড়ি ব্যবস্থাপনা ও ইন্টার-ডিপো স্থানান্তর'} ({filtered.length} টি গাড়ি)
-            </span>
-            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ' && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                ডিপো ফিল্টার সক্রিয়: {selectedWarehouse}
-              </span>
-            )}
+          <p className="text-slate-500">
+            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
+              ? `${selectedWarehouse} ডিপোর ফ্লিট গাড়ি` 
+              : 'ফ্লিট গাড়ি ব্যবস্থাপনা ও ইন্টার-ডিপো স্থানান্তর'} <span className="text-xs text-slate-400 font-normal">({filtered.length} টি গাড়ি)</span>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

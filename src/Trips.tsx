@@ -167,17 +167,10 @@ const Trips: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Trip Management</h2>
-          <p className="text-slate-500 flex items-center gap-2 flex-wrap">
-            <span>
-              {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
-                ? `${selectedWarehouse} ডিপোর ট্রিপসমূহ`
-                : 'সকল ডিপোর ট্রিপ ও গাড়ি ছাড়পত্র'} ({warehouseTrips.length} টি ট্রিপ)
-            </span>
-            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ' && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                ডিপো ফিল্টার সক্রিয়: {selectedWarehouse}
-              </span>
-            )}
+          <p className="text-slate-500">
+            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
+              ? `${selectedWarehouse} ডিপোর ট্রিপসমূহ`
+              : 'সকল ডিপোর ট্রিপ ও গাড়ি ছাড়পত্র'} <span className="text-xs text-slate-400 font-normal">({warehouseTrips.length} টি ট্রিপ)</span>
           </p>
         </div>
 

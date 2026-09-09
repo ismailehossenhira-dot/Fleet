@@ -534,17 +534,15 @@ const Drivers: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Staff Directory</h2>
-          <p className="text-sm text-slate-500 flex items-center gap-2 flex-wrap">
+          <p className="text-sm text-slate-500 flex items-center gap-1.5 flex-wrap">
             <span>
               {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
-                ? `${selectedWarehouse} ডিপোর ড্রাইভার ও হেলপার তালিকা`
-                : 'সকল ডিপোর ড্রাইভার ও হেলপার তালিকা'} ({filtered.length} জন - {driversList.length} ড্রাইভার, {helpersList.length} হেলপার)
+                ? `${selectedWarehouse} ডিপোর তালিকা`
+                : 'স্টাফ তালিকা'}
             </span>
-            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ' && (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                ডিপো ফিল্টার সক্রিয়: {selectedWarehouse}
-              </span>
-            )}
+            <span className="text-xs text-slate-400 font-normal">
+              ({filtered.length} জন • {driversList.length} ড্রাইভার, {helpersList.length} হেলপার)
+            </span>
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
