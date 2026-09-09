@@ -62,7 +62,7 @@ const SuspensionBadgeAndDetails: React.FC<{ driver: any }> = ({ driver }) => {
 const Drivers: React.FC = () => {
   const { isAdmin, isSubAdmin, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
-  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
+  const { selectedWarehouse, filterByWarehouse, assignedWarehouse, getWarehouseBadge } = useWarehouse();
   const canManage = isAdmin;
   const [drivers, setDrivers] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
@@ -84,7 +84,7 @@ const Drivers: React.FC = () => {
     address: '',
     familyPhone: '',
     role: 'Driver' as 'Driver' | 'Helper',
-    warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
+    warehouse: assignedWarehouse || 'মোহাম্মদপুর'
   });
 
   useEffect(() => {
@@ -172,7 +172,7 @@ const Drivers: React.FC = () => {
       address: '', 
       familyPhone: '', 
       role: 'Driver',
-      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
+      warehouse: assignedWarehouse || 'মোহাম্মদপুর'
     });
     localStorage.removeItem('drivers_newDriver');
     localStorage.removeItem('drivers_showAdd');
@@ -184,7 +184,7 @@ const Drivers: React.FC = () => {
     const normalizedDriver = {
       ...newDriver,
       driverId: newDriver.driverId.trim().toUpperCase(),
-      warehouse: newDriver.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
+      warehouse: newDriver.warehouse || assignedWarehouse || 'মোহাম্মদপুর'
     };
     await addDriver(normalizedDriver, profile);
     setNewDriver({ 
@@ -195,7 +195,7 @@ const Drivers: React.FC = () => {
       address: '', 
       familyPhone: '', 
       role: 'Driver',
-      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
+      warehouse: assignedWarehouse || 'মোহাম্মদপুর'
     });
     setShowAdd(false);
     localStorage.removeItem('drivers_newDriver');
@@ -534,7 +534,18 @@ const Drivers: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">Staff Directory</h2>
-          <p className="text-sm text-slate-500">Manage all registered drivers and helpers.</p>
+          <p className="text-sm text-slate-500 flex items-center gap-2 flex-wrap">
+            <span>
+              {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
+                ? `${selectedWarehouse} ডিপোর ড্রাইভার ও হেলপার তালিকা`
+                : 'সকল ডিপোর ড্রাইভার ও হেলপার তালিকা'} ({filtered.length} জন - {driversList.length} ড্রাইভার, {helpersList.length} হেলপার)
+            </span>
+            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ' && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                ডিপো ফিল্টার সক্রিয়: {selectedWarehouse}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {canManage && (
@@ -971,20 +982,6 @@ const Drivers: React.FC = () => {
                   setSearchQuery(e.target.value);
                 }}
               />
-            </div>
-
-            {/* Warehouse Filter */}
-            <div className="relative">
-              <select
-                value={selectedWarehouse}
-                onChange={(e) => setSelectedWarehouse(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
-              >
-                <option value="all">🏢 সকল ডিপো</option>
-                {SUPPORTED_WAREHOUSES.map(w => (
-                  <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
-                ))}
-              </select>
             </div>
           </div>
           

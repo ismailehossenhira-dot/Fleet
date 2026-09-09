@@ -160,13 +160,25 @@ const Trips: React.FC = () => {
     };
   }, []);
 
+  const warehouseTrips = filterByWarehouse(trips, t => t.originWarehouse || t.destinationWarehouse || t.warehouse);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Trip Management</h2>
-          <p className="text-slate-500">Dispatch vehicles and track ongoing trips.</p>
+          <p className="text-slate-500 flex items-center gap-2 flex-wrap">
+            <span>
+              {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ'
+                ? `${selectedWarehouse} ডিপোর ট্রিপসমূহ`
+                : 'সকল ডিপোর ট্রিপ ও গাড়ি ছাড়পত্র'} ({warehouseTrips.length} টি ট্রিপ)
+            </span>
+            {selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' && selectedWarehouse !== 'সকল ওয়ারহাউজ' && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                ডিপো ফিল্টার সক্রিয়: {selectedWarehouse}
+              </span>
+            )}
+          </p>
         </div>
 
       </div>
@@ -183,7 +195,7 @@ const Trips: React.FC = () => {
           )}
         >
           <AlertCircle size={15} className="text-amber-500 shrink-0" />
-          <span>পেন্ডিং ({trips.filter(t => t.status === 'Pending').length})</span>
+          <span>পেন্ডিং ({warehouseTrips.filter(t => t.status === 'Pending').length})</span>
         </button>
         <button
           onClick={() => setActiveTab('active')}
@@ -195,7 +207,7 @@ const Trips: React.FC = () => {
           )}
         >
           <Clock size={15} className="text-blue-500 shrink-0" />
-          <span>চলমান ট্রিপস ({trips.filter(t => t.status === 'Running').length})</span>
+          <span>চলমান ট্রিপস ({warehouseTrips.filter(t => t.status === 'Running').length})</span>
         </button>
         <button
           onClick={() => setActiveTab('log')}
@@ -207,12 +219,12 @@ const Trips: React.FC = () => {
           )}
         >
           <Calendar size={15} className="text-emerald-500 shrink-0" />
-          <span>লগ হিস্ট্রি ({trips.length})</span>
+          <span>লগ হিস্ট্রি ({warehouseTrips.length})</span>
         </button>
       </div>
 
       {(() => {
-        const filteredPendingTrips = trips.filter(t => {
+        const filteredPendingTrips = warehouseTrips.filter(t => {
           if (t.status !== 'Pending') return false;
           if (!logSearch.trim()) return true;
           const q = logSearch.toLowerCase();
@@ -225,7 +237,7 @@ const Trips: React.FC = () => {
             (t.location || '').toLowerCase().includes(q);
         });
 
-        const filteredActiveTrips = trips.filter(t => {
+        const filteredActiveTrips = warehouseTrips.filter(t => {
           if (t.status !== 'Running') return false;
           if (!logSearch.trim()) return true;
           const q = logSearch.toLowerCase();
@@ -635,20 +647,20 @@ const Trips: React.FC = () => {
             <div className="flex items-center justify-around bg-slate-50 border border-slate-100 rounded-xl p-2 text-center">
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase">মোট ট্রিপ</span>
-                <span className="text-sm font-black text-slate-800">{trips.length}টি</span>
+                <span className="text-sm font-black text-slate-800">{warehouseTrips.length}টি</span>
               </div>
               <div className="border-l border-slate-200 h-8"></div>
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase">চলমান</span>
                 <span className="text-sm font-black text-blue-600">
-                  {trips.filter(t => t.status === 'Running').length}টি
+                  {warehouseTrips.filter(t => t.status === 'Running').length}টি
                 </span>
               </div>
               <div className="border-l border-slate-200 h-8"></div>
               <div>
                 <span className="text-[10px] text-slate-400 block font-bold uppercase">সম্পন্ন</span>
                 <span className="text-sm font-black text-emerald-600">
-                  {trips.filter(t => t.status === 'Completed').length}টি
+                  {warehouseTrips.filter(t => t.status === 'Completed').length}টি
                 </span>
               </div>
             </div>
@@ -658,7 +670,7 @@ const Trips: React.FC = () => {
           <div className="space-y-4">
             {(() => {
               // Get filtered log trips
-              const filteredLogTrips = trips.filter(trip => {
+              const filteredLogTrips = warehouseTrips.filter(trip => {
                 // Date filter
                 if (selectedDateFilter) {
                   const tripDate = getTripDateString(trip);

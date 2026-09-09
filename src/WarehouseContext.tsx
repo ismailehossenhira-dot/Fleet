@@ -238,16 +238,37 @@ export const WarehouseProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
-  const isAll = selectedWarehouse === ALL_WAREHOUSES_KEY;
+  const isAll = selectedWarehouse === ALL_WAREHOUSES_KEY || selectedWarehouse === 'all' || selectedWarehouse === 'সকল ডিপো' || selectedWarehouse === 'সকল ওয়ারহাউজ';
 
   const filterByWarehouse = <T,>(items: T[], getWarehouseProp?: (item: T) => string | undefined): T[] => {
-    if (isAll) return items;
+    if (isAll || !selectedWarehouse) return items;
+    
+    const targetObj = getWarehouseObj(selectedWarehouse);
+    const targetClean = selectedWarehouse.trim().toLowerCase();
+
     return items.filter(item => {
-      const wh = getWarehouseProp 
+      const rawWh = getWarehouseProp 
         ? getWarehouseProp(item) 
         : ((item as any)?.warehouse || (item as any)?.originWarehouse);
-      if (!wh) return false;
-      return wh === selectedWarehouse;
+      
+      const wh = rawWh ? String(rawWh).trim() : '';
+      if (!wh) {
+        // If an item has no warehouse explicitly specified, match if Mohammadpur (default hub) is selected
+        if (targetClean === 'মোহাম্মদপুর' || targetClean === 'mohammadpur' || targetObj?.id === 'mohammadpur') {
+          return true;
+        }
+        return false;
+      }
+
+      // Exact match
+      if (wh === selectedWarehouse) return true;
+      if (wh.toLowerCase() === targetClean) return true;
+
+      // Match via warehouse object resolution (matches id, English name, code, Bengali name)
+      const itemObj = getWarehouseObj(wh);
+      if (targetObj && itemObj && targetObj.id === itemObj.id) return true;
+
+      return false;
     });
   };
 
