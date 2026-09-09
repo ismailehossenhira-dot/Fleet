@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth, UserRole } from './AuthContext';
 import { SearchProvider } from './SearchContext';
 import { ThemeProvider } from './ThemeContext';
+import { LanguageProvider } from './LanguageContext';
 import { WarehouseProvider } from './WarehouseContext';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Button } from './components/Common';
@@ -215,33 +216,35 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; moduleKey?: string }
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <WarehouseProvider>
-          <SearchProvider>
-            <HashRouter>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<ProtectedRoute moduleKey="dashboard"><Dashboard /></ProtectedRoute>} />
-                <Route path="/warehouses" element={<ProtectedRoute moduleKey="warehouses"><WarehousesManagement /></ProtectedRoute>} />
-                <Route path="/vehicles" element={<ProtectedRoute moduleKey="vehicles"><Vehicles /></ProtectedRoute>} />
-                <Route path="/requests" element={<ProtectedRoute moduleKey="requests"><Requests /></ProtectedRoute>} />
-                <Route path="/trips" element={<ProtectedRoute moduleKey="trips"><Trips /></ProtectedRoute>} />
-                <Route path="/new-trip" element={<ProtectedRoute moduleKey="new_trip"><NewTrip /></ProtectedRoute>} />
-                <Route path="/morning-prep" element={<ProtectedRoute moduleKey="morning_prep"><MorningPrep /></ProtectedRoute>} />
-                <Route path="/maintenance" element={<ProtectedRoute moduleKey="maintenance"><Maintenance /></ProtectedRoute>} />
-                <Route path="/maintenance/gps" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
-                <Route path="/maintenance/gps-device" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
-                <Route path="/drivers" element={<ProtectedRoute moduleKey="drivers"><Drivers /></ProtectedRoute>} />
-                <Route path="/cases" element={<ProtectedRoute moduleKey="cases"><CaseManagement /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute moduleKey="reports"><Reports /></ProtectedRoute>} />
-                <Route path="/qr-scanner" element={<ProtectedRoute moduleKey="qr_scanner"><QRScanner /></ProtectedRoute>} />
-                <Route path="/users" element={<ProtectedRoute moduleKey="users"><UsersManagement /></ProtectedRoute>} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </HashRouter>
-          </SearchProvider>
-        </WarehouseProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <WarehouseProvider>
+            <SearchProvider>
+              <HashRouter>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/" element={<ProtectedRoute moduleKey="dashboard"><Dashboard /></ProtectedRoute>} />
+                  <Route path="/warehouses" element={<ProtectedRoute moduleKey="warehouses"><WarehousesManagement /></ProtectedRoute>} />
+                  <Route path="/vehicles" element={<ProtectedRoute moduleKey="vehicles"><Vehicles /></ProtectedRoute>} />
+                  <Route path="/requests" element={<ProtectedRoute moduleKey="requests"><Requests /></ProtectedRoute>} />
+                  <Route path="/trips" element={<ProtectedRoute moduleKey="trips"><Trips /></ProtectedRoute>} />
+                  <Route path="/new-trip" element={<ProtectedRoute moduleKey="new_trip"><NewTrip /></ProtectedRoute>} />
+                  <Route path="/morning-prep" element={<ProtectedRoute moduleKey="morning_prep"><MorningPrep /></ProtectedRoute>} />
+                  <Route path="/maintenance" element={<ProtectedRoute moduleKey="maintenance"><Maintenance /></ProtectedRoute>} />
+                  <Route path="/maintenance/gps" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
+                  <Route path="/maintenance/gps-device" element={<ProtectedRoute moduleKey="maintenance"><Maintenance defaultTab="gps" /></ProtectedRoute>} />
+                  <Route path="/drivers" element={<ProtectedRoute moduleKey="drivers"><Drivers /></ProtectedRoute>} />
+                  <Route path="/cases" element={<ProtectedRoute moduleKey="cases"><CaseManagement /></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute moduleKey="reports"><Reports /></ProtectedRoute>} />
+                  <Route path="/qr-scanner" element={<ProtectedRoute moduleKey="qr_scanner"><QRScanner /></ProtectedRoute>} />
+                  <Route path="/users" element={<ProtectedRoute moduleKey="users"><UsersManagement /></ProtectedRoute>} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </HashRouter>
+            </SearchProvider>
+          </WarehouseProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

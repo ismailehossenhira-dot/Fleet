@@ -102,13 +102,13 @@
         "destinationWarehouse": { "type": "string" },
         "startTime": { "type": "string", "format": "date-time" },
         "endTime": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Running", "Completed"] },
+        "status": { "type": "string", "enum": ["Pending", "Running", "Completed", "Cancelled"] },
         "documentsGiven": { "type": "array", "items": { "type": "string" } },
         "inspectionOnReturn": { "$ref": "#/entities/Inspection" },
         "caseDetails": { "$ref": "#/entities/Case" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["vehicleId", "driverId", "driverName", "location", "status", "startTime"]
+      "required": ["vehicleId", "driverId", "driverName", "location", "status"]
     },
     "Inspection": {
       "title": "Inspection",
@@ -360,6 +360,9 @@
     "transfers": {
       "schema": "WarehouseTransfer",
       "description": "Collection of inter-warehouse transfers and exchanges of vehicles and staff"
+    },
+    "maintenance": {
+      "description": "Collection of vehicle maintenance, service records and repair logs"
     }
   }
 }

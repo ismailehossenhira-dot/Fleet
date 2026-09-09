@@ -27,13 +27,17 @@ import {
   Search,
   Wrench,
   Radio,
-  Building2
+  Building2,
+  Globe,
+  Languages
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { signOut } from '../firebase';
 import { useAuth, UserRole } from '../AuthContext';
 import { useSearch } from '../SearchContext';
 import { useTheme, THEME_OPTIONS, ThemeMode } from '../ThemeContext';
+import { useLanguage } from '../LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 import { WarehouseSelector } from './WarehouseSelector';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -101,6 +105,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { user, profile, canAccessModule, isAdmin } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const { theme, setTheme, toggleTheme, isEmerald, isOcean, isCrimson, isAmber, currentThemeOption } = useTheme();
+  const { language, setLanguage, t, getNavLabel, getRoleName } = useLanguage();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
@@ -338,7 +343,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           PRO
                         </span>
                       </h2>
-                      <p className="text-[10px] text-slate-400 font-medium">মোবাইল লজিস্টিকস পোর্টাল</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{t('mobile_portal', 'মোবাইল লজিস্টিকস পোর্টাল')}</p>
                     </div>
                   </div>
                   <button
@@ -361,14 +366,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <p className="text-xs font-bold text-white truncate">{profile?.displayName || user?.displayName || 'User'}</p>
                     <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 font-semibold mt-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {getRoleBangla(profile?.role)}
+                      {getRoleName(profile?.role)}
                     </span>
                   </div>
                 </div>
 
                 {/* Mobile Drawer Navigation List */}
                 <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto overscroll-contain">
-                  <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">সবগুলো অপশন</p>
+                  <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('all_options', 'সবগুলো অপশন')}</p>
                   {filteredNavItems.map((item) => {
                     const isRequests = item.to === '/requests';
                     const hasPending = isRequests && pendingCount > 0;
@@ -406,7 +411,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                               className="flex items-center gap-3 flex-1 text-left"
                             >
                               <item.icon size={19} className="stroke-[2.3]" />
-                              <span>{item.label}</span>
+                              <span>{getNavLabel(item.moduleKey, item.label)}</span>
                             </NavLink>
 
                             <button
@@ -455,7 +460,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                                       >
                                         <div className="flex items-center gap-2">
                                           {sub.icon && <sub.icon size={14} className="shrink-0 opacity-80" />}
-                                          <span>{sub.label}</span>
+                                          <span>{getNavLabel(sub.to.includes('gps') ? 'maintenance_gps' : 'maintenance_service', sub.label)}</span>
                                         </div>
                                         {sub.badge && (
                                           <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-blue-500/40 text-blue-200 uppercase">
@@ -495,7 +500,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       >
                         <div className="flex items-center gap-3">
                           <item.icon size={19} className="stroke-[2.3]" />
-                          <span>{item.label}</span>
+                          <span>{getNavLabel(item.moduleKey, item.label)}</span>
                         </div>
 
                         {hasPending && (
@@ -514,10 +519,56 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   })}
                 </nav>
 
-                {/* Mobile Drawer Footer with Signout & Theme Quick Toggle */}
-                <div className="p-3 border-t border-white/10 bg-black/20 space-y-2">
+                {/* Mobile Drawer Footer with Language & Theme Switchers & Signout */}
+                <div className="p-3 border-t border-white/10 bg-black/20 space-y-2.5">
+                  {/* Language Quick Toggle */}
                   <div className="flex items-center justify-between px-2">
-                    <span className="text-[11px] font-bold text-slate-400">থিম</span>
+                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                      <Globe size={12} className="text-slate-300" />
+                      <span>{t('language_settings', 'ভাষা')}</span>
+                    </span>
+                    <div className="flex items-center gap-1 bg-black/30 p-0.5 rounded-lg border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setLanguage('default')}
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-md transition-all active:scale-95",
+                          language === 'default'
+                            ? "bg-white text-slate-900 font-extrabold shadow-2xs"
+                            : "text-slate-300 hover:text-white"
+                        )}
+                      >
+                        ডিফল্ট
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLanguage('en')}
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-md transition-all active:scale-95",
+                          language === 'en'
+                            ? "bg-white text-slate-900 font-extrabold shadow-2xs"
+                            : "text-slate-300 hover:text-white"
+                        )}
+                      >
+                        EN
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLanguage('bn')}
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-md transition-all active:scale-95",
+                          language === 'bn'
+                            ? "bg-white text-slate-900 font-extrabold shadow-2xs"
+                            : "text-slate-300 hover:text-white"
+                        )}
+                      >
+                        বাংলা
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[11px] font-bold text-slate-400">{t('theme_change', 'থিম')}</span>
                     <div className="flex items-center gap-1.5">
                       {THEME_OPTIONS.map((opt) => (
                         <button
@@ -542,7 +593,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     className="w-full py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-transform"
                   >
                     <LogOut size={15} />
-                    <span>সাইন আউট</span>
+                    <span>{t('sign_out', 'সাইন আউট')}</span>
                   </button>
                 </div>
               </div>
@@ -607,7 +658,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   PRO
                 </span>
               </h1>
-              <p className="text-[11px] font-semibold text-slate-400">লজিস্টিকস ম্যানেজমেন্ট</p>
+              <p className="text-[11px] font-semibold text-slate-400">{t('logistics_management', 'লজিস্টিকস ম্যানেজমেন্ট')}</p>
             </div>
           </div>
 
@@ -648,7 +699,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         className="flex items-center gap-3 flex-1 text-left"
                       >
                         <item.icon size={20} className="stroke-[2.3]" />
-                        <span>{item.label}</span>
+                        <span>{getNavLabel(item.moduleKey, item.label)}</span>
                       </NavLink>
 
                       <button
@@ -696,7 +747,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                                 >
                                   <div className="flex items-center gap-2">
                                     {sub.icon && <sub.icon size={13} className="shrink-0 opacity-80 group-hover:scale-110 transition-transform" />}
-                                    <span>{sub.label}</span>
+                                    <span>{getNavLabel(sub.to.includes('gps') ? 'maintenance_gps' : 'maintenance_service', sub.label)}</span>
                                   </div>
                                   {sub.badge && (
                                     <span className="text-[9px] px-1.5 py-0.2 rounded font-black bg-blue-500/40 text-blue-200 uppercase">
@@ -735,7 +786,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 >
                   <div className="flex items-center gap-3">
                     <item.icon size={20} className="stroke-[2.3]" />
-                    <span>{item.label}</span>
+                    <span>{getNavLabel(item.moduleKey, item.label)}</span>
                   </div>
 
                   {hasPending && (
@@ -809,7 +860,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <Search size={18} className="text-text-muted" />
             <input 
               type="text" 
-              placeholder="গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন..." 
+              placeholder={t('search_placeholder', 'গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন...')}
               className="bg-transparent border-none outline-none text-sm font-medium w-full text-text-main placeholder:text-text-muted"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -891,7 +942,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             ? "text-[#78350f] bg-[#fef3c7] border-[#fde68a]"
                             : "text-blue-700 bg-blue-50 border-blue-200"
                     )}>
-                      {getRoleBangla(profile?.role)}
+                      {getRoleName(profile?.role)}
                     </span>
                   </div>
                 </div>
@@ -947,16 +998,25 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           {profile?.displayName || user?.displayName || 'User'}
                         </h4>
                         <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                          {getRoleBangla(profile?.role)}
+                          {getRoleName(profile?.role)}
                         </p>
                       </div>
+                    </div>
+
+                    {/* Language Selector */}
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2">
+                        <Globe size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
+                        <span>{t('language_settings', 'ভাষা সেটিং')}</span>
+                      </label>
+                      <LanguageSelector />
                     </div>
 
                     {/* Theme Selector */}
                     <div>
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mb-2">
                         <Palette size={13} className={isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600"} />
-                        <span>থিম পরিবর্তন</span>
+                        <span>{t('theme_change', 'থিম পরিবর্তন')}</span>
                       </label>
                       <div className="space-y-1.5">
                         {THEME_OPTIONS.map((opt) => {
@@ -1010,7 +1070,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                         className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all border border-rose-200 active:scale-98"
                       >
                         <LogOut size={14} className="stroke-[2.2]" />
-                        <span>সাইন আউট</span>
+                        <span>{t('sign_out', 'সাইন আউট')}</span>
                       </button>
                     </div>
                   </motion.div>
@@ -1037,7 +1097,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <input
                   ref={mobileSearchInputRef}
                   type="text"
-                  placeholder="গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন..."
+                  placeholder={t('search_placeholder', 'গাড়ি, ড্রাইভার অথবা ট্রিপ খুঁজুন...')}
                   className="bg-transparent border-none outline-none text-xs font-medium w-full text-slate-800 placeholder:text-slate-400"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

@@ -24,16 +24,20 @@ service cloud.firestore {
     
     function isSuperAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'ismailehossenhira@gmail.com' || 
-        request.auth.token.email == 'admin@fleetflow.local' ||
+        ('email' in request.auth.token && (
+          request.auth.token.email.lower() == 'ismailehossenhira@gmail.com' || 
+          request.auth.token.email.lower() == 'admin@fleetflow.local'
+        )) ||
         hasRole('Admin')
       );
     }
     
     function isAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == 'ismailehossenhira@gmail.com' || 
-        request.auth.token.email == 'admin@fleetflow.local' ||
+        ('email' in request.auth.token && (
+          request.auth.token.email.lower() == 'ismailehossenhira@gmail.com' || 
+          request.auth.token.email.lower() == 'admin@fleetflow.local'
+        )) ||
         hasRole('Admin')
       ); 
     }
@@ -61,7 +65,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAdmin() || (request.auth.uid == userId);
       allow update: if isSuperAdmin() 
-        || (isAdmin() && !incoming().diff(existing()).affectedKeys().hasAny(['isSuspended']))
+        || isAdmin()
         || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuspended', 'permissions', 'allPermissions']));
       allow delete: if isSuperAdmin() || isAdmin();
     }
@@ -81,13 +85,13 @@ service cloud.firestore {
 
     match /vehicles/{vehicleId} {
       allow read: if isSignedIn();
-      // Adding new vehicles and deleting restricted strictly to Admin
-      allow create: if isAdmin() && isValidVehicle(incoming());
+      // Adding new vehicles and deleting
+      allow create: if (isAdmin() || isSubAdmin()) && isValidVehicle(incoming());
       allow update: if isSignedIn() && (
         // Action: Status Update (during Trip start/end, Maintenance, or making Available)
-        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes', 'warehouse', 'previousWarehouse', 'transferredAt'])) ||
-        // Action: Full Update by Admin
-        (isAdmin() && isValidVehicle(incoming()))
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'updatedAt', 'updatedBy', 'maintenanceNotes', 'warehouse', 'previousWarehouse', 'transferredAt', 'tools', 'documents'])) ||
+        // Action: Full Update by Admin or Sub Admin
+        ((isAdmin() || isSubAdmin()) && isValidVehicle(incoming()))
       );
       allow delete: if isAdmin();
     }
@@ -102,21 +106,21 @@ service cloud.firestore {
 
     match /drivers/{driverId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin();
-      allow update: if isAdmin() || (
-        isSignedIn() && incoming().diff(existing()).affectedKeys().hasAny(['warehouse', 'previousWarehouse', 'transferredAt', 'updatedAt', 'updatedBy'])
+      allow create: if isAdmin() || isSubAdmin();
+      allow update: if isAdmin() || isSubAdmin() || (
+        isSignedIn() && incoming().diff(existing()).affectedKeys().hasAny(['warehouse', 'previousWarehouse', 'transferredAt', 'updatedAt', 'updatedBy', 'isSuspended', 'suspensionEndDate', 'suspensionReason', 'suspendedBy', 'suspensionDays'])
       );
       allow delete: if isAdmin();
     }
 
     // Trip Validation
     function isValidTrip(data) {
-      return data.keys().hasAll(['vehicleId', 'driverId', 'driverName', 'location', 'status', 'startTime'])
+      return data.keys().hasAll(['vehicleId', 'driverId', 'driverName', 'location', 'status'])
         && data.vehicleId is string
         && data.driverId is string
         && data.driverName is string
         && data.location is string
-        && data.status in ['Running', 'Completed'];
+        && data.status in ['Pending', 'Running', 'Completed', 'Cancelled'];
     }
 
     match /trips/{tripId} {
@@ -124,13 +128,13 @@ service cloud.firestore {
       allow create: if isAdmin() || hasPermission('new_trip') || hasPermission('trips') || isSubAdmin() || isLineSupervisor();
       allow update: if isSignedIn() && (
         // Action: Complete/Cancel Trip (Status change, return inspection, or cancellation)
-        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'inspectionOnReturn', 'updatedAt', 'updatedBy'])) ||
+        (incoming().diff(existing()).affectedKeys().hasAny(['status', 'endTime', 'startTime', 'startedBy', 'completedBy', 'cancelledBy', 'cancelReason', 'inspectionOnReturn', 'updatedAt', 'updatedBy'])) ||
         // Action: Assign Case
         (incoming().diff(existing()).affectedKeys().hasOnly(['caseDetails'])) ||
         // Action: Generic Update
         isAdmin() || hasPermission('trips') || isSubAdmin() || isLineSupervisor()
       );
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isSubAdmin() || hasPermission('trips');
     }
 
     match /cases/{caseId} {

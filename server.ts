@@ -183,7 +183,7 @@ ${vehicleHintList}
       let response: any = null;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-3.7-flash",
+          model: "gemini-2.5-flash",
           contents: [
             {
               role: "user",

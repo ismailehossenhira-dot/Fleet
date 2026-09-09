@@ -7,6 +7,7 @@ import {
   PlusCircle, 
   Phone, 
   AlertTriangle,
+  AlertCircle,
   FileText,
   Wrench,
   ShieldAlert,
@@ -20,7 +21,8 @@ import {
   TrendingUp,
   History,
   Clock,
-  Sparkles
+  Sparkles,
+  Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -43,31 +45,53 @@ import {
 import { cn, DOCUMENT_TYPES } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useWarehouse, SUPPORTED_WAREHOUSES, WarehouseBadge } from './WarehouseContext';
+import { 
+  DestinationAutocomplete, 
+  rememberDestinationLocation 
+} from './components/DestinationAutocomplete';
 
 const NewTrip: React.FC = () => {
   const { isAdmin, isSubAdmin, isLineSupervisor, profile } = useAuth();
-  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
+  const { 
+    selectedWarehouse, 
+    setSelectedWarehouse, 
+    filterByWarehouse, 
+    getWarehouseBadge,
+    userWarehouse,
+    assignedWarehouse,
+    isWarehouseLocked 
+  } = useWarehouse();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryVehicleId = searchParams.get('vehicleId');
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
+
+  // Determine user's active/assigned warehouse
+  const effectiveUserWarehouse = 
+    (profile?.warehouse && profile.warehouse !== 'all' && profile.warehouse !== 'সকল ডিপো')
+      ? profile.warehouse
+      : (selectedWarehouse !== 'all' && selectedWarehouse !== 'সকল ডিপো' ? selectedWarehouse : (assignedWarehouse || 'মোহাম্মদপুর'));
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [cases, setCases] = useState<any[]>([]);
   const [trips, setTrips] = useState<any[]>([]);
   const [missingReports, setMissingReports] = useState<any[]>([]);
   const [isSearchingDriver, setIsSearchingDriver] = useState(false);
+  const [driverStatus, setDriverStatus] = useState<'idle' | 'searching' | 'found' | 'not_found'>('idle');
   const [isSearchingHelper, setIsSearchingHelper] = useState(false);
   const [vehicleSearch, setVehicleSearch] = useState(() => {
     return localStorage.getItem('newtrip_vehicleSearch') || '';
   });
+
+  const [isOtherWarehouseConfirmed, setIsOtherWarehouseConfirmed] = useState(false);
+  const [showOtherWarehouseConfirmModal, setShowOtherWarehouseConfirmModal] = useState(false);
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('newtrip_formData');
     return saved ? JSON.parse(saved) : {
       vehicleId: '',
       vehiclePlate: '',
-      warehouse: 'মোহাম্মদপুর',
+      warehouse: effectiveUserWarehouse,
       driverId: 'DRV-',
       driverName: '',
       driverPhone: '',
@@ -132,23 +156,96 @@ const NewTrip: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // All available vehicles (Available status and no active trips)
+  const availableVehicles = vehicles.filter(v => {
+    if (v.status !== 'Available') return false;
+    const hasActiveTrip = trips.some(t => t.vehicleId === v.id && (t.status === 'Pending' || t.status === 'Running'));
+    return !hasActiveTrip;
+  });
+
+  // Strictly filter to user's warehouse vehicles for manual selection
+  const manualAvailableVehicles = availableVehicles.filter(v => {
+    const vWh = (v.warehouse || 'মোহাম্মদপুর').trim().toLowerCase();
+    return vWh === effectiveUserWarehouse.trim().toLowerCase();
+  });
+
+  // Find currently selected vehicle object
+  const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
+  const selectedVehicleWarehouse = selectedVehicle ? (selectedVehicle.warehouse || 'মোহাম্মদপুর').trim() : '';
+
+  // Check if selected vehicle belongs to a different warehouse than user's warehouse
+  const isOtherWarehouseVehicle = Boolean(
+    selectedVehicle && 
+    effectiveUserWarehouse && 
+    selectedVehicleWarehouse.toLowerCase() !== effectiveUserWarehouse.toLowerCase()
+  );
+
   const handleVehicleChange = (val: string) => {
     const vehicle = vehicles.find(v => v.id === val);
-    setFormData({ 
-      ...formData, 
+    setFormData(prev => ({ 
+      ...prev, 
       vehicleId: val, 
       vehiclePlate: vehicle?.vehicleNumber || '',
-      warehouse: vehicle?.warehouse || formData.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
-    });
+      warehouse: effectiveUserWarehouse
+    }));
+    setIsOtherWarehouseConfirmed(false);
     setSubmitError(null);
+  };
+
+  // Re-verify driver if preloaded from storage
+  useEffect(() => {
+    if (formData.driverId && formData.driverId !== 'DRV-') {
+      const checkPreloaded = async () => {
+        try {
+          const staff = await findStaffById(formData.driverId) as any;
+          if (staff && !staff.isSuspended) {
+            setDriverStatus('found');
+            if (!formData.driverName) {
+              setFormData(prev => ({
+                ...prev,
+                driverName: staff.name,
+                driverPhone: staff.phoneNumber || ''
+              }));
+            }
+          } else {
+            setDriverStatus('not_found');
+          }
+        } catch {
+          setDriverStatus('not_found');
+        }
+      };
+      checkPreloaded();
+    }
+  }, []);
+
+  const driverSuffix = (formData.driverId || '').replace(/^DRV-?/i, '');
+  const helperSuffix = (formData.helperId || '').replace(/^HLP-?/i, '');
+
+  const handleDriverSuffixChange = (val: string) => {
+    const cleaned = val.replace(/^DRV-?/i, '').trim().toUpperCase();
+    const fullId = 'DRV-' + cleaned;
+    handleDriverSearch(fullId);
+  };
+
+  const handleHelperSuffixChange = (val: string) => {
+    const cleaned = val.replace(/^HLP-?/i, '').trim().toUpperCase();
+    const fullId = cleaned ? ('HLP-' + cleaned) : 'HLP-';
+    handleHelperSearch(fullId);
   };
 
   const handleDriverSearch = async (val: string) => {
     const id = val.trim().toUpperCase();
     setFormData(prev => ({ ...prev, driverId: id, driverName: '', driverPhone: '' }));
     setSubmitError(null);
-    if (id.length >= 3) {
+
+    if (!id || id === 'DRV-') {
+      setDriverStatus('idle');
+      return;
+    }
+
+    if (id.length >= 5) {
       setIsSearchingDriver(true);
+      setDriverStatus('searching');
       try {
         const staff = await findStaffById(id) as any;
         if (staff) {
@@ -159,19 +256,31 @@ const NewTrip: React.FC = () => {
               driverName: '', 
               driverPhone: '' 
             }));
+            setDriverStatus('not_found');
           } else {
             setFormData(prev => ({ 
               ...prev, 
               driverName: staff.name, 
               driverPhone: staff.phoneNumber || '' 
             }));
+            setDriverStatus('found');
           }
+        } else {
+          setFormData(prev => ({ 
+            ...prev, 
+            driverName: '', 
+            driverPhone: '' 
+          }));
+          setDriverStatus('not_found');
         }
       } catch (err) {
         console.error("Driver fetch error:", err);
+        setDriverStatus('not_found');
       } finally {
         setIsSearchingDriver(false);
       }
+    } else {
+      setDriverStatus('idle');
     }
   };
 
@@ -179,7 +288,12 @@ const NewTrip: React.FC = () => {
     const id = val.trim().toUpperCase();
     setFormData(prev => ({ ...prev, helperId: id, helperName: '', helperPhone: '' }));
     setSubmitError(null);
-    if (id.length >= 3) {
+
+    if (!id || id === 'HLP-') {
+      return;
+    }
+
+    if (id.length >= 5) {
       setIsSearchingHelper(true);
       try {
         const staff = await findStaffById(id) as any;
@@ -194,8 +308,8 @@ const NewTrip: React.FC = () => {
           } else {
             setFormData(prev => ({ 
               ...prev, 
-              helperName: staff.name,
-              helperPhone: staff.phoneNumber || ''
+              helperName: staff.name, 
+              helperPhone: staff.phoneNumber || '' 
             }));
           }
         }
@@ -227,6 +341,8 @@ const NewTrip: React.FC = () => {
     });
     localStorage.removeItem('newtrip_formData');
     localStorage.removeItem('newtrip_vehicleSearch');
+    setIsOtherWarehouseConfirmed(false);
+    setShowOtherWarehouseConfirmModal(false);
     navigate('/trips');
   };
 
@@ -234,29 +350,69 @@ const NewTrip: React.FC = () => {
     e.preventDefault();
     if (!formData.vehicleId || !formData.driverId || !formData.location) return;
     
+    // Warning check: If selecting a vehicle from another warehouse and not confirmed yet
+    if (isOtherWarehouseVehicle && !isOtherWarehouseConfirmed) {
+      setShowOtherWarehouseConfirmModal(true);
+      return;
+    }
+
+    await executeTripCreation();
+  };
+
+  const handleConfirmOtherWarehouseTrip = async () => {
+    setIsOtherWarehouseConfirmed(true);
+    setShowOtherWarehouseConfirmModal(false);
+    await executeTripCreation(true);
+  };
+
+  const handleCancelOtherWarehouseTrip = () => {
+    setShowOtherWarehouseConfirmModal(false);
+    setIsOtherWarehouseConfirmed(false);
+    setFormData(prev => ({
+      ...prev,
+      vehicleId: '',
+      vehiclePlate: ''
+    }));
+    setVehicleSearch('');
+  };
+
+  const executeTripCreation = async (bypassWarehouseWarning = false) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
     const drvId = formData.driverId?.trim().toUpperCase();
-    if (drvId && drvId !== 'DRV-') {
-      // 1. Fetch and double check driver's suspension status
-      const staff = await findStaffById(drvId) as any;
-      if (staff && staff.isSuspended) {
-        setSubmitError(`চালক ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! সাসপেন্ড থাকাকালীন ট্রিপে যোগ দেওয়া যাবে না।`);
-        setIsSubmitting(false);
-        return;
-      }
+    if (!drvId || drvId === 'DRV-') {
+      setSubmitError('অনুগ্রহ করে চালকের ড্রাইভার আইডি (Driver ID) প্রদান করুন।');
+      setDriverStatus('not_found');
+      setIsSubmitting(false);
+      return;
+    }
 
-      const activeDriverTrip = trips.find(t => 
-        t.driverId?.trim().toUpperCase() === drvId && 
-        (t.status === 'Pending' || t.status === 'Running')
-      );
-      if (activeDriverTrip) {
-        const activeVehicleNum = activeDriverTrip.vehiclePlate || activeDriverTrip.vehicleId;
-        setSubmitError(`এই চালক (Driver ID: ${formData.driverId}) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন (গাড়ি: ${activeVehicleNum})।`);
-        setIsSubmitting(false);
-        return;
-      }
+    // 1. Fetch and verify driver exists in database and check suspension status
+    const staff = await findStaffById(drvId) as any;
+    if (!staff) {
+      setSubmitError(`ড্রাইভার আইডি "${formData.driverId}" ডেটাবেজে খুঁজে পাওয়া যায়নি! ডেটাবেজে চালকের তথ্য না থাকলে ট্রিপ এন্ট্রি করা যাবে না।`);
+      setDriverStatus('not_found');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (staff.isSuspended) {
+      setSubmitError(`চালক ${staff.name} (${staff.driverId}) বর্তমানে সাসপেন্ড আছেন! সাসপেন্ড থাকাকালীন ট্রিপে যোগ দেওয়া যাবে না।`);
+      setDriverStatus('not_found');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const activeDriverTrip = trips.find(t => 
+      t.driverId?.trim().toUpperCase() === drvId && 
+      (t.status === 'Pending' || t.status === 'Running')
+    );
+    if (activeDriverTrip) {
+      const activeVehicleNum = activeDriverTrip.vehiclePlate || activeDriverTrip.vehicleId;
+      setSubmitError(`এই চালক (Driver ID: ${formData.driverId}) ইতিমধ্যে অন্য একটি পেন্ডিং বা রানিং ট্রিপে কাজ করছেন (গাড়ি: ${activeVehicleNum})।`);
+      setIsSubmitting(false);
+      return;
     }
 
     const hlpId = formData.helperId?.trim().toUpperCase();
@@ -285,14 +441,20 @@ const NewTrip: React.FC = () => {
       const selectedVeh = vehicles.find(v => v.id === formData.vehicleId);
       const tripData = {
         ...formData,
-        warehouse: formData.warehouse || selectedVeh?.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
+        warehouse: formData.warehouse || selectedVeh?.warehouse || effectiveUserWarehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
       };
       await createTrip(tripData, profile);
+      // Remember destination location for future auto-suggestions
+      if (formData.location) {
+        rememberDestinationLocation(formData.location);
+      }
       setVehicleSearch('');
+      setIsOtherWarehouseConfirmed(false);
+      setShowOtherWarehouseConfirmModal(false);
       setFormData({
         vehicleId: '',
         vehiclePlate: '',
-        warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর',
+        warehouse: effectiveUserWarehouse,
         driverId: 'DRV-',
         driverName: '',
         driverPhone: '',
@@ -329,16 +491,6 @@ const NewTrip: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
-  const availableVehicles = vehicles.filter(v => {
-    if (v.status !== 'Available') return false;
-    // Exclude vehicles that already have an active (Pending or Running) trip
-    const hasActiveTrip = trips.some(t => t.vehicleId === v.id && (t.status === 'Pending' || t.status === 'Running'));
-    return !hasActiveTrip;
-  });
-
-  // Find selected vehicle object
-  const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
 
   // Vehicle Profile tools & docs state
   const vehicleToolsState = getDefaultVehicleTools(selectedVehicle?.tools);
@@ -441,10 +593,21 @@ const NewTrip: React.FC = () => {
 
   return (
     <div className="space-y-3.5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">নতুন ট্রিপ এন্ট্রি</h2>
-          <p className="text-xs text-slate-500">Register and dispatch vehicles for pending trips.</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">নতুন ট্রিপ এন্ট্রি</h2>
+            <span className={cn(
+              "px-2.5 py-0.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-2xs",
+              getWarehouseBadge(effectiveUserWarehouse).bg,
+              getWarehouseBadge(effectiveUserWarehouse).border,
+              getWarehouseBadge(effectiveUserWarehouse).textCol
+            )}>
+              <Building2 size={13} />
+              <span>ডিপো: {effectiveUserWarehouse}</span>
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">Register and dispatch vehicles for pending trips.</p>
         </div>
       </div>
 
@@ -459,26 +622,6 @@ const NewTrip: React.FC = () => {
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                <div className="md:col-span-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700">🏢 ট্রিপ অপারেটিং ডিপো:</span>
-                    <select
-                      value={formData.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')}
-                      onChange={e => {
-                        setFormData(prev => ({ ...prev, warehouse: e.target.value }));
-                      }}
-                      className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                    >
-                      {SUPPORTED_WAREHOUSES.map(w => (
-                        <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {formData.warehouse && <WarehouseBadge warehouse={formData.warehouse} />}
-                  </div>
-                </div>
-
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3.5 p-3.5 bg-blue-50/60 rounded-xl border-2 border-blue-200 shadow-2xs">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Search Vehicle (Last 4 digits)</label>
@@ -493,9 +636,16 @@ const NewTrip: React.FC = () => {
                           const val = e.target.value;
                           setVehicleSearch(val);
                           if (val.length === 4) {
-                            const match = availableVehicles.find(v => v.vehicleNumber.endsWith(val));
-                            if (match) {
-                              handleVehicleChange(match.id);
+                            // 1. Search in user's assigned warehouse first
+                            const matchInDepot = manualAvailableVehicles.find(v => v.vehicleNumber.endsWith(val));
+                            if (matchInDepot) {
+                              handleVehicleChange(matchInDepot.id);
+                            } else {
+                              // 2. Search in other warehouses (will trigger warning)
+                              const matchOther = availableVehicles.find(v => v.vehicleNumber.endsWith(val));
+                              if (matchOther) {
+                                handleVehicleChange(matchOther.id);
+                              }
                             }
                           }
                         }}
@@ -509,24 +659,49 @@ const NewTrip: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Selected / Choose Available</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Selected / Choose Available
+                      </label>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
+                        {effectiveUserWarehouse} ডিপো
+                      </span>
+                    </div>
                     <select 
                       required
-                      className="w-full px-3.5 py-2 rounded-lg border-2 border-blue-300/90 bg-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 font-bold text-slate-900 text-xs sm:text-sm transition-all cursor-pointer"
+                      className={cn(
+                        "w-full px-3.5 py-2 rounded-lg border-2 bg-white outline-none focus:ring-2 font-bold text-slate-900 text-xs sm:text-sm transition-all cursor-pointer",
+                        isOtherWarehouseVehicle 
+                          ? "border-amber-400 focus:border-amber-500 focus:ring-amber-100 bg-amber-50/30"
+                          : "border-blue-300/90 focus:border-blue-600 focus:ring-blue-100"
+                      )}
                       value={formData.vehicleId}
                       onChange={e => handleVehicleChange(e.target.value)}
                     >
-                      <option value="">-- Manual Selection --</option>
-                      {availableVehicles.map(v => (
+                      <option value="">
+                        {manualAvailableVehicles.length > 0 
+                          ? `-- [${effectiveUserWarehouse}] ডিপোর গাড়ি (${manualAvailableVehicles.length}টি উপলব্ধ) --` 
+                          : `-- [${effectiveUserWarehouse}] ডিপোতে কোনো গাড়ি উপলব্ধ নেই --`}
+                      </option>
+                      {manualAvailableVehicles.map(v => (
                         <option key={v.id} value={v.id}>
-                          [{v.warehouse || 'মোহাম্মদপুর'}] {v.vehicleNumber} ({v.type})
+                          {v.vehicleNumber} ({v.type})
                         </option>
                       ))}
+                      {/* If an other-warehouse vehicle was selected via search or link, keep it selectable with warning tag */}
+                      {isOtherWarehouseVehicle && selectedVehicle && !manualAvailableVehicles.some(v => v.id === selectedVehicle.id) && (
+                        <option key={selectedVehicle.id} value={selectedVehicle.id} className="text-amber-800 bg-amber-50 font-black">
+                          ⚠️ [{selectedVehicleWarehouse}] {selectedVehicle.vehicleNumber} ({selectedVehicle.type}) - অন্য ডিপোর গাড়ি
+                        </option>
+                      )}
                     </select>
                     {formData.vehiclePlate && (
                       <div className="mt-1 flex items-center justify-between px-1">
-                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tight">
-                          Active: {formData.vehiclePlate}
+                        <p className={cn(
+                          "text-[10px] font-bold uppercase tracking-tight",
+                          isOtherWarehouseVehicle ? "text-amber-700" : "text-blue-600"
+                        )}>
+                          Active: {formData.vehiclePlate} {isOtherWarehouseVehicle ? `(${selectedVehicleWarehouse})` : ''}
                         </p>
                         {selectedVehicle && (
                           <VehicleProfileButton vehicle={selectedVehicle} />
@@ -534,32 +709,117 @@ const NewTrip: React.FC = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Warning Alert if selecting vehicle from another warehouse */}
+                  {isOtherWarehouseVehicle && selectedVehicle && (
+                    <div className="md:col-span-2 p-3.5 bg-amber-50 border-2 border-amber-400 rounded-xl shadow-2xs animate-in fade-in duration-200">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5 border border-amber-300">
+                          <AlertTriangle size={20} className="stroke-[2.5]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-amber-500 text-white tracking-wide uppercase">
+                              অন্য ডিপোর গাড়ি সতর্কতা!
+                            </span>
+                            <span className="text-xs font-bold text-amber-950">
+                              গাড়ির মূল ডিপো: <span className="underline decoration-amber-500 decoration-2 font-bold">{selectedVehicleWarehouse}</span>
+                            </span>
+                            <span className="text-xs font-semibold text-slate-600">
+                              (আপনার বর্তমান ডিপো: <span className="font-bold text-blue-700">{effectiveUserWarehouse}</span>)
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                            <strong className="font-bold">সতর্কবার্তা:</strong> আপনি যে গাড়িটি (<span className="font-mono font-bold text-slate-900">{selectedVehicle.vehicleNumber}</span>) নির্বাচন করেছেন তা আপনার ডিপোর অন্তর্ভুক্ত নয়। এটি <span className="font-bold text-amber-950">{selectedVehicleWarehouse}</span> ডিপোর গাড়ি।
+                          </p>
+                          <p className="text-[11px] text-amber-800/90 mt-1">
+                            💡 গাড়িটি যদি আপনার ডিপোতে ব্যবহৃত হতে থাকে, তবে ইন্টার-ডিপো ট্রান্সফার (Inter-Warehouse Transfer) সম্পন্ন করুন অথবা নিশ্চিত হলে ট্রিপ তৈরি করুন।
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Driver ID Search</label>
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      required
-                      className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-800 text-xs sm:text-sm font-medium transition-all"
-                      placeholder="DRV-XXX"
-                      value={formData.driverId}
-                      onChange={e => handleDriverSearch(e.target.value)}
-                    />
-                    {isSearchingDriver && <div className="absolute right-3 top-2.5 animate-spin text-blue-500"><Search size={15} /></div>}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Driver ID Search <span className="text-red-500">*</span>
+                    </label>
+                    {driverStatus === 'found' && (
+                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                        <CheckCircle2 size={12} /> যাচাইকৃত
+                      </span>
+                    )}
+                    {driverStatus === 'not_found' && (
+                      <span className="text-[10px] font-bold text-red-600 flex items-center gap-0.5">
+                        <AlertCircle size={12} /> ডেটাবেজে নেই
+                      </span>
+                    )}
                   </div>
+                  <div className="relative">
+                    <div className={cn(
+                      "flex items-center w-full rounded-lg border-2 bg-white overflow-hidden transition-all shadow-2xs",
+                      driverStatus === 'not_found'
+                        ? "border-red-400 bg-red-50/20 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-100"
+                        : driverStatus === 'found'
+                        ? "border-emerald-400 bg-emerald-50/10 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100"
+                        : "border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+                    )}>
+                      {/* Non-deletable, unchangeable fixed prefix badge */}
+                      <span 
+                        className="bg-slate-100 text-slate-700 font-mono font-black text-xs sm:text-sm px-3 py-2 border-r border-slate-300 select-none shrink-0 tracking-wider flex items-center"
+                        title="ফিক্সড প্রেফিক্স (পরিবর্তন অযোগ্য)"
+                      >
+                        DRV-
+                      </span>
+                      <input 
+                        type="text" 
+                        required
+                        className="w-full px-3 py-2 bg-transparent outline-none text-slate-800 text-xs sm:text-sm font-semibold tracking-wide"
+                        placeholder="আইডির বাকি অংশ (যেমন: 001)"
+                        value={driverSuffix}
+                        onChange={e => handleDriverSuffixChange(e.target.value)}
+                      />
+                      <div className="pr-3 flex items-center gap-1.5 shrink-0">
+                        {isSearchingDriver ? (
+                          <div className="animate-spin text-blue-500"><Search size={15} /></div>
+                        ) : driverStatus === 'found' ? (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        ) : driverStatus === 'not_found' ? (
+                          <AlertCircle size={16} className="text-red-500" />
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                  {driverStatus === 'not_found' && (
+                    <p className="text-[11px] text-red-600 font-bold flex items-center gap-1 mt-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      <span>এই ড্রাইভার আইডিটি ডেটাবেজে নেই। আইডি যাচাই করে পুনরায় লিখুন।</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Helper ID Search (Opt)</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 bg-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-slate-800 text-xs sm:text-sm font-medium transition-all"
-                      placeholder="HLP-XXX"
-                      value={formData.helperId}
-                      onChange={e => handleHelperSearch(e.target.value)}
-                    />
-                    {isSearchingHelper && <div className="absolute right-3 top-2.5 animate-spin text-purple-500"><Search size={15} /></div>}
+                    <div className="flex items-center w-full rounded-lg border-2 border-slate-300 bg-white overflow-hidden transition-all shadow-2xs focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100">
+                      {/* Non-deletable, unchangeable fixed prefix badge */}
+                      <span 
+                        className="bg-slate-100 text-slate-700 font-mono font-black text-xs sm:text-sm px-3 py-2 border-r border-slate-300 select-none shrink-0 tracking-wider flex items-center"
+                        title="ফিক্সড প্রেফিক্স (পরিবর্তন অযোগ্য)"
+                      >
+                        HLP-
+                      </span>
+                      <input 
+                        type="text" 
+                        className="w-full px-3 py-2 bg-transparent outline-none text-slate-800 text-xs sm:text-sm font-semibold tracking-wide"
+                        placeholder="আইডির বাকি অংশ (ঐচ্ছিক)"
+                        value={helperSuffix}
+                        onChange={e => handleHelperSuffixChange(e.target.value)}
+                      />
+                      <div className="pr-3 flex items-center gap-1.5 shrink-0">
+                        {isSearchingHelper && <div className="animate-spin text-purple-500"><Search size={15} /></div>}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -602,15 +862,16 @@ const NewTrip: React.FC = () => {
                     )}
                   </div>
                 </div>
-                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Destination Location</label>
-                  <input 
-                    type="text" 
-                    required
-                    className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-800 text-xs sm:text-sm font-medium transition-all"
-                    placeholder="e.g. Chittagong Port"
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Destination Location (গন্তব্য) <span className="text-red-500">*</span>
+                  </label>
+                  <DestinationAutocomplete 
                     value={formData.location}
-                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                    onChange={val => setFormData({ ...formData, location: val })}
+                    trips={trips}
+                    required
+                    placeholder="e.g. Ra লিখলে Rajshahi বা পূর্বের নামগুলো দেখাবে..."
                   />
                 </div>
                 <div>
@@ -661,6 +922,21 @@ const NewTrip: React.FC = () => {
               className="mt-6 border-blue-200 shadow-md ring-1 ring-blue-500/10"
             >
               <div className="space-y-5 text-xs">
+                
+                {/* Other Warehouse Alert inside Live Vehicle Card */}
+                {isOtherWarehouseVehicle && (
+                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-xl flex items-center justify-between gap-3 text-amber-900 shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-amber-600 shrink-0 stroke-[2.5]" />
+                      <span className="font-bold text-xs">
+                        সতর্কতা: এই গাড়ির মূল ডিপো "{selectedVehicleWarehouse}" (আপনার বর্তমান ডিপো: "{effectiveUserWarehouse}")
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-200 text-amber-900 shrink-0">
+                      অন্য ডিপোর গাড়ি
+                    </span>
+                  </div>
+                )}
                 
                 {/* 1. Vehicle Core Profile Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -972,10 +1248,72 @@ const NewTrip: React.FC = () => {
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">৩</span>
                 <span>ট্রিপ এন্ট্রি করার পর গেটে গাড়ি ছাড়ার সময় <strong>OUT QR কোড</strong> স্ক্যান করে ট্রিপ চালু করা হবে।</span>
               </li>
+              <li className="flex gap-3">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">৪</span>
+                <span>ম্যানুয়াল তালিকায় কেবল <strong>আপনার ডিপোর গাড়ি</strong> প্রদর্শিত হবে। অন্য ডিপোর গাড়ি এন্ট্রি করতে চাইলে সতর্কতা নিশ্চিত করতে হবে।</span>
+              </li>
             </ul>
           </Card>
         </div>
       </div>
+
+      {/* Other Warehouse Confirmation Warning Modal */}
+      {showOtherWarehouseConfirmModal && selectedVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-amber-300 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-3 rounded-2xl bg-amber-100 text-amber-700 border border-amber-300 shrink-0">
+                <AlertTriangle size={28} className="stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">অন্য ডিপোর গাড়ি এন্ট্রি সতর্কতা!</h3>
+                <p className="text-xs text-slate-500 mt-0.5">গাড়ির নিবন্ধিত ডিপো ও আপনার ডিপো ভিন্ন</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-200 space-y-2 text-xs text-amber-950">
+              <div className="flex justify-between items-center py-1 border-b border-amber-200/60">
+                <span className="text-slate-600 font-medium">গাড়ি নম্বর:</span>
+                <span className="font-mono font-bold text-slate-900">{selectedVehicle.vehicleNumber}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-amber-200/60">
+                <span className="text-slate-600 font-medium">গাড়ির নির্ধারিত ডিপো:</span>
+                <span className="font-bold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded">
+                  {selectedVehicleWarehouse}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-slate-600 font-medium">আপনার বর্তমান ডিপো:</span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  {effectiveUserWarehouse}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              আপনি আপনার ডিপো (<span className="font-bold text-slate-800">{effectiveUserWarehouse}</span>)-র বাইরে অন্য ডিপো (<span className="font-bold text-slate-800">{selectedVehicleWarehouse}</span>)-র গাড়ির জন্য ট্রিপ তৈরি করতে যাচ্ছেন। আপনি কি নিশ্চিতভাবে এই ট্রিপ এন্ট্রি করতে চান?
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-98 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={handleConfirmOtherWarehouseTrip}
+              >
+                <Check size={16} />
+                <span>হ্যাঁ, অন্য ডিপোর গাড়ি নিশ্চিত করুন</span>
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 font-bold text-xs transition-all border border-slate-200 cursor-pointer"
+                onClick={handleCancelOtherWarehouseTrip}
+              >
+                বাতিল ও গাড়ি পরিবর্তন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

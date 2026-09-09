@@ -457,13 +457,17 @@ export const createTrip = async (trip: any, profile?: any) => {
       throw new Error("এই গাড়ির জন্য ইতিমধ্যেই একটি ট্রিপ নিবন্ধিত বা চলমান রয়েছে। প্রথমে সেটি শেষ বা বাতিল করুন।");
     }
 
-    // 2.5. Double-check if the selected driver is suspended
+    // 2.5. Verify that the selected driver exists in the database and is not suspended
     const drvId = trip.driverId?.trim().toUpperCase();
-    if (drvId && drvId !== 'DRV-') {
-      const driverObj = await findStaffById(drvId);
-      if (driverObj && (driverObj as any).isSuspended) {
-        throw new Error(`চালক ${(driverObj as any).name || drvId} বর্তমানে সাসপেন্ড আছেন! কারণ: ${(driverObj as any).suspensionReason || 'উল্লেখ নেই'} (${(driverObj as any).suspensionDays || '0'} দিন)`);
-      }
+    if (!drvId || drvId === 'DRV-') {
+      throw new Error("ড্রাইভার আইডি প্রদান করা আবশ্যক।");
+    }
+    const driverObj = await findStaffById(drvId);
+    if (!driverObj) {
+      throw new Error(`ড্রাইভার আইডি (${trip.driverId}) ডেটাবেজে খুঁজে পাওয়া যায়নি! ডেটাবেজে চালকের তথ্য না থাকলে ট্রিপ এন্ট্রি করা যাবে না।`);
+    }
+    if ((driverObj as any).isSuspended) {
+      throw new Error(`চালক ${(driverObj as any).name || drvId} বর্তমানে সাসপেন্ড আছেন! কারণ: ${(driverObj as any).suspensionReason || 'উল্লেখ নেই'} (${(driverObj as any).suspensionDays || '0'} দিন)`);
     }
 
     // 2.6. Double-check if the selected helper is suspended

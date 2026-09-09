@@ -13,7 +13,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 const Vehicles: React.FC = () => {
   const { isAdmin, isSubAdmin, isSuperAdmin, profile } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
-  const { selectedWarehouse, setSelectedWarehouse, filterByWarehouse, getWarehouseBadge } = useWarehouse();
+  const { assignedWarehouse, getWarehouseBadge } = useWarehouse();
   const canManage = isAdmin;
   const canManageModels = isAdmin;
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -168,7 +168,7 @@ const Vehicles: React.FC = () => {
     const normalizedVehicle = {
       ...newVehicle,
       vehicleNumber: newVehicle.vehicleNumber.trim().toUpperCase(),
-      warehouse: newVehicle.warehouse || (selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর')
+      warehouse: newVehicle.warehouse || assignedWarehouse || 'মোহাম্মদপুর'
     };
     if (normalizedVehicle.status !== 'Maintenance') {
       normalizedVehicle.maintenanceNotes = '';
@@ -179,7 +179,7 @@ const Vehicles: React.FC = () => {
       type: 'Dost Plus', 
       status: 'Available', 
       maintenanceNotes: '',
-      warehouse: selectedWarehouse !== 'all' ? selectedWarehouse : 'মোহাম্মদপুর'
+      warehouse: assignedWarehouse || 'মোহাম্মদপুর'
     });
     setShowAdd(false);
     localStorage.removeItem('vehicles_newVehicle');
@@ -230,9 +230,7 @@ const Vehicles: React.FC = () => {
     return { ...v, status: 'Available' };
   });
 
-  const warehouseFiltered = filterByWarehouse(computedVehicles);
-
-  const filtered = warehouseFiltered.filter(v => 
+  const filtered = computedVehicles.filter(v => 
     (v.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (typeFilter === 'All' || v.type === typeFilter)
   );
@@ -243,24 +241,10 @@ const Vehicles: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Vehicle Management</h2>
           <p className="text-slate-500">
-            ১০টি ওয়ারহাউজের ফ্লিট গাড়ি ব্যবস্থাপনা ও ইন্টার-ডিপো স্থানান্তর ({filtered.length} টি গাড়ি)
+            ফ্লিট গাড়ি ব্যবস্থাপনা ও ইন্টার-ডিপো স্থানান্তর ({filtered.length} টি গাড়ি)
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Warehouse Filter */}
-          <div className="relative">
-            <select
-              value={selectedWarehouse}
-              onChange={(e) => setSelectedWarehouse(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
-            >
-              <option value="all">🏢 সকল ডিপো</option>
-              {SUPPORTED_WAREHOUSES.map(w => (
-                <option key={w.name} value={w.name}>🏢 {w.name} ({w.nameEn})</option>
-              ))}
-            </select>
-          </div>
-
           {/* Model Filter */}
           <div className="relative">
             <select
