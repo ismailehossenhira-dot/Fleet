@@ -22,7 +22,8 @@ import {
   History,
   Clock,
   Sparkles,
-  Building2
+  Building2,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -85,6 +86,8 @@ const NewTrip: React.FC = () => {
 
   const [isOtherWarehouseConfirmed, setIsOtherWarehouseConfirmed] = useState(false);
   const [showOtherWarehouseConfirmModal, setShowOtherWarehouseConfirmModal] = useState(false);
+  const [showOnTripAlertModal, setShowOnTripAlertModal] = useState(false);
+  const [onTripAlertData, setOnTripAlertData] = useState<{ vehicle: any; trip: any } | null>(null);
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('newtrip_formData');
@@ -102,6 +105,7 @@ const NewTrip: React.FC = () => {
       destinationLatLng: null as { lat: number, lng: number } | null,
       routePoints: [] as Array<{ lat: number, lng: number }>,
       tollAmount: 0,
+      cargoNotes: '',
       documentsGiven: [] as string[],
       toolsGiven: [] as string[]
     };
@@ -135,31 +139,71 @@ const NewTrip: React.FC = () => {
     }
   }, [canManage, navigate]);
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-dismiss warning alerts after 5 seconds
+  useEffect(() => {
+    if (submitError) {
+      const timer = setTimeout(() => {
+        setSubmitError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [submitError]);
+
+  useEffect(() => {
+    if (showOnTripAlertModal) {
+      const timer = setTimeout(() => {
+        setShowOnTripAlertModal(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showOnTripAlertModal]);
+
   // Pre-select vehicle if vehicleId query param is present
   useEffect(() => {
     if (queryVehicleId && vehicles.length > 0) {
       const match = vehicles.find(v => v.id === queryVehicleId);
       if (match) {
-        setFormData(prev => ({ 
-          ...prev, 
-          vehicleId: match.id, 
-          vehiclePlate: match.vehicleNumber || '' 
-        }));
-        if (match.vehicleNumber) {
-          const last4 = match.vehicleNumber.slice(-4);
-          setVehicleSearch(last4);
+        const activeTrip = trips.find(t => 
+          (t.vehicleId === match.id || t.vehiclePlate === match.vehicleNumber) && 
+          (t.status === 'Pending' || t.status === 'Running')
+        );
+        const isOnTrip = Boolean(activeTrip || match.status === 'On Trip' || match.status === 'Pending Out Scan');
+        if (isOnTrip) {
+          setOnTripAlertData({ vehicle: match, trip: activeTrip });
+          setShowOnTripAlertModal(true);
+          const dest = activeTrip?.location ? ` (গন্তব্য: ${activeTrip.location})` : '';
+          const drv = activeTrip?.driverName ? `, চালক: ${activeTrip.driverName}` : '';
+          setSubmitError(`⚠️ সতর্কতা: গাড়ি ${match.vehicleNumber} ইতিমধ্যে একটি ট্রিপে সক্রিয় রয়েছে${dest}${drv}!`);
+          setFormData(prev => ({ 
+            ...prev, 
+            vehicleId: '', 
+            vehiclePlate: '' 
+          }));
+        } else {
+          setFormData(prev => ({ 
+            ...prev, 
+            vehicleId: match.id, 
+            vehiclePlate: match.vehicleNumber || '' 
+          }));
+          if (match.vehicleNumber) {
+            const last4 = match.vehicleNumber.slice(-4);
+            setVehicleSearch(last4);
+          }
         }
       }
     }
-  }, [queryVehicleId, vehicles]);
-
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  }, [queryVehicleId, vehicles, trips]);
 
   // All available vehicles (Available status and no active trips)
   const availableVehicles = vehicles.filter(v => {
     if (v.status !== 'Available') return false;
-    const hasActiveTrip = trips.some(t => t.vehicleId === v.id && (t.status === 'Pending' || t.status === 'Running'));
+    const hasActiveTrip = trips.some(t => 
+      (t.vehicleId === v.id || t.vehiclePlate === v.vehicleNumber) && 
+      (t.status === 'Pending' || t.status === 'Running')
+    );
     return !hasActiveTrip;
   });
 
@@ -173,6 +217,17 @@ const NewTrip: React.FC = () => {
   const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
   const selectedVehicleWarehouse = selectedVehicle ? (selectedVehicle.warehouse || 'মোহাম্মদপুর').trim() : '';
 
+  // Check if selected vehicle has an active trip
+  const selectedVehicleActiveTrip = trips.find(t => 
+    (t.vehicleId === formData.vehicleId || (selectedVehicle && t.vehiclePlate === selectedVehicle.vehicleNumber)) && 
+    (t.status === 'Pending' || t.status === 'Running')
+  );
+  const isSelectedVehicleOnTrip = Boolean(
+    selectedVehicleActiveTrip || 
+    selectedVehicle?.status === 'On Trip' || 
+    selectedVehicle?.status === 'Pending Out Scan'
+  );
+
   // Check if selected vehicle belongs to a different warehouse than user's warehouse
   const isOtherWarehouseVehicle = Boolean(
     selectedVehicle && 
@@ -181,7 +236,40 @@ const NewTrip: React.FC = () => {
   );
 
   const handleVehicleChange = (val: string) => {
+    if (!val) {
+      setFormData(prev => ({ 
+        ...prev, 
+        vehicleId: '', 
+        vehiclePlate: '' 
+      }));
+      setSubmitError(null);
+      return;
+    }
+
     const vehicle = vehicles.find(v => v.id === val);
+    if (vehicle) {
+      // Check if this vehicle is on trip
+      const activeTrip = trips.find(t => 
+        (t.vehicleId === vehicle.id || t.vehiclePlate === vehicle.vehicleNumber) && 
+        (t.status === 'Pending' || t.status === 'Running')
+      );
+      const isOnTrip = Boolean(activeTrip || vehicle.status === 'On Trip' || vehicle.status === 'Pending Out Scan');
+
+      if (isOnTrip) {
+        setOnTripAlertData({ vehicle, trip: activeTrip });
+        setShowOnTripAlertModal(true);
+        const dest = activeTrip?.location ? ` (গন্তব্য: ${activeTrip.location})` : '';
+        const drv = activeTrip?.driverName ? `, চালক: ${activeTrip.driverName}` : '';
+        setSubmitError(`⚠️ সতর্কতা: গাড়ি ${vehicle.vehicleNumber} ইতিমধ্যে একটি ট্রিপে সক্রিয় রয়েছে${dest}${drv}! পূর্বের ট্রিপ সমাপ্ত না হওয়া পর্যন্ত নতুন ট্রিপ এন্ট্রি করা যাবে না।`);
+        setFormData(prev => ({ 
+          ...prev, 
+          vehicleId: '', 
+          vehiclePlate: '' 
+        }));
+        return;
+      }
+    }
+
     setFormData(prev => ({ 
       ...prev, 
       vehicleId: val, 
@@ -190,6 +278,52 @@ const NewTrip: React.FC = () => {
     }));
     setIsOtherWarehouseConfirmed(false);
     setSubmitError(null);
+  };
+
+  const handleVehicleSearchInput = (val: string) => {
+    setVehicleSearch(val);
+    setSubmitError(null);
+
+    if (val.length === 4) {
+      // 1. Search in all vehicles matching last 4 digits
+      const matchingVehicles = vehicles.filter(v => v.vehicleNumber && v.vehicleNumber.slice(-4) === val);
+      
+      if (matchingVehicles.length === 0) {
+        setSubmitError(`শেষ ৪ ডিজিট "${val}" যুক্ত কোনো গাড়ি পাওয়া যায়নি।`);
+        return;
+      }
+
+      // Priority: user's assigned warehouse first
+      const depotMatch = matchingVehicles.find(v => 
+        (v.warehouse || 'মোহাম্মদপুর').trim().toLowerCase() === effectiveUserWarehouse.trim().toLowerCase()
+      );
+      const targetVeh = depotMatch || matchingVehicles[0];
+
+      // Check if vehicle is already on an active trip!
+      const activeTrip = trips.find(t => 
+        (t.vehicleId === targetVeh.id || t.vehiclePlate === targetVeh.vehicleNumber) && 
+        (t.status === 'Pending' || t.status === 'Running')
+      );
+      const isOnTrip = Boolean(activeTrip || targetVeh.status === 'On Trip' || targetVeh.status === 'Pending Out Scan');
+
+      if (isOnTrip) {
+        setOnTripAlertData({ vehicle: targetVeh, trip: activeTrip });
+        setShowOnTripAlertModal(true);
+        const dest = activeTrip?.location ? ` (গন্তব্য: ${activeTrip.location})` : '';
+        const drv = activeTrip?.driverName ? `, চালক: ${activeTrip.driverName}` : '';
+        setSubmitError(`⚠️ সতর্কতা: গাড়ি ${targetVeh.vehicleNumber} ইতিমধ্যে ট্রিপে সক্রিয় রয়েছে${dest}${drv}!`);
+        setFormData(prev => ({ ...prev, vehicleId: '', vehiclePlate: '' }));
+        return;
+      }
+
+      if (targetVeh.status === 'Maintenance') {
+        setSubmitError(`গাড়ি ${targetVeh.vehicleNumber} বর্তমানে মেরামতে (Maintenance) রয়েছে। ট্রিপে পাঠানো যাবে না।`);
+        setFormData(prev => ({ ...prev, vehicleId: '', vehiclePlate: '' }));
+        return;
+      }
+
+      handleVehicleChange(targetVeh.id);
+    }
   };
 
   // Re-verify driver if preloaded from storage
@@ -336,6 +470,7 @@ const NewTrip: React.FC = () => {
       destinationLatLng: null,
       routePoints: [],
       tollAmount: 0,
+      cargoNotes: '',
       documentsGiven: [],
       toolsGiven: []
     });
@@ -349,6 +484,23 @@ const NewTrip: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vehicleId || !formData.driverId || !formData.location) return;
+
+    // Check if vehicle is already on a trip
+    const activeVehicleTrip = trips.find(t => 
+      (t.vehicleId === formData.vehicleId || t.vehiclePlate === formData.vehiclePlate) && 
+      (t.status === 'Pending' || t.status === 'Running')
+    );
+    const targetVeh = selectedVehicle || vehicles.find(v => v.id === formData.vehicleId);
+    const isVehOnTrip = Boolean(activeVehicleTrip || targetVeh?.status === 'On Trip' || targetVeh?.status === 'Pending Out Scan');
+
+    if (isVehOnTrip) {
+      setOnTripAlertData({ vehicle: targetVeh || { vehicleNumber: formData.vehiclePlate }, trip: activeVehicleTrip });
+      setShowOnTripAlertModal(true);
+      const dest = activeVehicleTrip?.location ? ` (গন্তব্য: ${activeVehicleTrip.location})` : '';
+      const drv = activeVehicleTrip?.driverName ? `, চালক: ${activeVehicleTrip.driverName}` : '';
+      setSubmitError(`⚠️ সতর্কতা: গাড়ি ${formData.vehiclePlate || targetVeh?.vehicleNumber} ইতিমধ্যে ট্রিপে রয়েছে${dest}${drv}! পূর্বের ট্রিপ সমাপ্ত না হওয়া পর্যন্ত নতুন ট্রিপ এন্ট্রি করা যাবে না।`);
+      return;
+    }
     
     // Warning check: If selecting a vehicle from another warehouse and not confirmed yet
     if (isOtherWarehouseVehicle && !isOtherWarehouseConfirmed) {
@@ -379,6 +531,22 @@ const NewTrip: React.FC = () => {
   const executeTripCreation = async (bypassWarehouseWarning = false) => {
     setIsSubmitting(true);
     setSubmitError(null);
+
+    // Vehicle on-trip check
+    const activeVehicleTrip = trips.find(t => 
+      (t.vehicleId === formData.vehicleId || t.vehiclePlate === formData.vehiclePlate) && 
+      (t.status === 'Pending' || t.status === 'Running')
+    );
+    const targetVeh = selectedVehicle || vehicles.find(v => v.id === formData.vehicleId);
+    if (activeVehicleTrip || targetVeh?.status === 'On Trip' || targetVeh?.status === 'Pending Out Scan') {
+      setOnTripAlertData({ vehicle: targetVeh || { vehicleNumber: formData.vehiclePlate }, trip: activeVehicleTrip });
+      setShowOnTripAlertModal(true);
+      const dest = activeVehicleTrip?.location ? ` (গন্তব্য: ${activeVehicleTrip.location})` : '';
+      const drv = activeVehicleTrip?.driverName ? `, চালক: ${activeVehicleTrip.driverName}` : '';
+      setSubmitError(`গাড়ি ${formData.vehiclePlate || targetVeh?.vehicleNumber} ইতিমধ্যে একটি সক্রিয় ট্রিপে রয়েছে${dest}${drv}!`);
+      setIsSubmitting(false);
+      return;
+    }
 
     const drvId = formData.driverId?.trim().toUpperCase();
     if (!drvId || drvId === 'DRV-') {
@@ -465,6 +633,7 @@ const NewTrip: React.FC = () => {
         destinationLatLng: null,
         routePoints: [],
         tollAmount: 0,
+        cargoNotes: '',
         documentsGiven: [],
         toolsGiven: []
       });
@@ -616,9 +785,22 @@ const NewTrip: React.FC = () => {
           <Card title="Register New Trip Dispatch" className="border-2 border-slate-200/90 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-4">
               {submitError && (
-                <div className="p-3 bg-red-50 border-2 border-red-200 text-red-800 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
-                  <span>{submitError}</span>
+                <div className="p-3 bg-red-50 border-2 border-red-300 text-red-800 rounded-xl text-xs font-semibold flex items-center justify-between gap-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                    <span>{submitError}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-red-500 font-normal hidden sm:inline">(স্বয়ংক্রিয়ভাবে চলে যাবে)</span>
+                    <button
+                      type="button"
+                      onClick={() => setSubmitError(null)}
+                      className="p-1 text-red-500 hover:text-red-800 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                      title="সতর্কতা বন্ধ করুন"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -632,23 +814,7 @@ const NewTrip: React.FC = () => {
                         className="w-full px-3.5 py-2 rounded-lg border-2 border-blue-300/90 bg-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 font-mono tracking-widest text-base font-bold text-slate-800 transition-all placeholder:text-slate-400 placeholder:font-normal"
                         placeholder="Ex: 5821"
                         value={vehicleSearch}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setVehicleSearch(val);
-                          if (val.length === 4) {
-                            // 1. Search in user's assigned warehouse first
-                            const matchInDepot = manualAvailableVehicles.find(v => v.vehicleNumber.endsWith(val));
-                            if (matchInDepot) {
-                              handleVehicleChange(matchInDepot.id);
-                            } else {
-                              // 2. Search in other warehouses (will trigger warning)
-                              const matchOther = availableVehicles.find(v => v.vehicleNumber.endsWith(val));
-                              if (matchOther) {
-                                handleVehicleChange(matchOther.id);
-                              }
-                            }
-                          }
-                        }}
+                        onChange={e => handleVehicleSearchInput(e.target.value)}
                       />
                       {formData.vehiclePlate && (
                         <div className="absolute right-3 top-2.5 flex items-center gap-1">
@@ -710,30 +876,44 @@ const NewTrip: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Warning Alert if selecting vehicle from another warehouse */}
+                  {/* Compact Warning Alert if selecting vehicle from another warehouse */}
                   {isOtherWarehouseVehicle && selectedVehicle && (
-                    <div className="md:col-span-2 p-3.5 bg-amber-50 border-2 border-amber-400 rounded-xl shadow-2xs animate-in fade-in duration-200">
+                    <div className="md:col-span-2 px-3 py-2 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between gap-2 text-xs animate-in fade-in duration-150">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AlertTriangle size={15} className="text-amber-600 shrink-0 stroke-[2.5]" />
+                        <span className="text-amber-900 font-medium truncate">
+                          সতর্কতা: এটি <strong>{selectedVehicleWarehouse}</strong> ডিপোর গাড়ি (বর্তমান ডিপো: <strong>{effectiveUserWarehouse}</strong>)
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded shrink-0">
+                        অন্য ডিপো
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Warning Alert if vehicle is already on a trip */}
+                  {isSelectedVehicleOnTrip && selectedVehicle && (
+                    <div className="md:col-span-2 p-3.5 bg-red-50 border-2 border-red-400 rounded-xl shadow-2xs animate-in fade-in duration-200">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5 border border-amber-300">
-                          <AlertTriangle size={20} className="stroke-[2.5]" />
+                        <div className="p-2 bg-red-100 text-red-700 rounded-lg shrink-0 mt-0.5 border border-red-300">
+                          <ShieldAlert size={20} className="stroke-[2.5]" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-amber-500 text-white tracking-wide uppercase">
-                              অন্য ডিপোর গাড়ি সতর্কতা!
+                            <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-red-600 text-white tracking-wide uppercase">
+                              ⚠️ গাড়িটি ট্রিপে সক্রিয় রয়েছে!
                             </span>
-                            <span className="text-xs font-bold text-amber-950">
-                              গাড়ির মূল ডিপো: <span className="underline decoration-amber-500 decoration-2 font-bold">{selectedVehicleWarehouse}</span>
-                            </span>
-                            <span className="text-xs font-semibold text-slate-600">
-                              (আপনার বর্তমান ডিপো: <span className="font-bold text-blue-700">{effectiveUserWarehouse}</span>)
+                            <span className="text-xs font-bold text-red-950">
+                              স্ট্যাটাস: {selectedVehicleActiveTrip?.status === 'Running' ? 'চলমান (Running)' : 'পেন্ডিং (Pending Out Scan)'}
                             </span>
                           </div>
-                          <p className="text-xs text-amber-900 font-medium leading-relaxed">
-                            <strong className="font-bold">সতর্কবার্তা:</strong> আপনি যে গাড়িটি (<span className="font-mono font-bold text-slate-900">{selectedVehicle.vehicleNumber}</span>) নির্বাচন করেছেন তা আপনার ডিপোর অন্তর্ভুক্ত নয়। এটি <span className="font-bold text-amber-950">{selectedVehicleWarehouse}</span> ডিপোর গাড়ি।
+                          <p className="text-xs text-red-900 font-medium leading-relaxed">
+                            গাড়ি <strong className="font-mono font-bold text-slate-900">{selectedVehicle.vehicleNumber}</strong> বর্তমানে অন্য একটি ট্রিপে রয়েছে।
+                            {selectedVehicleActiveTrip?.location && <> গন্তব্য: <strong>{selectedVehicleActiveTrip.location}</strong>,</>}
+                            {selectedVehicleActiveTrip?.driverName && <> চালক: <strong>{selectedVehicleActiveTrip.driverName}</strong></>}।
                           </p>
-                          <p className="text-[11px] text-amber-800/90 mt-1">
-                            💡 গাড়িটি যদি আপনার ডিপোতে ব্যবহৃত হতে থাকে, তবে ইন্টার-ডিপো ট্রান্সফার (Inter-Warehouse Transfer) সম্পন্ন করুন অথবা নিশ্চিত হলে ট্রিপ তৈরি করুন।
+                          <p className="text-[11px] text-red-700 font-semibold mt-1">
+                            ⛔ পূর্বের ট্রিপ সম্পন্ন (In-Scan) না হওয়া পর্যন্ত এই গাড়িতে নতুন ট্রিপ এন্ট্রি করা যাবে না।
                           </p>
                         </div>
                       </div>
@@ -878,6 +1058,7 @@ const NewTrip: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-700 mb-1">আনুমানিক টোল বাজেট (টাকা)</label>
                   <input 
                     type="number" 
+                    onWheel={(e) => e.currentTarget.blur()}
                     className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-800 text-xs sm:text-sm font-mono font-medium transition-all"
                     placeholder="e.g. 1500"
                     value={formData.tollAmount || ''}
@@ -1309,6 +1490,115 @@ const NewTrip: React.FC = () => {
                 onClick={handleCancelOtherWarehouseTrip}
               >
                 বাতিল ও গাড়ি পরিবর্তন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Already On Trip Warning Alert Modal */}
+      {showOnTripAlertModal && onTripAlertData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-red-300 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-3 rounded-2xl bg-red-100 text-red-600 border border-red-200 shrink-0">
+                  <ShieldAlert size={28} className="stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">গাড়িটি ইতিমধ্যে ট্রিপে রয়েছে!</h3>
+                  <p className="text-xs text-red-600 font-semibold mt-0.5">নতুন ট্রিপ এন্ট্রি করা সম্ভব নয়</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOnTripAlertModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-3.5 bg-red-50/80 rounded-xl border border-red-200 space-y-2 text-xs text-slate-800">
+              <div className="flex justify-between items-center py-1 border-b border-red-200/60">
+                <span className="text-slate-600 font-medium">গাড়ি নম্বর:</span>
+                <span className="font-mono font-bold text-red-950 text-sm">
+                  {onTripAlertData.vehicle?.vehicleNumber || formData.vehiclePlate}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-red-200/60">
+                <span className="text-slate-600 font-medium">বর্তমান স্ট্যাটাস:</span>
+                <span className="font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                  {onTripAlertData.trip?.status === 'Running' 
+                    ? 'চলমান ট্রিপ (Running)' 
+                    : onTripAlertData.trip?.status === 'Pending' 
+                      ? 'পেন্ডিং আউট স্ক্যান (Pending Out Scan)' 
+                      : (onTripAlertData.vehicle?.status || 'On Trip')}
+                </span>
+              </div>
+              {onTripAlertData.trip?.location && (
+                <div className="flex justify-between items-center py-1 border-b border-red-200/60">
+                  <span className="text-slate-600 font-medium">চলমান গন্তব্য:</span>
+                  <span className="font-bold text-slate-900 text-right max-w-[200px] truncate">
+                    📍 {onTripAlertData.trip.location}
+                  </span>
+                </div>
+              )}
+              {onTripAlertData.trip?.driverName && (
+                <div className="flex justify-between items-center py-1 border-b border-red-200/60">
+                  <span className="text-slate-600 font-medium">বর্তমান চালক:</span>
+                  <span className="font-semibold text-slate-900">
+                    {onTripAlertData.trip.driverName} {onTripAlertData.trip.driverId ? `(${onTripAlertData.trip.driverId})` : ''}
+                  </span>
+                </div>
+              )}
+              {onTripAlertData.trip?.helperName && (
+                <div className="flex justify-between items-center py-1 border-b border-red-200/60">
+                  <span className="text-slate-600 font-medium">সহকারী (হেলপার):</span>
+                  <span className="font-semibold text-slate-900">
+                    {onTripAlertData.trip.helperName} {onTripAlertData.trip.helperId ? `(${onTripAlertData.trip.helperId})` : ''}
+                  </span>
+                </div>
+              )}
+              {onTripAlertData.vehicle?.warehouse && (
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-600 font-medium">নিবন্ধিত ডিপো:</span>
+                  <span className="font-bold text-slate-700">
+                    {onTripAlertData.vehicle.warehouse}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              <strong className="text-red-700 font-bold">সতর্কবার্তা:</strong> এই গাড়িটি ইতিমধ্যে একটি সক্রিয় ট্রিপে নিয়োজিত রয়েছে। গাড়িটি গন্তব্য থেকে ফিরে ইন-স্ক্যান (In-Scan) সম্পন্ন হওয়ার পর অথবা পূর্বের ট্রিপ সমাপ্ত/বাতিল না করা পর্যন্ত এই গাড়িতে নতুন কোনো ট্রিপ এন্ট্রি করা যাবে না।
+            </p>
+
+            <div className="text-[11px] text-slate-400 text-center font-medium flex items-center justify-center gap-1.5 pt-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+              <span>এই সতর্কবার্তাটি ৫ সেকেন্ড পর স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-98 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => {
+                  setShowOnTripAlertModal(false);
+                  setVehicleSearch('');
+                }}
+              >
+                <span>ঠিক আছে, অন্য গাড়ি নির্বাচন করুন</span>
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 active:scale-98 text-red-800 font-bold text-xs transition-all border border-red-200 cursor-pointer"
+                onClick={() => {
+                  setShowOnTripAlertModal(false);
+                  navigate('/trips');
+                }}
+              >
+                চলমান ট্রিপ দেখুন
               </button>
             </div>
           </div>

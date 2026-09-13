@@ -21,9 +21,12 @@ import {
   Loader2,
   XCircle,
   Trash2,
-  Truck
+  Truck,
+  Printer,
+  Package
 } from 'lucide-react';
 import { Card, Button, StaffProfileButton, VehicleProfileButton } from './components/Common';
+import { TripManifestModal } from './components/TripManifestModal';
 import { 
   subscribeToCollection, 
   findStaffById, 
@@ -45,6 +48,9 @@ const Trips: React.FC = () => {
   const canManage = isAdmin || isSubAdmin || isLineSupervisor;
   const [trips, setTrips] = useState<any[]>([]);
   const [viewingTripMap, setViewingTripMap] = useState<any | null>(null);
+  const [selectedManifestTrip, setSelectedManifestTrip] = useState<any | null>(null);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
   
   // Trip log & grouping state
   const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'log'>('pending');
@@ -155,8 +161,12 @@ const Trips: React.FC = () => {
   
   useEffect(() => {
     const unsubTrips = subscribeToCollection('trips', setTrips);
+    const unsubVehicles = subscribeToCollection('vehicles', setVehicles);
+    const unsubDrivers = subscribeToCollection('drivers', setDrivers);
     return () => {
       unsubTrips();
+      unsubVehicles();
+      unsubDrivers();
     };
   }, []);
 
@@ -440,6 +450,14 @@ const Trips: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedManifestTrip(trip)}
+                              className="p-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                              title="ট্রিপ মেনিফেস্ট দেখুন"
+                            >
+                              <FileText size={14} />
+                            </button>
                             {trip.destinationLatLng && (
                               <button 
                                 type="button"
@@ -568,6 +586,14 @@ const Trips: React.FC = () => {
                       </td>
                       <td className="px-5 py-3 text-right">
                          <div className="flex items-center justify-end gap-2">
+                           <button
+                             type="button"
+                             onClick={() => setSelectedManifestTrip(trip)}
+                             className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                             title="ট্রিপ মেনিফেস্ট দেখুন ও প্রিন্ট করুন"
+                           >
+                             <FileText size={12} />
+                           </button>
                            {trip.destinationLatLng && (
                              <button 
                                type="button"
@@ -765,6 +791,15 @@ const Trips: React.FC = () => {
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedManifestTrip(trip)}
+                                    className="px-2.5 py-1 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold rounded-lg flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                                    title="প্রিন্টযোগ্য ট্রিপ মেনিফেস্ট ও চালান দেখুন"
+                                  >
+                                    <FileText size={12} className="text-blue-600" />
+                                    <span>মেনিফেস্ট PDF</span>
+                                  </button>
                                   {trip.destinationLatLng && (
                                     <button
                                       type="button"
@@ -1020,6 +1055,42 @@ const Trips: React.FC = () => {
                                   </div>
                                 </div>
                               )}
+
+                              {/* Cargo Notes Display */}
+                              {(trip.cargoNotes || trip.cargoDetails || trip.consignmentNo) && (
+                                <div className="mt-3 p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl text-xs flex items-start gap-2">
+                                  <Package size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-amber-900 text-[10px] uppercase">কার্গো ও মালামালের নোট:</span>
+                                      {trip.consignmentNo && (
+                                        <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
+                                          চালান: {trip.consignmentNo}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-slate-700 font-medium text-[11px] leading-relaxed">
+                                      {trip.cargoNotes || trip.cargoDetails}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Trip Footer Manifest Action */}
+                              <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-[11px] text-slate-400">
+                                  {isCompleted ? '✓ এই ট্রিপটির সকল ডেলিভারি ও রিসিভ যাচাইকরণ সম্পন্ন।' : '● ট্রিপটি বর্তমানে চলমান রয়েছে।'}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedManifestTrip(trip)}
+                                  className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                                  title="প্রিন্টযোগ্য ট্রিপ মেনিফেস্ট ও চালান দেখুন"
+                                >
+                                  <FileText size={14} className="text-blue-600" />
+                                  <span>📄 প্রিন্টযোগ্য PDF মেনিফেস্ট</span>
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -1160,6 +1231,20 @@ const Trips: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Printable PDF Trip Manifest Modal */}
+      {selectedManifestTrip && (
+        <TripManifestModal
+          trip={selectedManifestTrip}
+          vehicleDetails={vehicles.find(v => v.id === selectedManifestTrip.vehicleId || v.vehicleNumber === selectedManifestTrip.vehiclePlate)}
+          driverDetails={drivers.find(d => d.driverId === selectedManifestTrip.driverId || d.name === selectedManifestTrip.driverName)}
+          onClose={() => setSelectedManifestTrip(null)}
+          onTripUpdated={updatedTrip => {
+            setSelectedManifestTrip(updatedTrip);
+            setTrips(prev => prev.map(t => t.id === updatedTrip.id ? updatedTrip : t));
+          }}
+        />
       )}
     </div>
   );

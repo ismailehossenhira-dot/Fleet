@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
   UserPlus, 
@@ -22,7 +23,8 @@ import {
   RotateCcw,
   Lock,
   Building2,
-  Filter
+  Filter,
+  Crown
 } from 'lucide-react';
 import { Card, Button, getRoleBangla } from './components/Common';
 import { useAuth, UserRole, SYSTEM_MODULES, ModuleKey } from './AuthContext';
@@ -35,13 +37,14 @@ import {
   deleteUserAccount,
   toggleUserSuspension,
   updateUserPermissions,
-  cleanupLegacyRoles
+  cleanupLegacyRoles,
+  ensureTopAdminExists
 } from './db';
 
-const VALID_ROLES: UserRole[] = ['Admin', 'Sub Admin', 'OCC', 'Line Supervisor', 'Checker'];
+const VALID_ROLES: UserRole[] = ['Top Admin', 'Admin', 'Sub Admin', 'OCC', 'Line Supervisor', 'Checker'];
 
 export const UsersManagement: React.FC = () => {
-  const { profile, isAdmin, isSuperAdmin } = useAuth();
+  const { profile, isAdmin, isSuperAdmin, isTopAdmin } = useAuth();
   const { searchQuery, setSearchQuery } = useSearch();
   const { warehouses, selectedWarehouse, isWarehouseLocked, assignedWarehouse, userWarehouse, getWarehouseBadge } = useWarehouse();
   
@@ -78,6 +81,16 @@ export const UsersManagement: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
   
+  // Auto-dismiss top banners horizontally after 5.5 seconds upon entering Users
+  const [showBanners, setShowBanners] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowBanners(false);
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, []);
+  
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean;
@@ -85,8 +98,19 @@ export const UsersManagement: React.FC = () => {
     user: any;
   }>({ show: false, type: null, user: null });
 
+  // Derived editing state
+  const editingUser = editingId ? users.find(u => u.id === editingId) : null;
+  const isEditingSelf = editingUser ? editingUser.uid === profile?.uid : false;
+  const isEditingTopAdmin = !!editingId && (
+    editingUser?.role === 'Top Admin' || 
+    editingUser?.email === 'ismailehossenhira@gmail.com' || 
+    editingUser?.username === 'admin' ||
+    (isEditingSelf && isTopAdmin)
+  );
+
   // Load users in real-time
   useEffect(() => {
+    ensureTopAdminExists();
     setLoading(true);
     const unsubscribe = subscribeToCollection('users', (data) => {
       setUsers(data);
@@ -127,11 +151,27 @@ export const UsersManagement: React.FC = () => {
       return;
     }
 
+    const isTargetTopAdmin = user.role === 'Top Admin' || 
+                             user.email === 'ismailehossenhira@gmail.com' ||
+                             user.username === 'admin' ||
+                             (isOwner && isTopAdmin);
+
+    if (isTargetTopAdmin && !isTopAdmin && !isOwner) {
+      setError('টপ অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন নিজে পরিবর্তন করতে পারবেন।');
+      return;
+    }
+
+    const isTargetAdmin = user.role === 'Admin';
+    if (isTargetAdmin && !isTopAdmin && !isOwner) {
+      setError('অন্য অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন পরিবর্তন করতে পারবেন।');
+      return;
+    }
+
     setEditingId(user.id);
     setFormName(user.displayName || '');
     setFormUsername(user.username || '');
     setFormPassword(user.password || '');
-    setFormRole(VALID_ROLES.includes(user.role) ? user.role : 'Checker');
+    setFormRole(isTargetTopAdmin ? 'Top Admin' : (VALID_ROLES.includes(user.role) ? user.role : 'Checker'));
     setFormWarehouse(user.warehouse || assignedWarehouse || 'মোহাম্মদপুর');
     setFormAllPermissions(!!user.allPermissions);
     setFormPermissions(Array.isArray(user.permissions) ? user.permissions : []);
@@ -148,6 +188,18 @@ export const UsersManagement: React.FC = () => {
 
     if (user.uid === profile?.uid) {
       setError('আপনি নিজের সচল একাউন্টটি ডিলিট করতে পারবেন না!');
+      return;
+    }
+
+    const isTargetTopAdmin = user.role === 'Top Admin' || user.email === 'ismailehossenhira@gmail.com';
+    if (isTargetTopAdmin) {
+      setError('টপ অ্যাডমিনকে (Top Admin) কেউ কখনো ডিলিট করতে পারবে না!');
+      return;
+    }
+
+    const isTargetAdmin = user.role === 'Admin';
+    if (isTargetAdmin && !isTopAdmin) {
+      setError('শুধুমাত্র টপ অ্যাডমিন (Top Admin) অ্যাডমিন একাউন্ট ডিলিট করতে পারবেন।');
       return;
     }
 
@@ -177,6 +229,18 @@ export const UsersManagement: React.FC = () => {
 
     if (user.uid === profile?.uid) {
       setError('আপনি নিজেকে সাসপেন্ড করতে পারবেন না!');
+      return;
+    }
+
+    const isTargetTopAdmin = user.role === 'Top Admin' || user.email === 'ismailehossenhira@gmail.com';
+    if (isTargetTopAdmin) {
+      setError('টপ অ্যাডমিনকে (Top Admin) কেউ কখনো সাসপেন্ড করতে পারবে না!');
+      return;
+    }
+
+    const isTargetAdmin = user.role === 'Admin';
+    if (isTargetAdmin && !isTopAdmin) {
+      setError('শুধুমাত্র টপ অ্যাডমিন (Top Admin) অ্যাডমিনদের সাসপেন্ড করতে পারবেন।');
       return;
     }
 
@@ -282,8 +346,33 @@ export const UsersManagement: React.FC = () => {
     const editingUser = editingId ? users.find(u => u.id === editingId) : null;
     const isEditingSelf = editingUser ? editingUser.uid === profile?.uid : false;
 
+    if (isEditingTopAdmin && formRole !== 'Top Admin') {
+      setError('টপ অ্যাডমিন কখনোই তার নিজের রোল পরিবর্তন করতে পারবে না, সে সব সময় টপ অ্যাডমিন থাকবে।');
+      return;
+    }
+
     if (isEditingSelf && !isAdmin && formRole !== editingUser?.role) {
       setError('আপনি নিজের অ্যাকাউন্টের রোল পরিবর্তন করতে পারবেন না।');
+      return;
+    }
+
+    if (formRole === 'Top Admin' && !isTopAdmin) {
+      setError('শুধুমাত্র টপ অ্যাডমিন (Top Admin) আরেকজনকে টপ অ্যাডমিন করতে পারবে।');
+      return;
+    }
+
+    if (formRole === 'Admin' && !isTopAdmin && (!editingId || editingUser?.role !== 'Admin')) {
+      setError('অ্যাডমিনরা Top Admin ও Admin অ্যাকাউন্ট ছাড়া বাকি সব অ্যাকাউন্ট খুলতে পারবেন। Admin একাউন্ট খোলার অনুমতি শুধুমাত্র টপ অ্যাডমিনের আছে।');
+      return;
+    }
+
+    if (editingUser?.role === 'Top Admin' && !isTopAdmin) {
+      setError('টপ অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন সংশোধন করতে পারেন।');
+      return;
+    }
+
+    if (editingUser?.role === 'Admin' && !isTopAdmin && !isEditingSelf) {
+      setError('অন্য অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন সংশোধন করতে পারেন।');
       return;
     }
 
@@ -300,7 +389,7 @@ export const UsersManagement: React.FC = () => {
         await updateUserAccount(editingId, {
           displayName: formName,
           password: formPassword,
-          role: formRole,
+          role: isEditingTopAdmin ? 'Top Admin' : formRole,
           warehouse: finalWarehouse,
           permissions: formPermissions,
           allPermissions: formAllPermissions
@@ -367,6 +456,8 @@ export const UsersManagement: React.FC = () => {
 
   const getRoleColorClass = (role?: string) => {
     switch (role) {
+      case 'Top Admin':
+        return 'bg-amber-100 text-amber-900 border border-amber-300 font-bold';
       case 'Admin':
         return 'bg-red-50 text-red-700 border border-red-100';
       case 'Sub Admin':
@@ -405,6 +496,17 @@ export const UsersManagement: React.FC = () => {
         
         {isAdmin && (
           <div className="flex items-center gap-2.5">
+            {!showBanners && (
+              <button
+                type="button"
+                onClick={() => setShowBanners(true)}
+                className="px-3 py-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-3xs cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                title="নীতিমালা ও প্রিভিলেজ নোট পুনরায় দেখুন"
+              >
+                <Info size={15} className="text-blue-600" />
+                <span className="hidden sm:inline">নীতিমালা দেখুন</span>
+              </button>
+            )}
             <Button onClick={handleOpenCreate} className="gap-2 shadow-xs">
               <UserPlus size={18} />
               <span>নতুন ইউজার যোগ করুন</span>
@@ -446,12 +548,99 @@ export const UsersManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Admin Protection Policy Note */}
-      <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 flex items-center gap-2.5">
-        <Lock size={16} className="text-blue-600 flex-shrink-0" />
-        <span>
-          <strong>নিরাপত্তা নীতি:</strong> অ্যাডমিন যেকোনো ইউজারকে যেকোনো মডিউল দেখার ও চালানোর সম্পূর্ণ ক্ষমতা দিতে পারবেন। তবে নতুন যানবাহন/স্টাফ/ডাটা অ্যাড করা বা যেকোনো কিছু ডিলিট করার একচ্ছত্র ক্ষমতা শুধুমাত্র অ্যাডমিনের কাছেই সংরক্ষিত থাকবে।
-        </span>
+      {/* Top Admin Super Power Banner & Admin Protection Policy with Opposing Horizontal Slide-outs */}
+      <div className="overflow-hidden space-y-3">
+        <AnimatePresence>
+          {showBanners && isTopAdmin && (
+            <motion.div
+              key="top-admin-privilege-banner"
+              initial={{ opacity: 0, x: 50, height: 'auto' }}
+              animate={{ opacity: 1, x: 0, height: 'auto' }}
+              exit={{ 
+                opacity: 0, 
+                x: '115%', 
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                transition: { 
+                  x: { duration: 0.8, ease: [0.32, 0.72, 0, 1] },
+                  opacity: { duration: 0.55, ease: 'easeOut' },
+                  height: { duration: 0.35, delay: 0.35 }
+                } 
+              }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 bg-linear-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 border border-amber-300/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shadow-xs flex-shrink-0 mt-0.5">
+                    <Crown size={20} className="fill-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-amber-950 flex items-center gap-1.5">
+                      <span>টপ অ্যাডমিন প্রিভিলেজ সক্রিয়</span>
+                      <span className="bg-amber-200 text-amber-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-amber-300">
+                        TOP ADMIN
+                      </span>
+                    </h4>
+                    <p className="text-xs text-amber-900/90 mt-1 leading-relaxed">
+                      টপ অ্যাডমিন হিসেবে: <strong>শুধু টপ অ্যাডমিন আরেকজনকে Top Admin ও Admin করতে পারবেন</strong> এবং যেকোনো অ্যাডমিনদের সাসপেন্ড করতে পারবেন। <strong>টপ অ্যাডমিনকে অন্য কেউ কখনো সাসপেন্ড করতে পারবে না।</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBanners(false)}
+                  className="self-end sm:self-center text-amber-800/60 hover:text-amber-900 p-1.5 rounded-lg hover:bg-amber-200/50 transition-colors cursor-pointer"
+                  title="হাইড করুন"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {showBanners && (
+            <motion.div
+              key="account-policy-note-banner"
+              initial={{ opacity: 0, x: -50, height: 'auto' }}
+              animate={{ opacity: 1, x: 0, height: 'auto' }}
+              exit={{ 
+                opacity: 0, 
+                x: '-115%', 
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+                transition: { 
+                  x: { duration: 0.8, ease: [0.32, 0.72, 0, 1] },
+                  opacity: { duration: 0.55, ease: 'easeOut' },
+                  height: { duration: 0.35, delay: 0.35 }
+                } 
+              }}
+              className="overflow-hidden"
+            >
+              <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <Lock size={16} className="text-blue-600 flex-shrink-0" />
+                  <span>
+                    <strong>অ্যাকাউন্ট ম্যানেজমেন্ট নীতি:</strong> শুধু Top Admin আরেকজনকে Top Admin ও Admin বানাতে পারবেন। সাধারণ অ্যাডমিনরা Top Admin ও Admin ছাড়া বাকি সকল (Sub Admin, OCC, Line Supervisor, Checker) একাউন্ট খুলতে পারবেন। টপ অ্যাডমিনকে কেউ সাসপেন্ড বা ডিলিট করতে পারবে না।
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBanners(false)}
+                  className="text-blue-600/60 hover:text-blue-800 p-1 rounded-lg hover:bg-blue-100/60 transition-colors cursor-pointer shrink-0"
+                  title="হাইড করুন"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Alert Messages */}
@@ -556,26 +745,54 @@ export const UsersManagement: React.FC = () => {
                     অ্যাকাউন্টের রোল
                   </label>
                   <select
-                    disabled={!isAdmin}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm text-slate-800 transition-all disabled:opacity-65"
-                    value={formRole}
+                    disabled={!isAdmin || (!isTopAdmin && !!editingId && formRole === 'Admin') || isEditingTopAdmin}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:bg-white text-sm text-slate-800 transition-all disabled:opacity-75 disabled:bg-slate-100/90"
+                    value={isEditingTopAdmin ? 'Top Admin' : formRole}
                     onChange={(e) => setFormRole(e.target.value as UserRole)}
                   >
-                    <option value="Admin">Admin</option>
-                    <option value="Sub Admin">Sub Admin</option>
-                    <option value="OCC">OCC</option>
-                    <option value="Line Supervisor">Line Supervisor</option>
-                    <option value="Checker">Checker</option>
+                    {isEditingTopAdmin ? (
+                      <option value="Top Admin">👑 Top Admin (টপ অ্যাডমিন - রোল অপরিবর্তনযোগ্য)</option>
+                    ) : (
+                      <>
+                        {isTopAdmin && (
+                          <option value="Top Admin">👑 Top Admin (টপ অ্যাডমিন)</option>
+                        )}
+                        {isTopAdmin ? (
+                          <option value="Admin">Admin (অ্যাডমিন)</option>
+                        ) : editingId && formRole === 'Admin' ? (
+                          <option value="Admin" disabled>Admin (অ্যাডমিন - শুধুমাত্র টপ অ্যাডমিন পরিবর্তনযোগ্য)</option>
+                        ) : null}
+                        <option value="Sub Admin">Sub Admin (সাব অ্যাডমিন)</option>
+                        <option value="OCC">OCC (অপারেশন কন্ট্রোল)</option>
+                        <option value="Line Supervisor">Line Supervisor (লাইন সুপারভাইজার)</option>
+                        <option value="Checker">Checker (চেকার)</option>
+                      </>
+                    )}
                   </select>
-                  {!isAdmin && (
-                    <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                  {isEditingTopAdmin ? (
+                    <p className="mt-2 text-xs text-amber-900 flex items-center gap-1.5 font-medium bg-amber-50/90 p-2.5 rounded-lg border border-amber-200/90 shadow-sm">
+                      <Lock size={13} className="text-amber-600 shrink-0" />
+                      <span>টপ এডমিন কখনোই তার নিজের রোল পরিবর্তন করতে পারবে না, সে সব সময় টপ এডমিন থাকবে।</span>
+                    </p>
+                  ) : isTopAdmin ? (
+                    <p className="mt-1.5 text-xs text-amber-700 flex items-center gap-1 font-medium">
+                      <Crown size={12} className="text-amber-600 fill-amber-500" />
+                      <span>টপ অ্যাডমিন হিসেবে আপনি Top Admin ও Admin সহ যেকোনো অ্যাকাউন্ট তৈরি করতে পারবেন।</span>
+                    </p>
+                  ) : isAdmin ? (
+                    <p className="mt-1.5 text-xs text-slate-600 flex items-center gap-1">
+                      <Info size={12} />
+                      <span>অ্যাডমিনরা Sub Admin, OCC, Line Supervisor ও Checker অ্যাকাউন্ট খুলতে পারবেন (Admin ও Top Admin অ্যাকাউন্ট ব্যতীত)।</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
                       <Info size={12} />
                       <span>আপনি রোল পরিবর্তন করতে পারবেন না। শুধুমাত্র অ্যাডমিন রোল নির্ধারণ করতে পারেন।</span>
                     </p>
                   )}
                 </div>
 
-                {isAdmin && formRole !== 'Admin' && (
+                {isAdmin && formRole !== 'Admin' && formRole !== 'Top Admin' && (
                   <div className="pt-2 border-t border-slate-100">
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <input 
@@ -699,7 +916,9 @@ export const UsersManagement: React.FC = () => {
                   <tbody className="divide-y divide-slate-50 text-slate-700 text-sm">
                     {filteredUsers.map((user) => {
                       const isOwner = user.uid === profile?.uid;
-                      const canModify = isAdmin || isOwner;
+                      const isTargetTopAdmin = user.role === 'Top Admin' || user.email === 'ismailehossenhira@gmail.com';
+                      const isTargetAdmin = user.role === 'Admin';
+                      const canModify = isOwner || isTopAdmin || (!isTargetTopAdmin && !isTargetAdmin && isAdmin);
                       const isLegacy = user.role && !VALID_ROLES.includes(user.role);
                       const whBadge = getWarehouseBadge(user.warehouse);
 
@@ -753,7 +972,11 @@ export const UsersManagement: React.FC = () => {
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${getRoleColorClass(user.role)}`}>
-                                <Shield size={12} />
+                                {user.role === 'Top Admin' ? (
+                                  <Crown size={13} className="text-amber-600 fill-amber-500" />
+                                ) : (
+                                  <Shield size={12} />
+                                )}
                                 <span>{getRoleBangla(user.role)}</span>
                               </span>
                               {isLegacy && (
@@ -764,7 +987,12 @@ export const UsersManagement: React.FC = () => {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            {user.role === 'Admin' ? (
+                            {user.role === 'Top Admin' ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                                <Crown size={12} className="text-amber-600 fill-amber-500" />
+                                <span>টপ অ্যাডমিন</span>
+                              </span>
+                            ) : user.role === 'Admin' ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
                                 <Sparkles size={12} className="text-red-500" />
                                 <span>ফুল অ্যাডমিন</span>
@@ -802,7 +1030,7 @@ export const UsersManagement: React.FC = () => {
                           </td>
                           <td className="py-4 px-4 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                              {isAdmin && user.role !== 'Admin' && (
+                              {isAdmin && user.role !== 'Admin' && user.role !== 'Top Admin' && (
                                 <button
                                   onClick={() => handleOpenPermissions(user)}
                                   className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors cursor-pointer"
@@ -819,40 +1047,82 @@ export const UsersManagement: React.FC = () => {
                                     ? 'hover:bg-blue-50 text-slate-400 hover:text-blue-600 cursor-pointer' 
                                     : 'opacity-40 cursor-not-allowed text-slate-300'
                                 }`}
-                                title={canModify ? "ইউজার তথ্য সংশোধন" : "সংশোধন করার অনুমতি নেই"}
+                                title={
+                                  !canModify && isTargetTopAdmin
+                                    ? "টপ অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন সংশোধন করতে পারবেন"
+                                    : !canModify && isTargetAdmin
+                                    ? "অন্য অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন সংশোধন করতে পারবেন"
+                                    : canModify ? "ইউজার তথ্য সংশোধন" : "সংশোধন করার অনুমতি নেই"
+                                }
                               >
                                 <Edit3 size={16} />
                               </button>
-                              {isAdmin && (
-                                <button
-                                  onClick={() => handleToggleSuspension(user)}
-                                  disabled={isOwner}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    isOwner 
-                                      ? 'opacity-40 cursor-not-allowed text-slate-300' 
-                                      : user.isSuspended
-                                      ? 'hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 cursor-pointer'
-                                      : 'hover:bg-amber-50 text-slate-400 hover:text-amber-600 cursor-pointer'
-                                  }`}
-                                  title={isOwner ? "নিজেকে সাসপেন্ড করা সম্ভব নয়" : user.isSuspended ? "একাউন্ট সচল করুন" : "একাউন্ট সাসপেন্ড করুন"}
-                                >
-                                  <Ban size={16} className={user.isSuspended ? "text-red-500" : ""} />
-                                </button>
-                              )}
-                              {isAdmin && (
-                                <button
-                                  onClick={() => handleDelete(user)}
-                                  disabled={isOwner}
-                                  className={`p-1.5 rounded-lg transition-colors ${
-                                    !isOwner
-                                      ? 'hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer' 
-                                      : 'opacity-40 cursor-not-allowed text-slate-300'
-                                  }`}
-                                  title={isOwner ? "নিজেকে ডিলিট করা সম্ভব নয়" : "ইউজার ডিলিট করুন"}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
+                              {isAdmin && (() => {
+                                const isTargetTopAdmin = user.role === 'Top Admin' || user.email === 'ismailehossenhira@gmail.com';
+                                const isTargetAdmin = user.role === 'Admin';
+                                const canSuspend = !isOwner && !isTargetTopAdmin && (isTopAdmin || !isTargetAdmin);
+                                
+                                let suspendTitle = user.isSuspended ? "একাউন্ট সচল করুন" : "একাউন্ট সাসপেন্ড করুন";
+                                if (isOwner) {
+                                  suspendTitle = "নিজেকে সাসপেন্ড করা সম্ভব নয়";
+                                } else if (isTargetTopAdmin) {
+                                  suspendTitle = "টপ অ্যাডমিনকে (Top Admin) কেউ কখনো সাসপেন্ড করতে পারবে না";
+                                } else if (isTargetAdmin && !isTopAdmin) {
+                                  suspendTitle = "শুধুমাত্র টপ অ্যাডমিন (Top Admin) অ্যাডমিন অ্যাকাউন্ট সাসপেন্ড করতে পারেন";
+                                } else if (isTargetAdmin && isTopAdmin) {
+                                  suspendTitle = user.isSuspended ? "অ্যাডমিন একাউন্ট সচল করুন" : "অ্যাডমিন একাউন্ট সাসপেন্ড করুন (টপ অ্যাডমিন)";
+                                }
+
+                                return (
+                                  <button
+                                    onClick={() => handleToggleSuspension(user)}
+                                    disabled={!canSuspend}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                      !canSuspend 
+                                        ? 'opacity-30 cursor-not-allowed text-slate-300' 
+                                        : user.isSuspended
+                                        ? 'hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 cursor-pointer'
+                                        : isTargetAdmin
+                                        ? 'hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer'
+                                        : 'hover:bg-amber-50 text-slate-400 hover:text-amber-600 cursor-pointer'
+                                    }`}
+                                    title={suspendTitle}
+                                  >
+                                    <Ban size={16} className={user.isSuspended ? "text-red-500" : isTargetAdmin && canSuspend ? "text-amber-600" : ""} />
+                                  </button>
+                                );
+                              })()}
+                              {isAdmin && (() => {
+                                const isTargetTopAdmin = user.role === 'Top Admin' || user.email === 'ismailehossenhira@gmail.com';
+                                const isTargetAdmin = user.role === 'Admin';
+                                const canDelete = !isOwner && !isTargetTopAdmin && (isTopAdmin || !isTargetAdmin);
+                                
+                                let deleteTitle = "ইউজার ডিলিট করুন";
+                                if (isOwner) {
+                                  deleteTitle = "নিজেকে ডিলিট করা সম্ভব নয়";
+                                } else if (isTargetTopAdmin) {
+                                  deleteTitle = "টপ অ্যাডমিন অ্যাকাউন্ট ডিলিট করা অসম্ভব";
+                                } else if (isTargetAdmin && !isTopAdmin) {
+                                  deleteTitle = "শুধুমাত্র টপ অ্যাডমিন (Top Admin) অ্যাডমিন একাউন্ট ডিলিট করতে পারবেন";
+                                } else if (isTargetAdmin && isTopAdmin) {
+                                  deleteTitle = "অ্যাডমিন একাউন্ট ডিলিট করুন (টপ অ্যাডমিন)";
+                                }
+
+                                return (
+                                  <button
+                                    onClick={() => handleDelete(user)}
+                                    disabled={!canDelete}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                      canDelete
+                                        ? 'hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer' 
+                                        : 'opacity-30 cursor-not-allowed text-slate-300'
+                                    }`}
+                                    title={deleteTitle}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>

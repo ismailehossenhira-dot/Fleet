@@ -98,6 +98,7 @@ export const TRANSLATIONS: Record<string, Record<LanguageMode, string>> = {
   total: { default: 'মোট', en: 'Total', bn: 'মোট' },
 
   // Roles
+  role_top_admin: { default: 'টপ অ্যাডমিন', en: 'Top Admin', bn: 'টপ অ্যাডমিন' },
   role_admin: { default: 'অ্যাডমিন', en: 'Admin', bn: 'অ্যাডমিন' },
   role_sub_admin: { default: 'সাব অ্যাডমিন', en: 'Sub Admin', bn: 'সাব অ্যাডমিন' },
   role_occ: { default: 'ওসিসি', en: 'OCC', bn: 'ওসিসি' },
@@ -188,6 +189,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const getRoleName = (role?: string): string => {
     if (!role) return language === 'en' ? 'User' : 'ইউজার';
     switch (role) {
+      case 'Top Admin':
+        return language === 'en' ? 'Top Admin' : 'টপ অ্যাডমিন';
       case 'Admin':
         return language === 'en' ? 'Admin' : 'অ্যাডমিন';
       case 'Sub Admin':

@@ -85,6 +85,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export const getRoleBangla = (role?: string) => {
   switch (role) {
+    case 'Top Admin': return 'টপ অ্যাডমিন';
     case 'Admin': return 'অ্যাডমিন';
     case 'Sub Admin': return 'সাব অ্যাডমিন';
     case 'OCC': return 'ওসিসি';

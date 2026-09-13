@@ -363,6 +363,9 @@
     },
     "maintenance": {
       "description": "Collection of vehicle maintenance, service records and repair logs"
+    },
+    "vehicle_papers": {
+      "description": "Collection of vehicle document expiry details, uploaded paper photos and digital number plate info"
     }
   }
 }

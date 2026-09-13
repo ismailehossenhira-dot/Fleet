@@ -25,7 +25,9 @@ import { UserRole } from './AuthContext';
 // Generic CRUD helpers
 export const getCollectionData = async (collName: string) => {
   try {
-    const q = query(collection(db, collName), orderBy('createdAt', 'desc'));
+    const q = (collName === 'vehicle_papers' || collName === 'users' || collName === 'gps_devices' || collName === 'vehicle_models')
+      ? collection(db, collName)
+      : query(collection(db, collName), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error: any) {
@@ -55,7 +57,9 @@ export const getDocDataById = async (collName: string, id: string) => {
 
 // Real-time listener helper
 export const subscribeToCollection = (collName: string, callback: (data: any[]) => void) => {
-  const q = query(collection(db, collName), orderBy('createdAt', 'desc'));
+  const q = (collName === 'vehicle_papers' || collName === 'users' || collName === 'gps_devices' || collName === 'vehicle_models')
+    ? collection(db, collName)
+    : query(collection(db, collName), orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snapshot) => {
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(data);
@@ -834,40 +838,101 @@ export const deleteCase = async (id: string) => {
 };
 
 // Users
+export const ensureTopAdminExists = async () => {
+  try {
+    const usersColl = collection(db, 'users');
+    
+    // Check all user records and promote admin or ismailehossenhira@gmail.com
+    const qAdmin = query(usersColl, where('username', '==', 'admin'));
+    const adminSnap = await getDocs(qAdmin);
+    for (const d of adminSnap.docs) {
+      const data = d.data();
+      if (data.role !== 'Top Admin' || data.email !== 'ismailehossenhira@gmail.com') {
+        await updateDoc(doc(db, 'users', d.id), {
+          role: 'Top Admin',
+          email: 'ismailehossenhira@gmail.com',
+          displayName: (!data.displayName || data.displayName === 'System Admin') ? 'Md. Ismail Hossen' : data.displayName,
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    const qHira = query(usersColl, where('email', '==', 'ismailehossenhira@gmail.com'));
+    const hiraSnap = await getDocs(qHira);
+    for (const d of hiraSnap.docs) {
+      if (d.data().role !== 'Top Admin') {
+        await updateDoc(doc(db, 'users', d.id), {
+          role: 'Top Admin',
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("ensureTopAdminExists background task:", err);
+  }
+};
+
 export const syncUserProfile = async (user: any) => {
   try {
     const userRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userRef);
     
+    const isTopAdminTarget = 
+      user.email === 'ismailehossenhira@gmail.com' ||
+      user.email === 'admin@fleetflow.local' ||
+      user.email?.startsWith('admin@') ||
+      user.email?.startsWith('ismail@');
+
     if (!userSnap.exists()) {
-      // Default first user to Admin, others to Checker or similar
-      const role = 'Admin'; 
+      const role: UserRole = isTopAdminTarget ? 'Top Admin' : 'Admin'; 
+      const email = isTopAdminTarget ? 'ismailehossenhira@gmail.com' : user.email;
+      const displayName = isTopAdminTarget ? 'Md. Ismail Hossen' : (user.displayName || 'System Admin');
+      const username = isTopAdminTarget ? 'admin' : (user.email?.split('@')[0] || 'user');
+
       await setDoc(userRef, {
         uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || 'System Admin',
+        email: email,
+        displayName: displayName,
         role: role,
-        username: 'admin',
-        password: 'adminpassword',
+        username: username,
+        password: '123456',
         createdAt: serverTimestamp(),
       });
-      return { uid: user.uid, email: user.email, role };
+      return { uid: user.uid, email: email, displayName, role, username };
     }
+
     const data = userSnap.data() as any;
-    if (user.email === 'ismailehossenhira@gmail.com' && data.role !== 'Admin') {
-      await updateDoc(userRef, { role: 'Admin' });
-      data.role = 'Admin';
+    const shouldBeTopAdmin = 
+      isTopAdminTarget ||
+      data.email === 'ismailehossenhira@gmail.com' ||
+      data.username === 'admin' ||
+      data.username === 'ismail';
+
+    if (shouldBeTopAdmin && (data.role !== 'Top Admin' || !data.email || data.displayName === 'System Admin')) {
+      const updates: any = {
+        role: 'Top Admin' as UserRole,
+        email: 'ismailehossenhira@gmail.com',
+        displayName: (!data.displayName || data.displayName === 'System Admin') ? 'Md. Ismail Hossen' : data.displayName
+      };
+      await updateDoc(userRef, updates);
+      Object.assign(data, updates);
     }
     return { id: userSnap.id, ...data };
   } catch (error: any) {
     const msg = error?.message || String(error);
     if (error?.code === 'unavailable' || msg.includes('unavailable') || msg.includes('offline')) {
       console.warn("Firestore syncUserProfile operating in offline/cached mode for user:", user?.email);
+      const isTopAdminTarget = 
+        user.email === 'ismailehossenhira@gmail.com' || 
+        user.email === 'admin@fleetflow.local' ||
+        user.email?.startsWith('admin@') ||
+        user.email?.startsWith('ismail@');
       return {
         uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || 'System User',
-        role: user.email === 'ismailehossenhira@gmail.com' ? 'Admin' : 'Checker'
+        email: isTopAdminTarget ? 'ismailehossenhira@gmail.com' : user.email,
+        displayName: isTopAdminTarget ? 'Md. Ismail Hossen' : (user.displayName || 'System User'),
+        role: isTopAdminTarget ? 'Top Admin' : 'Checker',
+        username: isTopAdminTarget ? 'admin' : 'user'
       };
     }
     handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
@@ -885,8 +950,8 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
     const qAdmin = query(usersColl, where('username', '==', 'admin'));
     const adminSnap = await getDocs(qAdmin);
 
-    if (adminSnap.empty && username === 'admin' && password === '123456') {
-      // Seed default admin in Firebase Auth and Firestore
+    if (adminSnap.empty && (username === 'admin' || username === 'ismail' || username === 'ismailehossenhira@gmail.com') && password === '123456') {
+      // Seed default Top Admin in Firebase Auth and Firestore
       let uid = '';
       try {
         try {
@@ -910,9 +975,10 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
         await setDoc(doc(db, 'users', uid), {
           uid,
           username: 'admin',
-          displayName: 'System Admin',
+          displayName: 'Md. Ismail Hossen',
+          email: 'ismailehossenhira@gmail.com',
           password: '123456',
-          role: 'Admin' as UserRole,
+          role: 'Top Admin' as UserRole,
           createdAt: serverTimestamp()
         });
       } catch (err: any) {
@@ -921,9 +987,14 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
       return;
     }
 
-    // 2. Regular Login lookup
-    const q = query(usersColl, where('username', '==', username));
-    const snap = await getDocs(q);
+    // 2. Regular Login lookup by username or email
+    let q = query(usersColl, where('username', '==', username));
+    let snap = await getDocs(q);
+
+    if (snap.empty) {
+      q = query(usersColl, where('email', '==', username));
+      snap = await getDocs(q);
+    }
 
     if (snap.empty) {
       throw new Error('User not found. Please check your username.');
@@ -940,21 +1011,44 @@ export const loginWithUsernameAndPassword = async (usernameInput: string, passwo
       throw new Error('Incorrect password. Please try again.');
     }
 
+    // Auto-promote target user (admin or ismailehossenhira@gmail.com) to Top Admin in Firestore
+    const isTargetTopAdmin = 
+      userData.username === 'admin' || 
+      userData.username === 'ismail' || 
+      userData.email === 'ismailehossenhira@gmail.com' ||
+      username === 'admin' || 
+      username === 'ismail' || 
+      username === 'ismailehossenhira@gmail.com';
+
+    if (isTargetTopAdmin && (userData.role !== 'Top Admin' || !userData.email)) {
+      try {
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          role: 'Top Admin',
+          email: 'ismailehossenhira@gmail.com',
+          displayName: (!userData.displayName || userData.displayName === 'System Admin') ? 'Md. Ismail Hossen' : userData.displayName
+        });
+      } catch (e) {
+        console.warn("Could not upgrade user to Top Admin in login:", e);
+      }
+    }
+
+    const authUsername = userData.username || username;
+
     // Password matches, sign into Firebase Auth
     try {
-      await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+      await signInWithEmailAndPassword(auth, `${authUsername}@fleetflow.local`, 'fleetflow_secret_auth_key');
     } catch (err: any) {
       // If auth user doesn't exist but Firestore doc does (out of sync), recreate auth user
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         try {
           const secondaryApp = initializeApp(firebaseConfig, 'SecondarySync');
           const secondaryAuth = getSecondaryAuth(secondaryApp);
-          await createUserWithEmailAndPassword(secondaryAuth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+          await createUserWithEmailAndPassword(secondaryAuth, `${authUsername}@fleetflow.local`, 'fleetflow_secret_auth_key');
           await deleteApp(secondaryApp);
         } catch (e) {}
         
         // Retry login
-        await signInWithEmailAndPassword(auth, `${username}@fleetflow.local`, 'fleetflow_secret_auth_key');
+        await signInWithEmailAndPassword(auth, `${authUsername}@fleetflow.local`, 'fleetflow_secret_auth_key');
       } else {
         throw err;
       }
@@ -978,6 +1072,16 @@ export const createUserAccount = async (
   allPermissions: boolean = false,
   creatorProfile?: any
 ) => {
+  const isCreatorTopAdmin = creatorProfile?.role === 'Top Admin' || creatorProfile?.email === 'ismailehossenhira@gmail.com';
+
+  if (role === 'Top Admin' && !isCreatorTopAdmin) {
+    throw new Error('শুধুমাত্র টপ অ্যাডমিন (Top Admin) আরেকজনকে টপ অ্যাডমিন করতে পারবে।');
+  }
+
+  if (role === 'Admin' && !isCreatorTopAdmin) {
+    throw new Error('অ্যাডমিনরা Top Admin ও Admin একাউন্ট ছাড়া বাকি সব একাউন্ট খুলতে পারবে। Admin একাউন্ট খোলার অনুমতি শুধুমাত্র টপ অ্যাডমিনের আছে।');
+  }
+
   const username = usernameInput.toLowerCase().trim();
   const password = passwordInput.trim();
 
@@ -1039,9 +1143,38 @@ export const updateUserAccount = async (
   profile?: any
 ) => {
   try {
+    const isActorTopAdmin = profile?.role === 'Top Admin' || profile?.email === 'ismailehossenhira@gmail.com';
     const userRef = doc(db, 'users', uid);
+    const targetSnap = await getDoc(userRef);
+    const targetData = targetSnap.exists() ? targetSnap.data() : null;
+
+    const isTargetTopAdmin = 
+      targetData?.role === 'Top Admin' || 
+      targetData?.email === 'ismailehossenhira@gmail.com' ||
+      targetData?.username === 'admin' ||
+      (profile?.uid === uid && isActorTopAdmin);
+
+    if (isTargetTopAdmin && data.role !== 'Top Admin') {
+      throw new Error('টপ অ্যাডমিন কখনোই তার নিজের রোল পরিবর্তন করতে পারবে না, সে সব সময় টপ অ্যাডমিন থাকবে।');
+    }
+
+    if (data.role === 'Top Admin' && !isActorTopAdmin) {
+      throw new Error('শুধুমাত্র টপ অ্যাডমিন (Top Admin) আরেকজনকে টপ অ্যাডমিন করতে পারবে।');
+    }
+
+    if (data.role === 'Admin' && !isActorTopAdmin && targetData?.role !== 'Admin') {
+      throw new Error('অ্যাডমিনরা কাউকে Admin রোলে উন্নীত করতে পারবে না। শুধুমাত্র টপ অ্যাডমিন এটি করতে পারেন।');
+    }
+
+    if (targetData?.role === 'Top Admin' && !isActorTopAdmin) {
+      throw new Error('টপ অ্যাডমিন অ্যাকাউন্ট শুধুমাত্র টপ অ্যাডমিন সংশোধন করতে পারেন।');
+    }
+
+    const finalRole = isTargetTopAdmin ? 'Top Admin' : data.role;
+
     await updateDoc(userRef, {
       ...data,
+      role: finalRole,
       updatedBy: getUserString(profile),
       updatedAt: serverTimestamp()
     });
@@ -1068,7 +1201,7 @@ export const updateUserPermissions = async (
 };
 
 export const cleanupLegacyRoles = async (fallbackRole: UserRole = 'Checker') => {
-  const validRoles: UserRole[] = ['Admin', 'Sub Admin', 'OCC', 'Line Supervisor', 'Checker'];
+  const validRoles: UserRole[] = ['Top Admin', 'Admin', 'Sub Admin', 'OCC', 'Line Supervisor', 'Checker'];
   try {
     const snap = await getDocs(collection(db, 'users'));
     let migratedCount = 0;
@@ -1077,8 +1210,8 @@ export const cleanupLegacyRoles = async (fallbackRole: UserRole = 'Checker') => 
     snap.docs.forEach((d) => {
       const data = d.data();
       const currentRole = data.role;
-      // Do not touch Admin
-      if (currentRole === 'Admin' || d.id === 'ismailehossenhira@gmail.com' || data.email === 'ismailehossenhira@gmail.com') {
+      // Do not touch Top Admin or Admin
+      if (currentRole === 'Top Admin' || currentRole === 'Admin' || d.id === 'ismailehossenhira@gmail.com' || data.email === 'ismailehossenhira@gmail.com') {
         return;
       }
       if (!validRoles.includes(currentRole)) {
@@ -1104,21 +1237,37 @@ export const cleanupLegacyRoles = async (fallbackRole: UserRole = 'Checker') => 
 export const deleteUserAccount = async (uid: string) => {
   try {
     const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.role === 'Top Admin' || data.email === 'ismailehossenhira@gmail.com' || uid === 'ismailehossenhira@gmail.com') {
+        throw new Error('টপ অ্যাডমিনকে (Top Admin) ডিলিট করা সম্ভব নয়!');
+      }
+    }
     await deleteDoc(userRef);
   } catch (err: any) {
     handleFirestoreError(err, OperationType.DELETE, `users/${uid}`);
+    throw err;
   }
 };
 
 export const toggleUserSuspension = async (uid: string, isSuspended: boolean) => {
   try {
     const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.role === 'Top Admin' || data.email === 'ismailehossenhira@gmail.com' || uid === 'ismailehossenhira@gmail.com') {
+        throw new Error('টপ অ্যাডমিনকে (Top Admin) কেউ কখনো সাসপেন্ড করতে পারবে না!');
+      }
+    }
     await updateDoc(userRef, {
       isSuspended,
       updatedAt: serverTimestamp()
     });
   } catch (err: any) {
     handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
+    throw err;
   }
 };
 
@@ -1629,6 +1778,115 @@ export const batchAssignWarehouse = async (
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${collectionName}/batchAssign`);
+    throw error;
+  }
+};
+
+// ==========================================
+// Vehicle Documents, Expiry & Digital Number Plate
+// ==========================================
+
+export interface VehiclePaperDocDetail {
+  expiryDate?: string; // YYYY-MM-DD
+  issueDate?: string;
+  docNumber?: string;
+  photoUrl?: string; // compressed base64 or storage url
+  notes?: string;
+}
+
+export interface VehicleDigitalPlateInfo {
+  status: 'Active' | 'Pending' | 'Not Installed';
+  rfidTag?: string; // RFID Tag Number
+  smartPlateSerial?: string; // BRTA Serial / Plate Code
+  issueDate?: string;
+  frontPhotoUrl?: string; // Front digital plate photo
+  rearPhotoUrl?: string; // Rear digital plate photo
+  notes?: string;
+}
+
+export interface VehiclePaperRecord {
+  id?: string; // vehicleId
+  vehicleId: string;
+  vehiclePlate: string;
+  warehouse?: string;
+  vehicleType?: string;
+  taxToken?: VehiclePaperDocDetail;
+  fitness?: VehiclePaperDocDetail;
+  routePermit?: VehiclePaperDocDetail;
+  registration?: VehiclePaperDocDetail;
+  insurance?: VehiclePaperDocDetail;
+  digitalPlate?: VehicleDigitalPlateInfo;
+  updatedAt?: any;
+  updatedBy?: string;
+}
+
+export const saveVehiclePapers = async (
+  vehicleId: string, 
+  data: Partial<VehiclePaperRecord>, 
+  profile?: any
+) => {
+  try {
+    const rawId = vehicleId || data.vehicleId || data.vehiclePlate || 'doc_' + Date.now();
+    const cleanVehicleId = String(rawId).trim().replace(/[\/\s]/g, '_');
+    const docRef = doc(db, 'vehicle_papers', cleanVehicleId);
+
+    // Deep recursive sanitizer to eliminate all nested undefined values that cause Firestore write failures
+    const deepSanitize = (val: any): any => {
+      if (val === undefined) return null;
+      if (val === null) return null;
+      if (typeof val !== 'object') return val;
+      if (val instanceof Date) return val;
+      if (Array.isArray(val)) {
+        return val.map(deepSanitize).filter(x => x !== undefined);
+      }
+      const res: Record<string, any> = {};
+      for (const [k, v] of Object.entries(val)) {
+        if (v !== undefined) {
+          res[k] = deepSanitize(v);
+        }
+      }
+      return res;
+    };
+
+    const sanitizedData = deepSanitize(data) || {};
+
+    const payload: any = {
+      ...sanitizedData,
+      id: cleanVehicleId,
+      vehicleId: cleanVehicleId,
+      vehiclePlate: (data.vehiclePlate || '').trim(),
+      updatedBy: getUserString(profile),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(docRef, payload, { merge: true });
+
+    // Also update document status flags in the vehicle record if found
+    try {
+      const vRef = doc(db, 'vehicles', vehicleId);
+      const vSnap = await getDoc(vRef);
+      if (vSnap.exists()) {
+        const hasTT = Boolean(data.taxToken?.expiryDate);
+        const hasFC = Boolean(data.fitness?.expiryDate);
+        const hasRP = Boolean(data.routePermit?.expiryDate);
+        const hasRC = Boolean(data.registration?.expiryDate);
+        await updateDoc(vRef, {
+          'documents.TT': hasTT,
+          'documents.FC': hasFC,
+          'documents.RP': hasRP,
+          'documents.RC': hasRC,
+          updatedAt: serverTimestamp(),
+          updatedBy: getUserString(profile)
+        });
+      }
+    } catch (vErr) {
+      console.warn('Notice: vehicle document flag sync completed without blocking:', vErr);
+    }
+
+    return { success: true, id: cleanVehicleId };
+  } catch (error) {
+    console.error('saveVehiclePapers Firestore Error:', error);
+    handleFirestoreError(error, OperationType.WRITE, `vehicle_papers/${vehicleId}`);
     throw error;
   }
 };

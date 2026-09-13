@@ -29,7 +29,14 @@ function convertBanglaDigitsToEnglish(str: string): string {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  
+  // In development sandbox, port 3000 is required by the nginx reverse proxy.
+  // In deployed Cloud Run production, Cloud Run assigns a port via PORT env variable (typically 8080).
+  const PORT = process.env.DEFAULT_APP_PORT
+    ? parseInt(process.env.DEFAULT_APP_PORT, 10)
+    : (process.env.NODE_ENV === "production" && process.env.PORT
+      ? parseInt(process.env.PORT, 10)
+      : 3000);
 
   // Increase payload limit for base64 camera image uploads
   app.use(express.json({ limit: "25mb" }));
@@ -356,6 +363,21 @@ ${vehicleHintList}
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`FleetFlow Pro Server running on port ${PORT}`);
   });
+
+  // If running in an environment where PORT is not 3000 (e.g. Cloud Run on 8080),
+  // attempt to also listen on port 3000 if available
+  if (PORT !== 3000) {
+    try {
+      const fallbackServer = app.listen(3000, "0.0.0.0", () => {
+        console.log(`FleetFlow Pro Server also listening on port 3000`);
+      });
+      fallbackServer.on("error", () => {
+        // Silently ignore if port 3000 is occupied or restricted
+      });
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 startServer();

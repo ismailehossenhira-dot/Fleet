@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   QrCode, Camera, Truck, User as UserIcon, Users, 
   CheckCircle, XCircle, AlertTriangle, ClipboardCheck, 
@@ -50,6 +50,13 @@ const QRScanner: React.FC = () => {
     }
     return { ...v, status: 'Available' };
   });
+
+  // Filter strictly for manual scanning: ONLY 'Pending Out Scan' and 'On Trip' vehicles
+  const manualEligibleVehicles = useMemo(() => {
+    return computedVehicles.filter(
+      v => v.status === 'Pending Out Scan' || v.status === 'On Trip'
+    );
+  }, [computedVehicles]);
   
   // Scanner state
   const [scanResult, setScanResult] = useState<{ type: 'IN' | 'OUT'; vehicleId: string } | null>(null);
@@ -1965,7 +1972,7 @@ const QRScanner: React.FC = () => {
           ) : (
             /* Manual Vehicle Search & Select Card */
             <Card 
-              title="গাড়ির নম্বর লিখে সিলেক্ট করুন" 
+              title="ম্যানুয়াল গাড়ি স্ক্যান" 
               className={cn(
                 "border-2 shadow-sm",
                 isEmerald ? "border-emerald-200" :
@@ -1995,10 +2002,9 @@ const QRScanner: React.FC = () => {
                       onChange={e => {
                         const val = e.target.value;
                         setManualVehicleSearch(val);
-                        // Auto-match if exact match found
                         const trimmed = val.trim().toLowerCase();
                         if (trimmed) {
-                          const exact = computedVehicles.find(v => 
+                          const exact = manualEligibleVehicles.find(v => 
                             v.vehicleNumber.toLowerCase() === trimmed || 
                             v.vehicleNumber.toLowerCase().endsWith(trimmed)
                           );
@@ -2015,16 +2021,17 @@ const QRScanner: React.FC = () => {
                       onKeyDown={e => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
-                          const trimmed = manualVehicleSearch.trim().toLowerCase();
-                          const matched = computedVehicles.filter(v => 
-                            v.vehicleNumber.toLowerCase().includes(trimmed) || 
-                            v.type?.toLowerCase().includes(trimmed) ||
-                            v.model?.toLowerCase().includes(trimmed)
+                          const q = manualVehicleSearch.trim().toLowerCase();
+                          const matched = manualEligibleVehicles.filter(v => 
+                            v.vehicleNumber.toLowerCase().includes(q) || 
+                            (v.type && v.type.toLowerCase().includes(q)) ||
+                            (v.model && v.model.toLowerCase().includes(q))
                           );
                           if (matched.length > 0) {
                             const target = matched[0];
                             setSelectedSimVehicleId(target.id);
-                            const action = target.status === 'Pending Out Scan' ? 'OUT' : target.status === 'On Trip' ? 'IN' : selectedSimAction;
+                            const action = target.status === 'Pending Out Scan' ? 'OUT' : 'IN';
+                            setSelectedSimAction(action);
                             triggerScanResult(action, target.id);
                           }
                         }
@@ -2052,90 +2059,72 @@ const QRScanner: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Filtered Vehicles List (if search query entered) */}
+                {/* Filtered search results (shown only when typing) */}
                 {manualVehicleSearch.trim() && (
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-[11px] text-slate-500 px-1">
-                      <span>ম্যাচ হওয়া গাড়ি তালিকা:</span>
-                      <span className="font-semibold">
-                        {computedVehicles.filter(v => 
-                          v.vehicleNumber.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                          v.type?.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                          v.model?.toLowerCase().includes(manualVehicleSearch.toLowerCase())
-                        ).length} টি পাওয়া গেছে
-                      </span>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
-                      {computedVehicles
-                        .filter(v => 
-                          v.vehicleNumber.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                          v.type?.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                          v.model?.toLowerCase().includes(manualVehicleSearch.toLowerCase())
-                        )
-                        .map(v => {
-                          const isSelected = selectedSimVehicleId === v.id;
-                          return (
-                            <div
-                              key={v.id}
-                              onClick={() => {
-                                setSelectedSimVehicleId(v.id);
-                                if (v.status === 'Pending Out Scan') {
-                                  setSelectedSimAction('OUT');
-                                } else if (v.status === 'On Trip') {
-                                  setSelectedSimAction('IN');
-                                }
-                              }}
-                              className={cn(
-                                "p-2.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-2",
-                                isSelected
-                                  ? (isEmerald ? "bg-emerald-50 border-[#2ea884] shadow-xs" :
-                                     isCrimson ? "bg-rose-50 border-[#ea2340] shadow-xs" :
-                                     isAmber ? "bg-amber-50 border-[#f59e0b] shadow-xs" :
-                                     "bg-blue-50 border-blue-500 shadow-xs")
-                                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
-                              )}
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Truck size={14} className={
-                                    isSelected 
-                                      ? (isEmerald ? "text-[#2ea884]" : isCrimson ? "text-[#ea2340]" : isAmber ? "text-[#d97706]" : "text-blue-600")
-                                      : "text-slate-400"
-                                  } />
+                  <div className="space-y-1">
+                    {(() => {
+                      const q = manualVehicleSearch.trim().toLowerCase();
+                      const matched = manualEligibleVehicles.filter(v => 
+                        v.vehicleNumber.toLowerCase().includes(q) ||
+                        (v.type && v.type.toLowerCase().includes(q)) ||
+                        (v.model && v.model.toLowerCase().includes(q))
+                      );
+                      if (matched.length === 0) {
+                        return (
+                          <div className="p-2.5 text-center bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-[11px]">
+                            কোনো পেন্ডিং আউট স্ক্যান বা অন ট্রিপ গাড়ি খুঁজে পাওয়া যায়নি।
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                          {matched.map(v => {
+                            const isSelected = selectedSimVehicleId === v.id;
+                            return (
+                              <div
+                                key={v.id}
+                                onClick={() => {
+                                  setSelectedSimVehicleId(v.id);
+                                  if (v.status === 'Pending Out Scan') {
+                                    setSelectedSimAction('OUT');
+                                  } else if (v.status === 'On Trip') {
+                                    setSelectedSimAction('IN');
+                                  }
+                                }}
+                                className={cn(
+                                  "p-2 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-2",
+                                  isSelected
+                                    ? (isEmerald ? "bg-emerald-50 border-[#2ea884]" :
+                                       isCrimson ? "bg-rose-50 border-[#ea2340]" :
+                                       isAmber ? "bg-amber-50 border-[#f59e0b]" :
+                                       "bg-blue-50 border-blue-500")
+                                    : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
+                                )}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Truck size={13} className={isSelected ? "text-blue-600" : "text-slate-400"} />
                                   <span className="font-bold text-slate-900 font-mono text-xs truncate">
                                     {v.vehicleNumber}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                                  {v.type || v.model || 'Commercial Fleet'}
-                                </div>
+                                <span className={cn(
+                                  "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase border shrink-0",
+                                  v.status === 'Pending Out Scan' 
+                                    ? "bg-amber-50 text-amber-800 border-amber-200" 
+                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                                )}>
+                                  {v.status === 'Pending Out Scan' ? 'Pending Out' : 'On Trip'}
+                                </span>
                               </div>
-                              <span className={cn(
-                                "text-[9px] font-black px-2 py-0.5 rounded-full uppercase border shrink-0",
-                                v.status === 'Available' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                                v.status === 'On Trip' ? (isEmerald ? "bg-[#e8f7f2] text-[#1b6b54] border-[#a7e3d1]" : isCrimson ? "bg-[#fff1f2] text-[#be123c] border-[#fecdd3]" : isAmber ? "bg-[#fef3c7] text-[#92400e] border-[#fde68a]" : "bg-blue-50 text-blue-700 border-blue-200") :
-                                v.status === 'Pending Out Scan' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                v.status === 'Maintenance' ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-slate-100 text-slate-700 border-slate-200"
-                              )}>
-                                {v.status}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      {computedVehicles.filter(v => 
-                        v.vehicleNumber.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                        v.type?.toLowerCase().includes(manualVehicleSearch.toLowerCase()) ||
-                        v.model?.toLowerCase().includes(manualVehicleSearch.toLowerCase())
-                      ).length === 0 && (
-                        <div className="p-3 text-center bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-[11px]">
-                          কোনো গাড়ি খুঁজে পাওয়া যায়নি।
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
 
-                {/* Dropdown Select option as fallback */}
+                {/* Dropdown Select option */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-600 block text-[11px]">
                     অথবা ড্রপডাউন থেকে নির্বাচন করুন
@@ -2152,7 +2141,7 @@ const QRScanner: React.FC = () => {
                     onChange={e => {
                       const vId = e.target.value;
                       setSelectedSimVehicleId(vId);
-                      const target = computedVehicles.find(v => v.id === vId);
+                      const target = manualEligibleVehicles.find(v => v.id === vId);
                       if (target) {
                         if (target.status === 'Pending Out Scan') {
                           setSelectedSimAction('OUT');
@@ -2162,10 +2151,12 @@ const QRScanner: React.FC = () => {
                       }
                     }}
                   >
-                    <option value="">-- গাড়ি সিলেক্ট করুন ({computedVehicles.length} টি গাড়ি) --</option>
-                    {computedVehicles.map(v => (
+                    <option value="">
+                      -- গাড়ি সিলেক্ট করুন --
+                    </option>
+                    {manualEligibleVehicles.map(v => (
                       <option key={v.id} value={v.id}>
-                        {v.vehicleNumber} — {v.status}
+                        {v.vehicleNumber} — {v.status === 'Pending Out Scan' ? 'Pending Out Scan (গাড়ি ছাড়পত্র)' : 'On Trip (গাড়ি ফেরত)'}
                       </option>
                     ))}
                   </select>
@@ -2188,7 +2179,7 @@ const QRScanner: React.FC = () => {
                       )}
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                      <span>গাড়ি ছাড়পত্র</span>
+                      <span>গাড়ি ছাড়পত্র (OUT)</span>
                     </button>
                     <button
                       type="button"
@@ -2210,7 +2201,7 @@ const QRScanner: React.FC = () => {
                         isAmber ? "bg-[#f59e0b]" :
                         "bg-blue-500"
                       )}></span>
-                      <span>গাড়ি ফেরত</span>
+                      <span>গাড়ি ফেরত (IN)</span>
                     </button>
                   </div>
                 </div>

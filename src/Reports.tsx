@@ -33,6 +33,7 @@ import { cn } from './lib/utils';
 import { useAuth } from './AuthContext';
 import { useSearch } from './SearchContext';
 import { downloadCSV, exportPDFWindow } from './utils/exportUtils';
+import { TripManifestModal } from './components/TripManifestModal';
 
 const Reports: React.FC = () => {
   const { isAdmin, isSubAdmin, isChecker, profile } = useAuth();
@@ -47,6 +48,7 @@ const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Archive' | 'Missing' | 'History'>('Archive');
   const [filter, setFilter] = useState('All');
   const [historyFilter, setHistoryFilter] = useState('All');
+  const [selectedManifestTrip, setSelectedManifestTrip] = useState<any | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -788,6 +790,14 @@ const Reports: React.FC = () => {
                               </>
                             ) : (
                               <>
+                                <button 
+                                  type="button"
+                                  onClick={() => setSelectedManifestTrip(trip)} 
+                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded cursor-pointer transition-colors" 
+                                  title="ট্রিপ মেনিফেস্ট ও চালান PDF দেখুন ও প্রিন্ট করুন"
+                                >
+                                  <FileText size={14} />
+                                </button>
                                 {canManageReports && (
                                   <>
                                     <button 
@@ -1304,6 +1314,20 @@ const Reports: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Printable PDF Trip Manifest Modal */}
+      {selectedManifestTrip && (
+        <TripManifestModal
+          trip={selectedManifestTrip}
+          vehicleDetails={vehicles.find(v => v.id === selectedManifestTrip.vehicleId || v.vehicleNumber === selectedManifestTrip.vehiclePlate)}
+          driverDetails={drivers.find(d => d.driverId === selectedManifestTrip.driverId || d.name === selectedManifestTrip.driverName)}
+          onClose={() => setSelectedManifestTrip(null)}
+          onTripUpdated={updatedTrip => {
+            setSelectedManifestTrip(updatedTrip);
+            setTrips(prev => prev.map(t => t.id === updatedTrip.id ? updatedTrip : t));
+          }}
+        />
       )}
     </div>
   );
